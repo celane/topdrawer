@@ -1,0 +1,29 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.63.2</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.63.2  DATA</H4></B> 
+
+<U>SA</U>VE <U>DA</U>TA [<U>FI</U>LE=file_name]
+     [<U>PO</U>INTS|<U>CO</U>LUMNS=[<U>FR</U>OM] n1 [<U>TO</U>] [n2]]
+     [<U>LIN</U>ES|<U>RO</U>WS=[<U>FR</U>OM] n1 [<U>TO</U>] [n2]]
+     [<U>SET</U>S=[<U>FR</U>OM] n1 [<U>TO</U>] [n2]]
+     [<U>SEL</U>ECT="name"]
+     [<U>SL</U>ICES [X|Y|Z] [<U>FR</U>OM] v1 [[<U>TO</U>] v2]]
+     [<U>NA</U>ME="name of data"]
+     [<U>AP</U>PEND[=<U>ON</U>|<U>OF</U>F]]
+Saves  Topdrawer  data  in  a file.  If no file is specified TDSAVE.TDB is
+assumed.  By specifying the range of points, sets and so on you may select
+which  data  is  saved.   The  optional  NAME  is  stored in the file as a
+comment.  APPEND adds the data to the end of an existing file.
+
+The RESTORE command is used to get saved data.
+
+NOTE:   If  the  data  contains NDX,NDY, or NDZ coordinates, it can not be
+used with older verson of TD.
+
+
+</PRE>
+</BODY>

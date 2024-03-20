@@ -1,0 +1,39 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.16.1</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.16.1  Options</H4></B> 
+
+     1.  BY selects the data set to convolute by.  You may specify either
+         the name or the data set number.
+     2.  CHECK=OFF Turns off the error checking.  Normally the 2 data sets
+         must have matching channel widths.  And each data set must have
+         equally spaced x values and y values if a mesh.
+         (Default:ON)
+     3.  ERROR=OFF Errors are not calculated for the result.
+         (Default:ON)
+     4.  INVERT=ON Convolutes by the inverted function.  This is not an
+         exact calculation.  The resulting data may exhibit ripples, due
+         to the inversion process.  Inversion uses CERN library routine
+         CFT.
+         (Default:OFF)
+     5.  NORMALIZE=ON Convolutes the data set with a normalized nset.
+         (Default:OFF)
+     6.  APPEND=ON Creates a new data set containing the entire result.
+         The appended set is longer than the original set to contain the
+         entire result.  If you do not select APPEND some data might be
+         lost.
+         (Default:OFF)
+     7.  MONITOR Histograms both the original data and the result in 2
+         windows.
+         See:SET MONITOR
+     8.  NAME selects the name for the new appended data set.
+     9.  SELECT selects data sets to convolute by name.
+    10.  LOG=ON Logs the operation on your terminal.
+         (Default:OFF)
+
+
+</PRE>
+</BODY>

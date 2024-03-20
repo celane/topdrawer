@@ -1,0 +1,28 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.36</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.36  FILL</H4></B> 
+
+<U>FIL</U>L BY={nset|"name"} [<U>LE</U>VEL=n] [<U>AD</U>D=[n|<U>Z</U>]]
+     [<U>LIM</U>ITED [<U>VL</U>OG[=<U>ON</U>|<U>OF</U>F]] [[<U>FR</U>OM]|<U>TO</U> [[<U>X</U>=]nx,[[<U>Y</U>=]ny[,[<U>Z</U>=]nz]]]
+          [<U>RE</U>CURSOR] [<U>CU</U>RSOR] ]
+     [<U>PO</U>INTS|<U>CO</U>LUMNS=[<U>FR</U>OM] n1 [<U>TO</U>] [n2]]
+     [<U>LIN</U>ES|<U>RO</U>WS=[<U>FR</U>OM] n1 [<U>TO</U>] [n2]]
+     [<U>SET</U>S=[<U>FR</U>OM] n1 [<U>TO</U>] [n2]]
+     [<U>SEL</U>ECT="name"]
+This  takes  the data set nset and assumes it is a closed curve.  It fills
+the curve by adding 1 to each Z value of the specified data sets which lie
+inside the curve.  For mesh data Z must be the dependent variable.
+
+If  the  filled  data  set  has  finite  DX  then it is incremented by the
+fraction of the curve that lies within the DX of X.
+
+If  you specify LEVEL=n and DY is finite then n steps are used to find the
+part of the curve that lies within each channel +-DY.
+
+
+</PRE>
+</BODY>

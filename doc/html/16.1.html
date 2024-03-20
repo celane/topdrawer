@@ -1,0 +1,98 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 16.1</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>16.1  LIST_OF_NAMES</H4></B> 
+
+     <U>NAMES</U> - <U>Value</U>
+  *  INPUT_LEVEL - The number of input files opened by SET FILE INPUT.
+  *  CPUTIME - The current cpu time
+  *  CPULIMIT - The cpu time remaining
+  *  SETS - The number of data sets.
+  *  CURRENT_SET - The current data set (Set by option:SETS=)
+  *  XVALUE[np,nr,ns] - The X value for point n in set ns.
+  *  DXVALUE[np,nr,ns] - The error on X for point np row nr in set ns
+  *  NDX[np,nr,ns],NDY,NDZVALUE - Negative part of error bar.
+  *  YVALUE[np,nr,ns]
+  *  ZVALUE[np,nr,ns]
+  *  UVALUE[np,nr,ns]
+  *  VVALUE[np,nr,ns]
+  *  WVALUE[np,nr,ns]
+  *  DYVALUE[np,nr,ns]
+  *  DZVALUE[np,nr,ns] - (data for point n)
+  *  RVALUE[np,nr,ns],DRVALUE[np,nr,ns] - Radius in polar or spherical
+     coordinates
+  *  THVALUE[np,nr,ns],DTHVALUE[np,nr,ns] - Theta in polar or spherical
+     coordinates
+
+<A NAME="218">  *  PHIVALUE[np,nr,ns],DPHIVALUE[np,nr,ns] - Phi in Spherical coordinates </A>
+  *  PLOTS - The number of plots produced.
+  *  WINDOWS - The maximum number of windows
+  *  CURRENT_WINDOW - The current window number
+  *  XWINDOWS - The maximum number of X windows
+  *  CURRENT_XWINDOW - The current X window number.
+  *  YWINDOWS - The maximum number of Y windows
+  *  CURRENT_YWINDOW - The current Y window number.
+  *  COLUMNS - Number of columns in a mesh.
+  *  CURRENT_COLUMN - Current column of a mesh (Set by option:POINT|
+     COLUMN=)
+  *  ROWS - Number of rows in a mesh.
+  *  CURRENT_ROW - Current row in a mesh.  (Set by option:LINE|ROW=)
+
+                      Calc by SET STATISTICS or SHOW DATA
+  *  POINTS - The points in your data set.
+  *  nMIN - The minimum value of n where n=X,Y, or Z.
+  *  nMAX - The maximum value of n where n=X,Y, or Z.
+  *  SUM - The sum over all points.
+  *  AVERAGE - The average over all points.
+  *  MEAN - The mean of the data.
+  *  STD - The standard deviation of the data from the average.
+  *  ESUM - The error on the sum.
+  *  EAVERAGE - The error on the average.
+  *  ESTD - The error in the STD.
+  *  EMEAN - The error in the mean.
+
+                              Calc by FIT command
+  *  TERMS - The maximum term fit or constrained.  (0...20)
+  *  NPFIT - Then number of points fit
+  *  NTFIT - The number of terms fit.
+  *  CHISQR - The chi squared/point.
+  *  FTEST - The value of FTEST.
+  *  FIT[n] - 1 if coefficient n has been fit (n=0-19), 0 if not.
+  *  CONSTRAINED[n] - 1 if this coefficient has been picked or
+     constrained.
+  *  COEFFICIENT[n] - Value of the coefficient of the fit.
+  *  ECOEFFICIENT[n] - Error on coefficient n.
+
+                            SET by SET HIST command
+  *  CURRENT_HISTOGRAM - The current histogram ID
+     (See:Command SET HISTOGRAM)
+  *  HIST_NAME - Current hist name (S_ only)
+  *  HIST_ENTRIES - The number of entries in the hist
+  *  HIST_MEAN - The mean of the hist
+  *  HIST_STD - The hist standard deviation
+  *  HIST_SUM[n1,n2] - The sum over this histogram.
+          n1 = 1,2,3 for X Under,sum,over
+          n2 = 1,2,3 for Y Under,sum,over
+          If n1 or n2 are omitted or are 0 then you get the sum of all 3.
+  *  XMARKER[n] - Array of 8 X markers
+  *  YMARKER[n] - Array of 8 Y markers
+  *  ZMARKER[n] - Array of 8 Z markers
+
+                                3-d Parameters
+  *  VIEW_THETA - Viewing angle
+  *  VIEW_PHI - Viewing angle
+
+<A NAME="219">  *  VIEW_SEPARATION - Eye separation </A>
+  *  VIEW_DISTANCE - Distance from observer to object
+  *  VIEW_SCRD - Distance from observer to screen
+
+                                 Miscellaneous
+  *  REPEAT[n] - Repeat number for loop n.
+
+
+
+</PRE>
+</BODY>

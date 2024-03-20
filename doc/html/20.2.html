@@ -1,0 +1,112 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 20.2</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>20.2  86</H4></B> 
+
+     1.  SET COLOR - Now accepts full range of UGSYS color specs.
+     2.  SET  FILE  -  Command  rewritten.  It now accepts a file name and
+         multiple nesting of SET FILE INPUT is possible.
+     3.  Unit numbers modified to allow batch input.
+     4.  SET  DEVICE  DDNAME=filename  -  The  limitation  of  8  chars on
+         filename is removed.
+     5.  SET DEVICE - INTERACTIVE is the default.
+     6.  HELP - New command added.
+     7.  Added prompting for interactive input.
+     8.  PLOT_TERM,  PLOT_DEVICE  symbols  are  used  to determine default
+         device.
+
+<A NAME="238">     9.  TOKEN - Tabs are treated as spaces. </A>
+    10.  SIXELS is now a legal device.
+    11.  SET INPUT is a synonym of SET CARD.
+    12.  SET ERRORS - New command added.
+    13.  Fixed SET DEVICE command so SIDEWAYS works properly.
+    14.  INTENSITY/WIDTH  3  did  not work properly, and would cause other
+         options to work improperly.
+    15.  SET DEVICE accepts lowercase chars.  in string.
+    16.  SET STRUCTURE can now set FUNNY.
+    17.  HISTOGRAM command now produces a BLOCK plot for 3-d data.
+    18.  FLUSH command flushes the buffers.
+    19.  Fixed UG errors when no plot make.
+    20.  Fixed  failure  to  SET  DEVICE  in  the middle of an interactive
+         session.
+    21.  Added JOURNAL file and SET JOURNAL command.
+    22.  Added SHOW commands as mirror to SET commands.
+    23.  Rewrote  T23HST  to  add  fast  "LEGO"  plots  as well as minimal
+         histograms.
+    24.  TITLE X|Y|Z now produces titles next to 3-d axes.  The lables and
+         titles are always drawn on the outer side of axes by default.
+    25.  T23HST,T23JIN accept a texture parameter.  T23HST may plot hidden
+         lines with the option HIDE.
+    26.  T2FREQ  modified  for  incomplete  storage.   Now  only  X,Y  are
+         required.
+    27.  Modified TXDOT and TXTSYM to produce points directly from unified
+         graphics.  This makes better points for hi  resolution  displays,
+         and faster points on Tek4010 displays.
+    28.  T23PLT - added to do scatter plots.
+    29.  SLICE - command added to plot slices of mesh data.
+    30.  Fixed T2DEF2 so limits are properly defined at all times.
+    31.  Added  SET  HIST  command.   This  is  conditionalized  for the 3
+         different types of hist routines.  You can get RICE  format,  and
+         HBOOK format hist files to be displayed by TOPDRAWER.
+    32.  SHOW DATA can show you a subset of the data, with calculations of
+         statistics on the data.
+    33.  3D is now properly selected for each type of hist.
+    34.  DEFINE KEY - Defines keypad keys for ANSII terminals.
+    35.  The  previous  20 input lines are stored for recall by ANSII mode
+         terms.  This is done using SMG routines so foreign terminals  can
+         be defined also.
+    36.  Traceback for input files has been added.
+    37.  Modified   TXLINE  for  optimized  point  plotting.   Essentially
+         drawing points with UGMARK is faster  for  some  protocalls  than
+         drawing  zero  length lines.  This is automatically done wherever
+         possible.  This is especially true for 4010 graphics.  A  cluster
+         of Nearby dots can save a factor of 3 in transfer time.
+    38.  Regularized   the   error   messages,   and  added  messages  for
+         PEN,WIDTH,CARD LENGTH out of range.
+    39.  Added  PERMANENT option to SET SYMBOL,GRID,WIDTH This changed the
+         logic of SET SYMBOL slightly to conform to other commands.
+    40.  The  card  length was changed to conform to standard screen sizes
+         (80 cols).  The Format  string  is  (256A1)  to  make  card  size
+         changes easy.
+    41.  Fixed automatic flush so it works properly for interactive use.
+    42.  Fixed  NOVECTOR  mode so that it works.  Make the default VECTOR.
+         Removed  '$'  as  a  separator.   This  is  necessary  for   some
+         filenames!  (TXXUG77)
+
+<A NAME="239">    43.  29-Oct-1986     -     Added     DSIZE,DOTS,...      options    to </A>
+         CIRCL,ELLIPSE,DIAMOND,BOX commands.  (T2MAIN,T2PLOT)
+    44.  31-Oct-1986         -         Added         cursor        support
+         (T2XFRM,TXXUG77,T2SET1,T2SHOW).
+    45.  5-Nov-1986  - Fixed the option PLOT SYMBOL so it works, and fixed
+         problem with multiple options after PLOT.
+    46.  Added color,texture,intensity control to SET AXES, OUTLINE, GRID,
+         TITLE.  Also color, texture may now be specifed for  any  command
+         that draws something.  PLOT, HIST, BOX, TITLE....
+    47.  Added  support  for  multiple  data sets.  option SETS picks data
+         sets.
+    48.  Added MESH data support to SMOOTH command.
+    49.  14-NOV-1986  -  Fixed  bug  in  T2RDPT.   Data after a symbol was
+         skipped.
+    50.  Modified string handling to Fortran-77.
+    51.  26-Nov-1986 - Added IF,ELSE,ENDIF.
+    52.  1-Dec-1986  -  Added  options  SCALE, TICKS, and PERMANENT to SET
+         SCALE command.  Added option PERMANENT to  SET  COLOR  and  reset
+         color with each new plot.  Fixed a problem with JOIN SPLINE DASH.
+         If the points were closely spaced a solid line is  drawn.   Added
+         options BLINK, PROPORTIONAL, HARDTEXTURE.
+    53.  8-Dec-1986  -  Added  sideways option to SET SIZE.  Added options
+         WHITE,...   WIDTH=,  DOTTED  to  SET  TICKS,LABELS,TITLE.    SHOW
+         command now shows the Default values as well as the current ones.
+    54.  16-Dec-1986  -  Added  options DOT/DASH/DAASH/RANDOM/SPACE to set
+         pattern.  Fixed infinite loop when no pattern specified.
+    55.  23-Dec-1986  -  Added option for automatic pattern generation for
+         drawing commands.  ie.  JOIN DOT DOT DASH generates  the  pattern
+         to  do  this.   Added  EXPAND  option  to  JOIN,HIST,PLOT.  Added
+         VARIABLE, SIZE, NORANDOM options to PLOT.
+
+
+</PRE>
+</BODY>

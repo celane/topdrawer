@@ -1,0 +1,54 @@
+LIB = ../td.a
+
+ifneq ($(strip $(RAN)),)
+RANLIB = $(RAN) $(LIB)
+endif
+
+.f.o: ;\
+        $(F77) -c      $*.f  ;\
+        $(AR)  $(LIB)  $*.o  ;\
+        $(RANLIB)
+
+.c.o: ;\
+        $(CC)  -c      $*.c  ;\
+        $(AR)  $(LIB)  $*.o  ;\
+        $(RANLIB)
+
+$(LIB): \
+readpr_.o  \
+help_.o    \
+hb_search_id.o \
+help.o     \
+smctrl.o   \
+t2axes.o   \
+t2cntr.o   \
+t2del.o    \
+t2fft.o    \
+t2fill.o   \
+t2fit.o    \
+t2main.o   \
+t2mesh.o   \
+t2plot.o   \
+t2savd.o   \
+t2set.o    \
+t2setc.o   \
+t2seth4.o  \
+t2show.o   \
+t2smooth.o \
+t2spline.o \
+t2tabl.o   \
+t2timf.o   \
+t2xfrm.o   \
+td.o       \
+tdend.o    \
+tdtext.o   \
+token.o    \
+txline.o   \
+txxug77.o  \
+td2ugs.o   \
+; \
+	ls -lF  $(LIB)
+
+clean:
+	rm -f *.o *~
+

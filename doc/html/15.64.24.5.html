@@ -1,0 +1,31 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.24.5</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.24.5  Example</H4></B>  - 
+     TD:<U>SET</U> <U>FILE</U> <U>INPUT</U> <U>TEST</U>
+Input will be taken from file TEST.TOP.
+     TD:<U>SET</U> <U>FILE</U> <U>INPUT</U> <U>myfile.dat</U>
+Input will be taken from file MYFILE.DAT.
+     TD:<U>SET</U> <U>FILE</U> <U>INPUT</U> <U>'myfile.dat;1'</U>
+Input  will  be  taken  from file MYFILE.DAT;1.  Notice, that if you use a
+semicolon ";" in the file name you  must  enclose  it  in  apostrophes  or
+quotes.
+
+     TD:<U>SET</U> <U>FILE</U> <U>INPUT="$TEST"</U> <U>LIST=TESTD</U>
+Input will be $TEST.TOP the output will be TESTD.LIS.
+
+     TD:<U>SET</U> <U>FILE</U> <U>INPUT</U> <U>TOPDRAWER_ROOT:[EXAMPLES]TDINTRO</U>
+The input will be from TOPDRAWER_ROOT:[EXAMPLES] file TDINTRO.TOP
+
+     TD:<U>SET</U> <U>FILE</U> <U>INPUT</U> <U>DRA0:[USER.SUBDIR]MY_PLOTS.PLT</U>
+The  input  will  be  from  device  DRA0:,  directory  [USER.SUBDIR], file
+MY_PLOTS.PLT
+     TD:<U>SET</U> <U>FILE</U> <U>JOURNAL</U> <U>NL:</U>
+This   discards   the   journal  output  a  better  way  to  do  this  is:
+SET MODE JOURNAL OFF.
+
+</PRE>
+</BODY>

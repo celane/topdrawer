@@ -1,0 +1,37 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.45.1.4</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.45.1.4  LIMITED</H4></B>   - Limits the data listed to the specified range.  For
+3-d data the limit on the dependent variable is ignored.   If  limits  are
+not    specified,    the    default    is   the   current   plot   limits.
+See:Command SET LIMITS.
+     1.  X - Specifies X limit
+     2.  Y - Specifies Y limit
+     3.  Z - Specifies the Z limit
+     4.  CURSOR  - Brings up the cursor.  You move it to the X,Y value you
+         wish then press the space bar to enter both X,Y or X to  enter  X
+         or Y to enter Y.
+     5.  RECURSOR - The cursor enters both limits.
+     6.  VLOG  -  Draws  a cross when you press the space bar, and draws a
+         dotted line around the final limits.
+     7.  LOG - Type on the terminal a summary of the data listing.
+
+                                  example
+     TD:<U>LIST</U> <U>DATA</U> <U>LIMITED</U> <U>FROM</U> <U>1,1</U> <U>to</U> <U>2,5</U>
+          or...
+     TD:<U>LIST</U> <U>DATA</U> <U>LIMITED</U> <U>FROM</U> <U>X=1</U> <U>Y=1</U> <U>TO</U> <U>X=2</U> <U>Y=5</U>
+Lists  all  points  that  with  X  between  1  and 2 and Y between 2 and 5
+inclusive.
+     TD:<U>LIST</U> <U>DATA</U> <U>LIMITED</U> <U>FROM</U> <U>Y=1</U> <U>TO</U> <U>Y=5</U>
+Lists all data points with Y values between 1 and 5 inclusive.
+     TD:<U>LIST</U> <U>DATA</U> <U>LIMITED</U> <U>FROM</U> <U>CURSOR</U> <U>TO</U> <U>CURSOR</U>
+Lists all data points as defined by the cursor limits.
+     TD:<U>LIST</U> <U>DATA</U> <U>LIMITED</U> <U>FROM</U> <U>X=CURSOR</U> <U>TO</U> <U>X=CURSOR</U>
+Lists all data points according to X values defined by the cursor.
+
+
+</PRE>
+</BODY>

@@ -1,0 +1,35 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 10.6</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>10.6  TIME-ANGLES-DATES</H4></B> 
+
+Time  may  be  entered  in hours in the format hh:mm:ss.nnn.  You may also
+enter angles as dd:mm:ss.nn in degrees, minutes, seconds.  Time  or  angle
+data  must  begin  with  a  number.  0::1.5 is legal for 1.5 seconds after
+midnight, while ::1.5 is not legal.
+
+Dates  may  be  entered  in  hours as YYYY\MM\DD.  If omitted MM or DD are
+assumed to be 1.  If you wish to enter both date and time  the  format  is
+YYYY\MM\DD\HH:mm:ss.ss.  See:Command SET DATE.
+
+If  time  is preceded by a sign, then all 3 HOURS,MINUTES, and SECONDS are
+considered negative.  If a date or date\time is  preceded  by  a  sign  it
+applies  only to the YYYY (Year).  Signs (+ -) may not be imbedding inside
+a date\time.
+
+                                 Examples
+     10 (10 am)
+     10:00 (10 am)
+     15:30:25.2 (25.2 seconds past 3:30 pm)
+     0.5 (Half past midnight)
+     0:30 (Half past midnight)
+     24:30 (Half past midnight)
+     1987\12\25\12:30 (12:30 on Dec 25, 1987)
+     -1:30:00 (10:30)
+
+
+</PRE>
+</BODY>

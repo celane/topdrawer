@@ -1,0 +1,25 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.65.3.7</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.65.3.7  Statistics</H4></B>   - The  statistics on the data are typed at the end
+of the data.  This includes the following:
+     1.  Range of data for X and Y
+     2.  Sum of all Y values and average Y value per point.
+     3.  Error  in  the sum.  This is only produced if the Y values have a
+         non zero DY.  To specify errors for existing data see the command
+         X.
+     4.  Mean X value, and standard deviation of the mean.
+         Mean=SUM(X*Y)/SUM(Y)
+         Std=SQRT(SUM((X-MEAN)*Y))/SUM(Y)
+     5.  Error  on  the  mean  and  standard  deviation.   These  are only
+         produced if either DX or DY are non zero for  the  data.   DY  is
+         used  if  available  otherwise DX is used to calculate the error.
+         If the number of data points with Y,DX,DY non zero is less than 3
+         then DX is also used to calculate the error.
+
+
+</PRE>
+</BODY>

@@ -1,0 +1,29 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual Chapter 16</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>Chapter 16  LEXICAL_VALUES</H4></B>
+<A NAME="217"> </A>
+You have access to data via lexicals.  For example you may access the sum,
+mean,  standard  deviation  of  your  data  set and put them into a title.
+See:Command TITLE.  Quantities such as points, sum etc.  are calculated by
+a  SET  STATISTICS or SHOW DATA command.  If you do not use SET STATISTICS
+or SHOW DATA to generate them, they are automatically calculated from  the
+entire  data  set.   Whenever  you  modify  the data set, you must use SET
+STATISTICS to set the statistics if you wish  the  lexicals  to  represent
+only  a  subset of the data.  To use a lexical value you must use a symbol
+of the form:  T_NAME, S_NAME, or V_NAME.  The T_NAME inserts the value  of
+the  name  into a title string.  V_NAME or &lt;NAME&gt; is used to get the value
+as a number.  S_NAME gets a value as a string.   You  may  define  lexical
+values by the command DEFINE VALUE or DEFINE STRING.
+
+The  lexicals  may  be  abbreviated  to  the  shortest  unique  name.  For
+convenience V_ may be omitted inside an expression.   This  will  increase
+the  time  to  parse an expression.  For example &lt;V_XVALUE&gt; is the same as
+&lt;XVALUE&gt; or V_XV.
+
+
+</PRE>
+</BODY>

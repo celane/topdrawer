@@ -1,0 +1,21 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.18.19</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.18.19  Xwindows</H4></B>  - If you wish to serve the Xwindows to another node
+on DECnet (HEPNET) you must declare the node before entering Topdrawer, by
+entering the line:
+     $ SET DISPLAY/CREATE/NODE=nodename
+If  you  do not have a DECnet connection, but you are connected via TCP/IP
+(Arpanet or Internet) you must use one of the following commands:
+
+If you have Multinet TCP/IP software:
+     $ SET DISPLAY/CREATE/NODE=nodename/TRANSPORT=TCPIP
+If you have Wollengong TCP/IP software (WINTCP):
+     $ SET DISPLAY/CREATE/NODE=nodename/TRANSPORT=WINTCP
+
+
+</PRE>
+</BODY>

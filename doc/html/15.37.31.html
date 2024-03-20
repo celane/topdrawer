@@ -1,0 +1,25 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.37.31</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.37.31  Examples</H4></B>    
+
+     TD:<U>FIT</U> <U>POLY</U> <U>TERMS=10</U> <U>INCLUDE</U> <U>EVEN</U>
+Fits  a  polynomial using the even powers of X.  (1.0,X**2...X**8) A curve
+with the resulting fit replaces the current data.
+     TD:<U>FIT</U> <U>LEGEN</U> <U>TERMS=3</U>
+Fits  a  legendre  polynomial  of  3  terms.   (1,L1,L2)  A curve with the
+resulting fit replaces the current data.
+     TD:<U>FIT</U> <U>POLY</U> <U>INCLUDE</U> <U>2,3,5</U> <U>CURVE</U> <U>APPEND</U> <U>FROM</U> <U>0</U> <U>to</U> <U>10</U> <U>by</U> <U>.1</U>
+Fits  a  polynomial  using X**2,X**3,X**5 and appends the histogram at the
+end of the current data.  The curve contains 101 data points spanning  the
+<A NAME="81">range of X from 0.0 to 10.0 </A>
+     TD:<U>FIT</U> <U>POLY</U> <U>INCLUDE</U> <U>NONE</U> <U>COEF</U> <U>1.0,.5,-.25</U> <U>CURVE</U> <U>FROM</U> <U>0</U> <U>TO</U> <U>10</U> <U>BY</U> <U>.5</U>
+Creates  a  parabola  Y=1.0+0.5*X-0.25*X**2  from 0 to 10 in steps of 0.5.
+Note:  that no fit is performed since no coefficints were included.
+
+
+</PRE>
+</BODY>

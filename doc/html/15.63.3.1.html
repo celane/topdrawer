@@ -1,0 +1,34 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.63.3.1</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.63.3.1  Options</H4></B>  - 
+     1.  AREA|DIRECTORY  selects  the base directory of the disk file.  If
+         this is unspecified then it  is  assumed.   to  be  the  same  as
+         specified by the previous SET HIST AREA command.
+     2.  ENTRIES selects only histograms with entries.
+     3.  FILE=file_name  selects  the file name.  If FILE is not specified
+         then it HBOOK.BIN.  If the filename is NONE then no file name  is
+         selected.
+
+<A NAME="120">     4.  HISTOGRAM|MESH selects only regular histograms or scatter plots. </A>
+     5.  RECLENGTH specifies the record length for an RZ file.
+         (default:1024 Words)
+     6.  RELATIVE  saves  histograms in a relative file for faster access.
+         Otherwise a  sequential  file  is  used.   This  works  only  for
+         HBOOK V4.10 on a VaX.
+         (Default:RELATIVE=OFF)
+     7.  SELECT selects the name of the histograms to store.
+     8.  SHARE shares the file with other users.  SHARE=OFF prohibits file
+         sharing.  This works only for HBOOK V4.10.
+         (Default:SHARE=ON)
+     9.  UPDATE=ON saves histograms in an existing file.
+         UPDATE=OFF saves histograms in a new file.
+    10.  TREE saves the entire directory tree.  (OUTPUT,PUT only)
+(Default:UPDATE=OFF)
+
+
+</PRE>
+</BODY>

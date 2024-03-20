@@ -1,0 +1,39 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.37.10</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.37.10  GAUSSIAN</H4></B>    
+
+Does a fit to:
+     Y=a0*EXP(-0.5*((X-a1)/a2)**2)[+a3+a4*X+...]      for     NONLINEAR=ON
+(Default) or
+     LN(Y)=LN(a0)+-0.5*((X-a1)/a2)**2 for NONLINEAR=OFF
+     for data points with Y,DY not 0.0.
+
+Since  only  data  with  both  Y,DY  nonzero  are  fit,  there may be some
+inaccuracy for histogram data with zero in a large  number  of  bins,  and
+small  numbers in a few bins.  Such data should be smoothed or rebinned to
+remove the bins with DY=0.
+
+For  linear  fits  if  you  specify the a0 or a1 coefficient you must also
+specify a3.  If you wish to fit data  which  has  negative  or  zero  data
+points, you must either SMOOTH the data to get rid of them, or use the BIN
+command to rebin the data into large bins.  If all y  data  is  less  than
+zero, you may make it positive with the command:
+     TD:Y=Y * -1
+
+When  a NONLINEAR fit is used, and NTERMS=n is greater than 3 a polynomial
+background of n-3 terms is added  to  the  gaussian.   If  NTERMS=4,5,6  a
+constant, straignht line, or parabola are used for the background.  Larger
+<A NAME="75">values are possible, but not recommended. </A>
+For  LINEAR fits the OFFSET is used as the initial guess for the center of
+the gaussian.  When done, it is approximately equal to a1.
+
+WARNING If you get the warning message that negative data points have beem
+omitted in a Gaussian fit, the fit may be incorrect.
+
+
+</PRE>
+</BODY>

@@ -1,0 +1,21 @@
+TITLE TOP 'Histogram Example'
+TITLE LEFT 'Y - axis'
+TITLE BOTTOM 'X - axis'
+SET SYMBOL 0P
+0., 1.
+1., 5.
+2., 4.
+3., 4.5
+4., 2.5
+HIST
+NEW PLOT
+TITLE TOP 'Point plot example with error bars'
+TITLE LEFT 'Y - Axis'
+TITLE BOTTOM 'X - Axis'
+SET SYMBOL 1P
+0.,1.,0.1,0.1
+1.,5., 0.1, 0.5
+2.,4., 0.1, 0.4
+3.,4.5,0.1,0.45
+4.,2.5,0.1,0.25
+PLOT

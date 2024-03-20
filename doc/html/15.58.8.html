@@ -1,0 +1,33 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.58.8</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.58.8  LIMITED</H4></B> 
+
+This plots only those data points that fall  within  the  specified  X,Y,Z
+limits.  If no limits are specified, then the limits used are those set by
+the SET LIMIT command.  This option has no effect on the density  of  dots
+or symbol size.  If a singe axis is plotted, then the limits determine the
+location and length of the axis.
+
+                                  example
+     TD:<U>PLOT</U> <U>LIMITED</U> <U>FROM</U> <U>1,2,3</U> <U>TO</U> <U>4,5,6</U>
+Only points where 1&lt;=X&lt;=4 2&lt;=Y&lt;=5 3&lt;=X&lt;=6 are plotted.
+
+                                  example
+     TD:<U>PLOT</U> <U>LIMITED</U> <U>FROM</U> <U>Z=.5</U> <U>to</U> <U>Z=10</U>
+Only points where 0.5&lt;=Z&lt;=10 are plotted.
+     TD:<U>PLOT</U> <U>LIMITED</U> <U>FROM</U> <U>Y=.01</U>
+Only points where 0.01&lt;=Y are plotted.
+
+                                  example
+     TD:<U>PLOT</U> <U>LIMITED</U> <U>FROM</U> <U>CURSOR</U> <U>TO</U> <U>CURSOR</U>
+The cross hair cursor appears on the screen.  You move it to the lower X,Y
+and press the space bar.  Then move it to the  upper  X,Y  and  press  the
+space bar again.  The points plotted will lie within the limits you set.
+
+
+</PRE>
+</BODY>

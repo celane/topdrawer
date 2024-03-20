@@ -1,0 +1,2504 @@
+%K                       N O T I C E
+%K
+%K This  program and  associated  documentation,  and  the
+%K material and  data contained  therein,  were  developed
+%K under the sponsorship of the U. S. government.  Neither
+%K the U.S.  nor the U.S.D.O.E.,   nor the Leland Stanford
+%K Junior  University,  nor  their  employees,  nor  their
+%K respective  contractors,   subcontractors,    or  their
+%K employees, even unto the seventh generation,  makes any
+%K warranty, express or implied,  or assumes any liability
+%K or  responsibility   for  accuracy,    completeness  or
+%K usefulness of any information,   apparatus,  product or
+%K process disclosed,  or represents that its use will not
+%K infringe  privately-owned  rights.     Mention  of  any
+%K product, its manufacturer, or suppliers shall not,  nor
+%K is it  intended to,  imply approval,   disapproval,  or
+%K fitness for any particular use.   A royalty-free,  non-
+%K exclusive right  to use  and disseminate  same for  any
+%K purpose whatsoever  is expressly  reserved to  the U.S.
+%K and the University.
+%N
+%U+ TDMACROS.MOR
+%L
+
+	"Plot current points generates call to T2PLOT"
+
+%'PLOTCURRENTPOINTS'=
+   ';<ISET=1,NDSETS;
+	CALL T2GDSET(ISET,1,$LARGE INTEGER,1,$LARGE INTEGER,ISETD,HNONE,''*'');
+	IF (ISETD(1).eq.1) THEN;
+	   CALL T2PLOT(DATBUF(I1),DATBUF(I2),
+		DATBUF(I3),DATBUF(I4),DATBUF(I5),DATBUF(I6),
+		DATBUF(I7),NP,NINCR0,0,0.0,HNONE,HNONE,HNONE,HNONE);
+	ENDIF;
+     >';
+
+<SET>;	"Set the mortran buffer pointer for subsequent <RESET>"
+<TOKEN USING INFO,CARD>;
+	"     Start of main TD program  'T2MAIN' ---------"
+%E  SUBROUTINE T2MAIN
+SUBROUTINE T2MAIN(IARGUE,STRIN);
+   CHARACTER*(*) STRIN;
+   EXTERNAL T2SETC;
+   $POINT ARRAYS($NPOINTS);
+   $SPECIFICATION;
+   $SELECTSPEC;
+   $MAINSPEC;
+   $SPECIFYP;
+   $SPECIFYNONE;
+"
+	IARGUE is set by the parameter on a return command.
+	For interactive mode, it signals the reason for return:
+		IARGUE	REASON
+		0	RETURN command
+		1	END command or end of input
+		2	NEW PLOT command
+		OTHER	Set by return  card parameter
+"
+   CHARACTER*$MAXSTR CARD ,REPSTR(MAXREP) ,CARSAV(MAXREP);
+   INTEGER $INFO(10),REPCNT(MAXREP),INFSAV(10,MAXREP),REPSIZ(MAXREP);
+   DATA $INFO/10*0/;
+   $BOOLEAN INTRAC,FERSAV,LASERR,IFSTAK($IFMAX);
+   $BOOLEAN LTEST,LTEST1,LTEST2,FSAVE;
+   LOGICAL ISTAT ,T2_SET_ENV ,T2_GET_ENV , LNOT ;
+   INTEGER IFLEVL;
+   REAL SYMSAV;
+   DATA IFLEVL/0/;
+   DATA CARD/' '/;
+   REAL VALSTR;
+   EQUIVALENCE (VALSTR,OUTSTR);
+   $EQUIVALENCE;
+   $DATA;
+
+$VAX;
+   EXTERNAL T2_HANDL;
+   CALL LIB$ESTABLISH(T2_HANDL);
+$END;
+NSTJOU=0; LSTJOU=0;		"Journal string=empty"
+FERSAV=$ERROR;			"Initial errors"
+IARGUE=0;
+IF (LEN(STRIN).gt.0.and.STRIN.ne. ' ') THEN;
+   <I=1,10; $INFO(I)=0;>
+   IMAX=1; <I=1,LEN(STRIN); IF (STRIN(I:I) .ne. ' ') IMAX=I;>
+   IF (IMAX .gt. LEN($CARD)) THEN;
+      ERROR STRING;'*** ERROR *** Input string too long in T2MAIN';
+   ENDIF;
+   $INFO(1)=MIN(LEN($CARD),IMAX);
+   $INFO(2)=-2;		"Terminate at end of card"
+   $CARD=STRIN(1:IMAX);	"Save input string"
+   GOTO :BEG1:;
+ELSE;
+   $INFO(1)=MAX(0,$INFO(1));
+   $INFO(2)=0;
+ENDIF;
+<LOOP> <
+				"Interactive ?, So flush input!"
+   FLAGS(31) = .FALSE.;
+   IF ((INPFIL.eq.$INPUTFILE .and. INTRAC(0).and.FLAGS(54)).or.$DEBUG)
+      CALL TXVOID;
+   <READ CARD>;
+:BEG1:   CONTINUE;
+   LASERR=$ERROR;		"Last error"
+   FERSAV=FERSAV .or. $ERROR;	"Cumulative errors"
+   $ERROR=.FALSE.;
+   IF (END OF INPUT FILE) THEN;	"End of input ??"
+      IARGUE=0;
+      IF ($INFO(2).ge.0) THEN;	"Not requested termination ?"
+	 CALL TXVOID;
+	 IF (INTRAC(I).and..not.FLAGS(100)) THEN;
+	    $INFO(1)=0;
+	    <NEXT>;
+	 ENDIF;
+	 IARGUE=1;
+      ENDIF;
+      GOTO :RET:;
+   ENDIF;
+   IF (IFLEVL.gt.0) THEN;
+      IF (.NOT.IFSTAK(IFLEVL)) THEN;
+	 <TOKEN> <
+	    KEY:: <
+		IF,IFNOT <
+		   IF (IFLEVL.lt.$IFMAX) THEN;
+		      IFLEVL=IFLEVL+1; IFSTAK(IFLEVL)=IFSTAK(IFLEVL-1);
+		   ELSE;ERROR OUT;('*** ERROR *** Too many nested IFs');
+		   ENDIF;
+		>
+		EN,END < CONTINUE; >
+		ENDIF < IFLEVL=IFLEVL-1;>
+		ELSE  <
+		   IFSTAK(IFLEVL)=.NOT.IFSTAK(IFLEVL);
+		   IF (IFLEVL.gt.1)
+		      IFSTAK(IFLEVL)=IFSTAK(IFLEVL).AND.IFSTAK(IFLEVL-1);
+		>
+	    >
+	    ELSE:: <GOTO :CARD:;>
+      >
+      ENDIF;
+      IF (IFLEVL.gt.0) THEN;	"Still in stack"
+	 IF (.NOT.IFSTAK(IFLEVL)) GOTO :CARD:;	"True ?"
+      ENDIF;
+   ENDIF;
+   IF ($TRAP) THEN;	"Interrupt condition ?"
+      IF (INPFIL.ne.$INPUTFILE .or. .not. INTRAC(0)) THEN;
+			"Search for new plot ?"
+	 <TOKEN> <
+	    KEY:: <
+		NEWPLOT:0,NEWFRAME:0,NEW:0,RETURN,
+		   STOP,EXIT,QUIT,HALT,END
+		    <READ SAME TOKEN;>
+	    >
+	    ELSE:: <GOTO :CARD:;>
+	 >
+      ENDIF;
+      $INFO(6)=$LARGE INTEGER;
+      $TRAP=.false.; LSYERR=.false.;
+   ENDIF;
+:MORE:
+   <PRINT CARD>;
+   <I=1,3; ICPOIN(I)=0; >			"Null pointers"
+   IPATRN=1;
+   LAPPEN=$APPEND;				"Append the result ?"
+   LCHECK=$MODE CHECK;
+   LLOG=$MODE LOG;				"Log the operations ?"
+   LCONF=$MODE CONFIRM;
+   LMONITOR=$MONITOR;				"Monitor the result ?"
+   NS1=1; NS2=NDSETS;				"All data sets"
+   N_SELECT=1; C_SELECT(1:1)='*';		"All data sets"
+   N1=1; N2=$LARGE INTEGER;
+   N3=1; N4=$LARGE INTEGER;
+   TLIM(1,1)=HNONE;				"No limits on data"
+   <TOKEN> <
+      STRING::,NUMBER:: <			"Data ???"
+		<READ SAME CARD>;
+		<READ CARD>;
+		CALL T2_READ_POINTS($INFO,$CARD);
+		GOTO :CARD:;
+      >
+      END OF CARD:: <DO NOTHING;>		"BLANK CARD"
+
+      KEY:: <
+	 ARROW < CALL T2_ARROW($INFO,$CARD);
+	    IF ($ABORT.and.$ERROR) GOTO :NOJOU:;
+	 >
+
+%E  --- BOX,CIRCLE,ELLIPSE,DIAMOND
+	 BOX:1,CIRCLE:3,ELLIPSE:3,DIAMOND:2  <
+	    CALL T2_BCED($INFO,$CARD);
+	    IF ($ABORT.and.$ERROR) GOTO :NOJOU:;
+	 >
+
+%E  --- CASE,CLEAR,CONTOUR,CONVOLUTE,CREATE
+	 CASE <
+	    ERROR OUT;
+		('*** ERROR *** CASE  must follow TEXT or MORE');
+	    IF ($ABORT) GOTO :NOJOU:;
+	 >
+	 CLEAR,ERASE < CALL T2_ERASE($INFO,$CARD); >	"START NEW PICTURE"
+	 CONTOUR     < CALL T2CNTR($INFO,$CARD); >
+	 CONVOLUTE   < CALL T2_CONVOLUTE($INFO,$CARD);
+	    IF ($ERROR.and.$ABORT)GOTO :NOJOU:;
+	 >
+
+	 CREATE < <TOKEN SKIP 'MESH,;'>
+	    CALL T2_CREATE_MESH($INFO,$CARD);
+	    IF ($ABORT.and.$ERROR) GOTO :NOJOU:;
+	 >
+
+%E  --- DATA,DEFINE,DELETE,DUMP
+	 DATA <
+	    C_NAME(:1)=' '; N_NAME=1;
+	    <TOKEN KEY LOOP> <
+		SET < >
+		NAME:S < N_NAME=MAX(1,NSTRNG); C_NAME=STRNG(:N_NAME); >
+	    >
+	    CALL T2NEWS(0,C_NAME(:N_NAME));
+	    IF ($MODE LOG) WRITE($TERMINAL OUT,*)
+		'  Set=',NDSETS,' Name=',C_NAME(:N_NAME);
+	 >
+	 DEFINE <
+	    <TOKEN KEY> <
+		COMMAND:T <
+		  IF (NSTRNG.gt.0) THEN;
+		     C_SELECT='TD_C_'//STRNG(1:NSTRNG);
+		     CALL T2SQEZ(C_SELECT(1:NSTRNG+5),I);
+		     <TOKEN STRING> <
+			IF (NSTRNG.gt.0) THEN;
+			    ISTAT=T2_SET_ENV(C_SELECT(1:I),STRNG(1:NSTRNG));
+			    IF (.not. ISTAT) THEN;
+				ERROR OUT;
+				'*** ERROR *** Command not defined';
+			    ELSEIF (LLOG) THEN;
+				WRITE ($TERMINAL OUT,*) '  COMMAND ',
+				C_SELECT(6:I),'="'//strng(1:NSTRNG)//'"';
+			    ENDIF;
+			ENDIF;
+		     ENDIF;
+		  >
+		>
+		HISTOGRAMS <CALL T2_DEFINE_HIST($INFO,$CARD); >
+		KEYPAD <
+		  ITEMP=$INFO(3)+1;
+		  <TOKEN END>;
+		  IF ($INFO(3).gt.ITEMP)
+		     CALL DEFKEY('DEFINE /KEY '//$CARD(ITEMP:$INFO(3)));
+		>
+		VALUE:T <
+		  IF (NSTRNG.gt.0) THEN;
+		     C_SELECT='TD_V_'//STRNG(1:NSTRNG);
+		     CALL T2SQEZ(C_SELECT(1:NSTRNG+5),I);
+		     LTEST=.false.;
+		     LTEST1=.false.;
+		     <TOKEN LOOP> <
+			NUMBER::< VALSTR=FLOTNG; LTEST=.TRUE.; >
+			KEY::   < LOG:Y  < LLOG=LTOKEN; >
+				  FAST:Y < LTEST1=LTOKEN;> >
+		     >
+		     IF (.not.$ERROR.and.LTEST) THEN;
+			J=5; VALSTR=FLOTNG; OUTSTR(5:5)=CHAR(127);
+			IF (.not.LTEST1) THEN;
+			   J=20; WRITE(OUTSTR(6:20),'(1p,G15.7)') FLOTNG;
+			ENDIF;
+			ISTAT=T2_SET_ENV(C_SELECT(1:I),OUTSTR(1:J));
+			IF (.not.ISTAT) THEN;
+			   ERROR OUT; ('*** ERROR *** Value not defined');
+			ELSEIF (LLOG) THEN;
+			   CALL TDSHOW('LEXICAL '//C_SELECT(4:I));
+			ENDIF;
+		     ELSEIF (.not.LTEST) THEN;
+			ERROR OUT;'*** ERROR *** Missing value';
+		     ENDIF;
+		  ENDIF;
+		>
+		STRING:T <
+		  IF (NSTRNG.gt.0) THEN;
+		     C_SELECT='TD_S_'//STRNG(1:NSTRNG);
+		     CALL T2SQEZ(C_SELECT(1:NSTRNG+5),I);
+		     <TOKEN STRING> <
+			J=MAX(1,NSTRNG);
+			ISTAT=T2_SET_ENV(C_SELECT(1:I),STRNG(1:J));
+			IF (.not.ISTAT) THEN;
+			   ERROR OUT; ('*** ERROR *** String Not defined');
+			ELSEIF (LLOG) THEN;
+			   CALL TDSHOW('LEXICAL '//C_SELECT(4:I));
+			ENDIF;
+		     >
+		  ENDIF;
+		>
+	    >
+	    IF ($ABORT.and.$ERROR) GOTO :NOJOU:;
+	 >
+	 DELETE <
+	    <TOKEN> <
+		KEY::  <
+		  HISTOGRAMS < CALL T2_DELETE_HIST($INFO,$CARD); >
+		  DATA < CALL T2_DELETE_DATA($INFO,CARD); >
+		>
+		ELSE:: <
+		  <READ SAME TOKEN>;
+		  CALL T2_DELETE_DATA($INFO,$CARD);
+		>
+	    >
+	    IF ($ABORT.and.$ERROR) GOTO :NOJOU:;
+	 >
+	 ADD:3,DIVIDE:2,MULTIPLY:1,SUBTRACT:4
+	    < CALL T2_MDIV($INFO,$CARD); >
+
+
+%E  --- END,EXIT,HALT,QUIT,STOP,ELSE,ENDIF
+	 END,EXIT,HALT,QUIT,STOP
+	    < IARGUE=1; CALL TXVOID;
+	    <TOKEN LOOP> <
+		STRING:: < IF (NSTRNG.gt.0)
+		  WRITE($TERMINAL OUT,*,ERR=:RET:) STRNG(1:NSTRNG); >
+	    >
+	    GOTO :RET:;
+	 >
+	 ELSE <
+	    IF (IFLEVL.gt.0) THEN;
+		IFSTAK(IFLEVL)=.NOT.IFSTAK(IFLEVL);
+		IF (IFSTAK(IFLEVL)) GOTO :MORE:;
+	    ELSE; ERROR OUT;('*** ERROR *** Missing preceding IF');
+	    ENDIF;
+	 >
+	 ENDIF <
+	    IF (IFLEVL.gt.0) THEN;
+		IFLEVL=IFLEVL-1;
+		IF (IFLEVL.gt.0) THEN;		"Not at bottom of stack?"
+		  IF (IFSTAK(IFLEVL)) GOTO :MORE:;
+		ENDIF;
+	    ELSE; ERROR OUT;('*** ERROR *** Missing preceding IF');
+	    ENDIF;
+	 >
+	 ENDFILE <
+	    <TOKEN LOOP> <
+		STRING:: < IF (NSTRNG.gt.0)
+		  WRITE($TERMINAL OUT,*,ERR=:RET:) STRNG(1:NSTRNG); >
+	    >
+	    IF(INPFIL.ne.$INPUT FILE) THEN;
+		CLOSE(UNIT=INPFIL);
+		INPFIL=INPFIL-1;
+	    ELSE;
+		IARGUE=1; CALL TXVOID;
+		GOTO :RET:;
+	    ENDIF;
+	 >
+
+
+%E  --- FREQUENCY,FIT,FLUSH,FFT
+	 BIN,FREQUENCY <
+	    CALL T2_FREQUENCY($INFO,$CARD);
+	    IF ($ERROR.and.$ABORT)GOTO :NOJOU:;		"no errors"
+	 >
+	 FFT < CALL T2FFT($INFO,$CARD); IF ($ERROR.and.$ABORT)GOTO :NOJOU:;>
+	 FIT < CALL T2_FIT($INFO,$CARD); IF ($ERROR.and.$ABORT)GOTO :NOJOU:;>
+	 FILL < CALL T2_FILL($INFO,$CARD); IF ($ERROR.and.$ABORT)GOTO :NOJOU:;>
+	 FLUSH <CALL TXVOID;>
+
+%E  --- JOIN
+	 JOIN < CALL T2_JOIN($INFO,$CARD);
+		IF ($ERROR.and.$ABORT)GOTO :NOJOU:;>	"no errors"
+	 LIST <
+	    <TOKEN> <
+		KEY::  <
+		  FIT < CALL T2_LIST_FIT($INFO,$CARD); >
+		  HISTOGRAMS < CALL T2_PRINT_HIST($INFO,$CARD); >
+		  DATA < CALL T2_LIST($INFO,CARD); >
+		>
+		ELSE:: <
+		  <READ SAME TOKEN>;
+		  CALL T2_LIST($INFO,$CARD);
+		>
+	    >
+	    IF ($ERROR.and.$ABORT)GOTO :NOJOU:;		"no errors"
+	 >
+	 PLOT < CALL T2_PLOT($INFO,$CARD);
+		IF ($ERROR.and.$ABORT)GOTO :NOJOU:;>	"no errors"
+	 HELP  <
+	    ITEMP=$INFO(3)+1;
+	    <TOKEN END>;
+	    IF (INTRAC(I)) THEN;			"Interactive ?"
+		IF (ITEMP .le. $INFO(3)) THEN;
+		  CALL HELP('TOPDRAWER '//$CARD(ITEMP:$INFO(3)));
+		ELSE;
+		  CALL HELP('TOPDRAWER');
+		ENDIF;
+	    ENDIF;
+	    IF ($ABORT) GOTO :NOJOU:;
+	 >
+	 SPAWN <
+	    ITEMP=$INFO(3)+1;
+	    <TOKEN END>;
+	    IF (INTRAC(I)) THEN;			"Interactive ?"
+		IF (ITEMP.lt.$INFO(3)) THEN;
+		  call spawn($CARD(ITEMP:$INFO(3)));
+		ELSE ;
+		  call spawn(' ');
+		ENDIF;
+		IF ($ABORT) GOTO :NOJOU:;
+	    ENDIF;
+	    >
+
+%E  --- HISTOGRAM
+	 HISTOGRAM,BARGRAPH:1 <
+	    CALL T2_HISTOGRAM($INFO,$CARD);
+	    IF ($ERROR .and. $ABORT) GOTO :NOJOU:; >
+
+%E  --- IF
+	 IF:1,IFNOT <
+	    LTEST=.TRUE.; IF (INTEG.eq.0) LTEST=.FALSE.;
+	    LTEST1=.TRUE.;
+	    T1=HNONE; T2=HNONE; IOP=0; LNOT=.false.;
+	    <TOKEN LOOP> <
+		KEY:: <
+		  .AND.:0,.OR.:1, < IOP=INTEG; >	"Relational Operator ?"
+		  .NOT., <LNOT=.not. LNOT;>	"Unary operator"
+		  THREE:1,3D:1,	"3D data ?"
+		  MESH:2,	"mesh array?"
+		  DATA:3,	"Data ?"
+		  ERROR:4,	"Error in last line ?"
+		  INTERACTIVE:5	"Interactive"
+		     <
+		     <CASE> INTEG <OF>
+		     :3D:,:MESH:,:DATA:,:ERROR:,:INTER: <
+			:3D:    < LTEST2=$3D; >
+			:MESH:  < LTEST2=IBLKTP.EQ.2; >
+			:DATA:  < LTEST2=NPOINT+NMESH1.gt.0; >
+			:ERROR: < LTEST2=LASERR; >
+			:INTER: < LTEST2=INTRAC(I); >
+		     >
+:TEST:               IF (LNOT) THEN; LTEST2=.not. LTEST2; LNOT=.false.; ENDIF;
+		     IF (IOP.eq.0) THEN; LTEST1=LTEST1.and.LTEST2;
+				   ELSE; LTEST1=LTEST1.or. LTEST2; ENDIF;
+		     IOP=0;
+		  >
+		  THEN  <
+		     IF (IFLEVL.lt.$IFMAX) THEN;
+			IFLEVL=IFLEVL+1;
+			IFSTAK(IFLEVL)=
+			  (LTEST.AND.LTEST1) .OR. (.NOT.LTEST.and..NOT.LTEST1);
+		     ELSE; ERROR OUT;('*** ERROR *** Too many nested IFs');
+		     ENDIF; <EXIT>;
+		  >
+		>
+		NUMBER:: <
+		  T1=FLOTNG;
+		  <TOKEN KEY> <
+		     .EQ.:1,.GT.:2,.GE.:3,.NE.:4,.LT.:5,.LE.:6 <
+			IREL=INTEG;
+			<TOKEN NUMBER> < T2=FLOTNG;
+			   <CASE> IREL <OF>
+			      :EQ:,:GT:,:GE:,:NE:,:LT:,:LE: <
+			      :EQ: <LTEST2=T1.EQ.T2;>
+			      :NE: <LTEST2=T1.NE.T2;>
+			      :LT: <LTEST2=T1.LT.T2;>
+			      :LE: <LTEST2=T1.LE.T2;>
+			      :GT: <LTEST2=T1.GT.T2;>
+			      :GE: <LTEST2=T1.GE.T2;>
+			   >
+			   GOTO :TEST:;
+			>
+		     >
+		  >
+		>
+		ELSE:: <READ SAME TOKEN; <EXIT>;>
+	    >
+	    IF ((LTEST.AND.LTEST1) .OR. (.NOT.LTEST.and..NOT.LTEST1))
+		GOTO :MORE:;
+	    <TOKEN END>;
+	 >
+	 INTERPOLATE  < CALL T2_SPLINE($INFO,$CARD);>
+
+%E  --- MERGE,MONITOR
+	 MERGE < CALL T2_MERGE($INFO,$CARD); >	"Merge multiple data sets"
+	 MONITOR <
+	    <TOKEN KEY> <
+		HISTOGRAMS < CALL T2_MONITOR_HIST($INFO,$CARD); >
+	    >
+	 >
+
+%E  --- NEW
+	 NEW:0,NEWFRAME:0,NEWPLOT:0 <
+	    IF (UNTREATED POINTS.and.FLAGS(97)) THEN;
+		<PLOT CURRENT POINTS>;
+	    ENDIF;
+	    CALL TXVOID;	"Flush all plot info"
+	    PXNAME=' ';	"No alias at first"
+	    <TOKEN LOOP> <
+		STRING:: < IF (NSTRNG.gt.0)
+		   WRITE($TERMINAL OUT,*,ERR=:NEWERR:) STRNG(1:NSTRNG);
+		   :NEWERR: CONTINUE; >
+		KEY:: <
+		  RESET      < CALL TDREST; >
+		  PLOT,FRAME < CONTINUE; >
+		  ALIAS:T <
+		     IF (NSTRNG.gt.0) THEN;	"Its the alias"
+			IMAX=NSTRNG;
+			IF (IMAX.gt.8) THEN;
+			   ERROR OUT;
+		('*** WARNING *** Alias too long (max 8 chars), truncated');
+			   IMAX=8;
+			ENDIF;
+			IF (IMAX.gt.0)PXNAME=STRNG(1:IMAX);
+		     ELSE;
+			WRITE(PXNAME,'(A,I4.4)')
+			   'Plot',MOD(ABS(NPLOTS),10000);
+		     ENDIF;
+		  >
+		>
+	    >
+	    IARGUE=2;
+	    IF (FLAGS(59).and.LEVREP.eq.0) GOTO :RET:;	"Return on stop ?"
+	    IF ($WARN .and.	"Error file used?"
+		ERRFIL.eq.$ERR FILE) THEN;	"Deferred errors"
+		<W,$TERMINAL OUT>; (' ===> Error messages');
+		REWIND $ERR FILE;
+		IF (FLAGS(53)) THEN;
+		  LTEST=.false.;
+		  CALL T2WAIT(PRMP2(1:NPRMP2),LTEST);
+		  IF(.not.LTEST) goto :LIST END:;
+		ENDIF;
+		CALL TDSHOW('ERRORS');
+		<W,$TERMINAL OUT>; (' ===> End of error messages');
+		IF (FLAGS(53)) THEN;
+		  LTEST=.false.;
+		  CALL T2WAIT(PRMP2(1:NPRMP2),LTEST);
+		ENDIF;
+:LIST END:
+	    ENDIF;
+	    IF (.not.FLAGS(53)) THEN;
+		<W,$TERMINAL OUT> NPLOTS; (' Plot',I3,' Done.');
+	    ELSE;
+		IF(.not. $INTERACTIVE .or. LEVREP.ne.0) THEN;
+		  LTEST=.true.;
+		  CALL T2WAIT(PRMP2(1:NPRMP2),LTEST);
+		  IF(.not.LTEST) THEN;
+		     <I=INPFIL,$INPUT FILE+1,-1;CLOSE(UNIT=I);>
+		     INPFIL=$INPUT FILE; IFLEVL=0;
+		     IF (LEVREP.gt.0) THEN;
+			<I=1,10; $INFO(I)=INFSAV(I,1); >	"Old info"
+			$CARD=CARSAV(1);		"And old line"
+			LEVREP=0;
+		     ENDIF;
+		     <END CARD>;
+		  ENDIF;
+		ENDIF;
+	    ENDIF;
+	    IF ($WARN) THEN;
+		REWIND $ERR FILE; $WARN=.false.;
+	    ENDIF;
+	    CALL TXNEXT;	"Start new picture"
+	    CALL T2REST;	"Reset flags"
+	 >
+%E  --- PAUSE,PROJECT
+	 PAUSE,WAIT <
+	    CALL TXVOID;			"Flush graphics"
+	    LTEST=.true.;
+	    I=0;
+	    <TOKEN LOOP> <
+		KEY:: <
+		  FOR:0:200:10 < TIME=FLOTNG; LTEST=.false.; >
+		>
+		STRING:: <
+		  I=I+1;
+		  IF (NSTRNG.gt.0)
+		      WRITE($TERMINAL OUT,*,ERR=:PAUSERR:) STRNG(1:NSTRNG);
+		  :PAUSERR: CONTINUE;
+		>
+	    >
+		"Pause if interactive, and .not. input from terminal"
+	    IF (INTRAC(I)) THEN;
+		IF (LTEST) THEN;
+		  IF (I.eq.0)WRITE($TERMINAL OUT,*,ERR=:PAUSE:)
+		     ' User requested wait';
+:PAUSE:
+		  CALL T2WAIT(PRMP2(1:NPRMP2),LTEST);
+		  IF(.not.LTEST) THEN;
+		     <I=INPFIL,$INPUT FILE+1,-1;CLOSE(UNIT=I);>
+		     INPFIL=$INPUT FILE; IFLEVL=0;
+		     IF (LEVREP.gt.0) THEN;
+			<I=1,10; $INFO(I)=INFSAV(I,1); >	"Old info"
+			$CARD=CARSAV(1);		"And old line"
+			LEVREP=0;
+		     ENDIF;
+		     <END CARD>;
+		  ENDIF;
+		ELSEIF(.not.$TRAP) THEN;
+		  CALL T2_WAIT(TIME);
+		ENDIF;
+	    ENDIF;
+	    IF ($ABORT) GOTO :NOJOU:;>	"FOR INTERACTIVE DEBUGGING"
+	 PROJECT <
+	    CALL T2_PROJECT($INFO,$CARD);
+	    IF ($ERROR.and.$ABORT)GOTO :NOJOU:;		"no errors"
+	 >
+
+%E  --- READ,RETURN,REPEAT
+	 READ <
+	    <TOKEN KEY> <
+		MESH <CALL T2_READ_MESH($INFO,$CARD);>
+		POINTS <
+		  <TOKEN LOOP> <
+		     KEY::  <
+			APPEND <FLAGS(28)=.false.; >
+			SET:0::9999 <CALL T2NEWS(0,' ');
+				     ISET=MIN(INTEG,NDSETS); >
+		     >
+		     ELSE:: < READ SAME TOKEN; <EXIT>; >
+		  >
+		  CALL T2_READ_POINTS($INFO,$CARD);
+		>
+	    >
+	 >
+	 RESTORE <
+	    <TOKEN KEY> <
+		HISTOGRAMS < CALL T2_SAVE_HIST($INFO,$CARD,.false.); >
+		DATA < CALL T2_RESTORE_DATA($INFO,$CARD); >
+		FIT  < CALL T2_SAVE_FIT($INFO,$CARD,.true.); >
+	    >
+	 >
+	 RETURN <
+	    IARGUE=0;
+	    <TOKEN LOOP> <
+		STRING:: < IF (NSTRNG.gt.0)
+		  WRITE($TERMINAL OUT,*,ERR=:RETERR:) STRNG(1:NSTRNG);
+		  :RETERR: CONTINUE; >
+		NUMBER:: <IARGUE=INTEG;>
+	    >
+	    GOTO :RET:;
+	 >
+	 ENDREPEAT < IF (LEVREP.gt.0) REPCNT(LEVREP)=0; GOTO :RET:; >
+	 REPEAT <
+	    IF (LEVREP.lt.MAXREP) THEN;	"Repeate ok ?"
+		REPSIZ(LEVREP+1)=0;
+		REPCNT(LEVREP+1)=9999;
+		LTEST=.true.;
+		IF (NSTJOU.gt.0) THEN;
+		  STJOU(1:7)='(REPEAT'; NSTJOU=7;
+		ENDIF;
+		<TOKEN LOOP> <
+		  STRING:: <REPSTR(LEVREP+1)=STRNG(1:NSTRNG);
+		     IF (REPSIZ(LEVREP+1) .gt.0)
+			ERROR OUT;'*** ERROR *** Multiple commands';
+		     REPSIZ(LEVREP+1)=MIN(LEN($CARD),NSTRNG);>
+		  NUMBER:: <REPCNT(LEVREP+1)=INTEG;>
+		  KEY:: < FAST:Y <LTEST=LTOKEN;> >
+		>
+		IF (REPSIZ(LEVREP+1) .eq.0)
+		   ERROR OUT;'*** ERROR *** Missing command';
+		IF (.not. $ERROR) THEN;
+		  IREPCT(LEVREP+1)=0;
+		  IF (REPCNT(LEVREP+1).gt.0) THEN;
+		     LEVREP=LEVREP+1;
+		     IREPCT(LEVREP)=IREPCT(LEVREP)+1;
+		     CARSAV(LEVREP)=$CARD;
+		     <I=1,10; INFSAV(I,LEVREP)=$INFO(I); $INFO(I)=0; >
+		     $INFO(1)=REPSIZ(LEVREP);
+		     IF (INFSAV(2,LEVREP).ge.0)
+			$INFO(2)=-1;		"Terminate at end of line"
+		     IF (LTEST) $INFO(2)=-2;	"Fast mode ?"
+		     IF ($INFO(2).lt.-1.and.NSTJOU.gt.0) STJOU(1:1)=' ';
+		     CALL T2JOUR;
+		     $CARD=REPSTR(LEVREP);
+		     GOTO :BEG1:;
+		  ENDIF;
+		ENDIF;
+	    ELSE;
+		ERROR OUT;'*** ERROR *** Max repeat nesting exceeded';
+	    ENDIF;
+	    IF ($ABORT.and.$ERROR) GOTO :NOJOU:;	"no errors"
+	 >
+
+%E  --- SET,SHOW,SMOOTH
+	 SAVE <
+	    <TOKEN KEY> <
+		HISTOGRAMS < CALL T2_SAVE_HIST($INFO,$CARD,.true.); >
+		DATA < CALL T2_SAVE_DATA($INFO,$CARD); >
+		FIT  < CALL T2_SAVE_FIT($INFO,$CARD,.false.); >
+	    >
+	 >
+
+	 SET <  CALL T2SET($INFO,$CARD);>
+
+	 SHOW <  CALL T2SHOW($INFO,$CARD);
+		 IF ($ABORT.and.$ERROR) GOTO :NOJOU:;	"no errors"
+	      >
+	 SMOOTH <
+	    CALL T2_SMOOTH($INFO,$CARD);
+	    IF ($ERROR.and.$ABORT)GOTO :NOJOU:;		"no errors"
+         >
+	 SORT  < CALL T2_SORT($INFO,$CARD);>		"Sort command"
+	 SWAP  < CALL T2_SWAP($INFO,$CARD);>
+
+
+%E  --- TITLE
+	"-------------- TITLE COMMANDS ---------------"
+	 TITLE:1,TEXT:2 <
+	     I=INTEG; CALL T2TTXT($INFO,$CARD,I,' ',' ');
+	     IF ($ERROR.and.$ABORT)GOTO :NOJOU:;	"no errors"
+	     GOTO :CARD:;
+	 >
+
+
+	" ------------- VALUE COMMANDS (X,Y,DX,DY) ---------"
+	 X:2,DX:3,Y:4,DY:5,Z:6,DZ:7,NDX:8,NDY:9,NDZ:10,
+	 U:11,DU:12,NDU:13,V:14,DV:15,NDV:16,W:17,DW:18,NDW:19,
+	 THETA:102,DTHETA:103,RADIUS:104,DRADIUS:105,PHI:206,DPHI:207,
+	 NDTHETA:108,NDRADIUS:109,NDPHI:210 <
+	    CALL T2_VALUE($INFO,$CARD);
+	    IF ($ERROR.and.$ABORT)GOTO :NOJOU:;		"no errors"
+	 >
+	 TRANSFORM <
+	    CALL T2TRNS($INFO,$CARD);
+	    IF ($ERROR.and.$ABORT)GOTO :NOJOU:;		"no errors"
+	 >
+	 SYMBOL <
+	    CALL T2_SYMBOL($INFO,$CARD);
+	    IF ($ERROR.and.$ABORT)GOTO :NOJOU:;		"no errors"
+	 >
+
+%E  --- TYPE
+	 TYPE < CALL T2_TYPE($INFO,$CARD); >
+
+%E  --- USER
+	 USER <
+	    ITEMP=$INFO(3)+1;
+	    <TOKEN END>;
+	    IF (ITEMP.lt.$INFO(3)) THEN;
+		  call TDUSER($CARD(ITEMP:$INFO(3)));
+	    ELSE ;
+		  call TDUSER(' ');
+	    ENDIF;
+	    IF ($ABORT) GOTO :NOJOU:;
+	 >
+
+      >	"END OF 'KEY::' BLOCK"
+
+      ELSE:: <			"Now check for defined symbol"
+	 N_SELECT=0;
+	 ISTAT=T2_GET_ENV('TD_C_'//STRNG(1:NSTRNG),C_SELECT,N_SELECT);
+	 IF (ISTAT.and.N_SELECT.gt.0) THEN;
+	  IF($INFO(6).lt.MAX_SUBST) THEN;
+		"LOOP counters to prevent runaway macro expansion"
+	    $INFO(6)=$INFO(6)+1;
+	    IF ($INFO(5) .eq. 1) $INFO(6)=$INFO(6)+MAX_SUBST/3;
+	    IF ($INFO(3) .lt. $INFO(1)) THEN;
+		C_SELECT(N_SELECT+1:LEN(C_SELECT))=$CARD($INFO(3)+1:LEN($CARD));
+		$INFO(1)=$INFO(1)+N_SELECT-$INFO(3);
+	    ELSE;
+		C_SELECT(N_SELECT+1:LEN(C_SELECT))=' ';
+		$INFO(1)=N_SELECT;
+	    ENDIF;
+	    IF ($INFO(1) .gt. LEN($CARD)) THEN;
+		ERROR OUT;('*** ERROR *** Command truncated');
+		$INFO(1)=LEN($CARD);
+	    ENDIF;
+	    NSTJOU=0; LSTJOU=0;
+	    $CARD=C_SELECT;
+	    <I=3,5; $INFO(I)=0; > $INFO(8)=0;
+	    GOTO :BEG1:;		"Try again"
+	  ELSE;
+	    ERROR OUT;'*** ERROR *** Too many command substitutions:'
+		//C_SELECT(:N_SELECT);
+	  ENDIF;
+	 ENDIF;
+	 <TOKEN ERROR>; IF ($ABORT)GOTO :NOJOU:;	"no errors"
+      >
+
+   >	"END OF GIANT TOKEN BLOCK"
+
+  IF (.not.$ERROR.and..not.$TRAP.and.$INFO(9).ne.1) THEN;
+     <TOKEN> <
+	ELSE:: <
+	   ERROR OUT;('*** WARNING *** Extraneous options on line');
+	>
+	ENDOFCARD:: < CONTINUE; >
+     >
+  ENDIF;
+:CARD:
+  CALL T2JOUR;				"Journal when getting own input"
+:NOJOU:  NSTJOU=0; LSTJOU=0;
+   IF (LSYERR) THEN;
+      CALL T2TERR;
+      ERROR OUT; ' ';
+      LSYERR=.false.;
+   ENDIF;
+>	"End of main loop"
+:RET:
+IF (LEVREP.gt.0) THEN;			"Are we repeating ?"
+   IF ($TRAP.or.LSYERR) THEN;		"User requested termination ?"
+      LEVREP=1; REPCNT(LEVREP)=0;	"Set exhausted"
+   ENDIF;
+   REPCNT(LEVREP)=REPCNT(LEVREP)-1;	"Number of repeats"
+   IF (REPCNT(LEVREP).gt.0) THEN;	"More repeats ?"
+      IREPCT(LEVREP)=IREPCT(LEVREP)+1;
+      <I=3,10; $INFO(I)=0; >		"New info"
+      $INFO(1)=REPSIZ(LEVREP);		"Size of line"
+      $CARD=REPSTR(LEVREP);		"And new line"
+   ELSE;
+      <I=1,10; $INFO(I)=INFSAV(I,LEVREP); >	"Old info"
+      $CARD=CARSAV(LEVREP);		"And old line"
+      LEVREP=LEVREP-1;			"And new level !"
+   ENDIF;
+   GOTO :BEG1:;				"Now continue"
+ENDIF;
+IF (UNTREATED POINTS.and.FLAGS(97).and.STRIN.eq.' ') THEN;	"Untreated ?"
+   <PLOT CURRENT POINTS>;		"Plot them"
+ENDIF;
+IF (IARGUE.ne.1) CALL T2JOUR;
+$ERROR=FERSAV;				"Return errors"
+CALL TXVOID;				"Dump all data"
+RETURN; END;
+<RESET>;	"CLEAR OUT THE MORTRAN MACRO BUFFER"
+<TOKEN USING INFOIN,CARDIN>
+%';SUBROUTINE'=';<RESET> <SET>;"SUBROUTINE"';
+<SET>;	"Set the MORTRAN buffer pointer for subsequent <RESET>"
+%E  SUBROUTINE T2_ERASE  --- Erase part of screen
+SUBROUTINE T2_ERASE($INFO,$CARD);
+   IMPLICIT NONE;
+   INTEGER INFOIN(10);
+   CHARACTER*(*) CARDIN;
+   $SPECIFICATION;
+   $EQUIVALENCE;
+   $DATA;
+   $SPECIFYNONE;
+   $BOOLEAN LF1,LF2;
+   INTEGER I,J,K,IFT,IXYZ;
+   REAL XYZ(3,2),XYZ0(2),XYZ2(2),XY(2,4),t;
+   INTEGER MODTXT(2);
+   XY(1,1)=HNONE;
+   <I=1,2; MODTXT(I) = 0;	"Default TEXT mode"
+	   XYZ(1,I) = HNONE;	"No data indicator"
+	   XYZ(2,I) = HNONE;	"No data indicator"
+	   XYZ(3,I) = 0;
+   >
+   IFT=0;			"1,2 for FROM/TO"
+   IXYZ=0;			"1,2,3 for X,Y,Z"
+   <TOKEN LOOP> <
+      NUMBER:: <
+	 IFT=MAX(1,IFT);
+	 IXYZ=IXYZ+1;
+	 IF (IXYZ.le.3) THEN;
+	    XYZ(IXYZ,IFT)=FLOTNG;
+	    IF (IXYZ.eq.3) MODTXT(IFT)=1;	"3-D ?"
+	 ELSE;
+	    ERROR OUT; ('*** ERROR *** Extraneous number');
+	 ENDIF;
+      >
+      KEY:: <
+	 CURSOR <
+	    IFT=MAX(1,IFT);
+	    NSTJOU=LSTJOU;
+	    CALL T2CURS(J,XYZ0,XYZ(1,IFT),XYZ2,LF1,LF2);
+	    IF (J.eq.ICHAR(' ')) THEN;
+		MODTXT(IFT)=0;	"Text system"
+		I=23;
+		IF (JOUFIL.ne.0.and. LSTJOU+I.le.LEN(STJOU)) THEN;
+		  WRITE(STJOU(LSTJOU+1:LSTJOU+I),
+		     '(1p,2(A,G10.3))',ERR=:CURERR1:)
+		     ' ',XYZ(1,IFT),',',XYZ(2,IFT);
+		  CALL T2SQEZ(STJOU(LSTJOU+2:LSTJOU+I),I);
+		  NSTJOU=NSTJOU+I+1;
+		  :CURERR1: CONTINUE;
+		ENDIF;
+	    ENDIF;
+	 >
+	 FROM:1,TO:2 <
+	    IFT = INTEG;	"1,2 FOR FROM,TO"
+	    IXYZ= 0;
+	 >
+	 DATA:1,TEXT <
+	    MODTXT(MAX(1,IFT)) = INTEG;
+	    IF (IFT.eq.0) THEN;
+		MODTXT(2)=INTEG;
+		IF($DEF DATA) THEN;
+		  <J=1,3;
+		     T=XYZLIM(J,2)-XYZLIM(J,1)/1000;
+		     <I=1,2;
+			XYZ(J,I)=XYZLIM(J,I)+T;
+			T=-T;
+		     >
+		  >
+		ENDIF;
+	    ENDIF;
+	 >
+      >
+      ERROR:: <<TOKEN ERROR>; RETURN;>
+   >
+   IF ($ERROR .or. $TRAP) RETURN;	"no errors"
+   IF (IXYZ+IFT+MODTXT(1).le.0) THEN;
+      CALL TXNEXT;	"Start new picture"
+   ELSE;
+      <I=1,2;
+	 <J=1,2;
+	    IF (XYZ(J,I).eq.HNONE) THEN;
+		ERROR OUT;('*** ERROR *** Missing FROM or TO values');
+		RETURN;
+	    ENDIF;
+	 >
+	 IF (MODTXT(I).NE.0) THEN;
+	    CALL T2XFRM(3,1,XYZ(1,I),NONLIN,XFRM13,2,XY(1,I+2));
+	 ELSE;
+	    XY(1,I+2)=XYZ(1,I); XY(2,I+2)=XYZ(2,I);
+	 ENDIF;
+	 CALL T2XFRM(2,2,XY(1,I+2),LINEAR,XFRM34,2,XY(1,I));
+      >
+      CALL TXXERA(XY);
+   ENDIF;
+END;
+%E  SUBROUTINE TDUSER  --- User written subroutine
+SUBROUTINE TDUSER;
+END;
+%E  SUBROUTINE T2TERR  --- Type error point number
+SUBROUTINE T2TERR;
+   IMPLICIT NONE;
+   $SPECIFICATION;
+   $SPECIFYNONE;
+   $POINT ARRAYS($NPOINTS);
+   INTEGER IXYZS(6),IXYZC(6),I,J,K,L,IC,IP,IM,IMAX,ISET;
+   INTEGER NINCR0,NINCR1,NINCR2,M1,M2,M3,T2BTRIM;
+   CHARACTER*8 CXYZ(12),CORD;
+   DATA CXYZ/
+	    ' X=',' Dx=',
+	    ' Y=',' Dy=',
+	    ' Z=',' Dz=',
+	    ' Theta=',' Dtheta=',
+	    ' Radius=',' Drad=',
+	    ' Phi=',' Dphi='/;
+   <I=1,6; IXYZC(I)=I; >
+   IF ($POLAR.or.$SPHERICAL) THEN;
+      IMAX=4; IF ($SPHERICAL) IMAX=6;
+      <I=1,6; IXYZC(I)=I+6; >
+   ENDIF;
+   <I=1,3;
+      IP=ICPOIN(I);
+      IF (IP.ne.0) THEN;				"Data point ?"
+	L=$IBASEPTR;					"Data area"
+	<ISET=1,NDSETS;					"Look for data set"
+	    IF (DATBUF(L).lt.$SEPARATOR) THEN;		"Illegal ???"
+		WRITE($TERMINAL OUT,*)'*** Error in data set structure';
+		RETURN;
+	    ENDIF;
+	    IF (IP .ge. L .and. IP .lt. L+DATBUF(L+2)) <EXIT>;	"Found it ?"
+	    L=L+NINT(DATBUF(L+2));			"Next set"
+	>
+	IM=NINT(DATBUF(L+1))+L;				"Points to data"
+	WRITE(OUTSTR,'(A,I10)')' Set=',ISET;		"Get set number"
+	IF (DATBUF(L) .eq. $MESHSEPARATOR) THEN;	"3-d ?"
+	    IM=IM-3;
+	    NINCR0=NINT(DATBUF(IM)); IM=IM+1;		"Words/point"
+	    NINCR1=NINT(DATBUF(IM))*NINCR0; IM=IM+1;	"Words/row"
+	    NINCR2=NINT(DATBUF(IM)); IM=IM+1;		"rows"
+	    K=NINT(DATBUF(IM));				"Coordinates"
+	    M1=MOD(K,4);				"X/Y coordinates"
+	    M2=K/4;
+	    M3=6-MESH1-MESH2;
+	    <K=1,6; IXYZS(K)=0; >
+	    IP=MAX(0,IP-IM);				"Array element number"
+	    IP=NINCR0*(IP/NINCR0);			"Trim it"
+	    IF (IP.ge.NINCR1*NINCR2) IP=0;
+	    IXYZS(2*M1-1)=MOD(IP,NINCR1);		"Column value"
+	    IXYZS(2*M2-1)=NINCR1*(IP/NINCR1);		"Row value"
+	    IF (IXYZS(2*M1-1).ne.0 .and.
+		IXYZS(2*M2-1).ne.0) IXYZS(2*M3-1)=IP;	"Data value"
+	    IF (NINCR0 .eq. 2) THEN;			"Error exists ?"
+		<J=1,6,2; IXYZS(J+1)=IXYZS(J)+1; >	"Fill in error"
+	    ENDIF;
+	    <J=1,6; IF (IXYZS(J).gt.0)IXYZS(J)=IXYZS(J)+IM; >	"Get address"
+	    K=T2BTRIM(OUTSTR)+1;
+	    OUTSTR(K:)=' Mesh';
+	    K=T2BTRIM(OUTSTR)+1;
+	    L=MOD(IP,NINCR1)/NINCR0;
+	    IF (L .gt. 0)
+		WRITE(OUTSTR(K:),'(A,1P,I10)')' Column=',L;
+	    K=T2BTRIM(OUTSTR)+1;
+	    L=IP/NINCR1;
+	    IF (L .gt. 0)
+		WRITE(OUTSTR(K:),'(A,1P,I10)')' Row=',L;
+	ELSE;					"2-d ?"
+	    IC=MOD(IP-IM,NINCR)+1;
+	    IC=IVARBL(IC);
+	    CALL T2GVNM(IC,CORD);
+	    IP=MAX(IP-IM,0)/NINCR;
+	    K=T2BTRIM(OUTSTR)+1;
+	    WRITE(OUTSTR(K:),'(A,I10,A,1P,G15.3)')' Point=',IP+1,
+		CORD,DATBUF(ICPOIN(I));
+	    <K=1,6; L=IVRPTR(K+1);
+		IF (DATBUF(L) .ne. HNONE) THEN; IXYZS(K)=L+IP*NINCR;
+		ELSE; IXYZS(K)=0;
+		ENDIF;
+	   >
+	ENDIF;
+	<J=1,6;
+	    CALL T2SQEZ(OUTSTR,K);
+	    L=IXYZS(J);
+	    IF (L.gt.0) THEN;
+		K=T2BTRIM(OUTSTR)+1;
+		WRITE (OUTSTR(K:),'(A,1P,G15.3)')CXYZ(IXYZC(J)),DATBUF(L);
+	    ENDIF;
+	>
+	CALL T2SQEZ(OUTSTR,K);
+	ERROR STRING;OUTSTR(:K);
+      ENDIF;
+   >
+END;
+%E  FUCNTION T2_MATCHC --- Matches character strings
+LOGICAL FUNCTION T2_MATCHC(STR1,STR2,L);
+   IMPLICIT NONE;
+   CHARACTER*(*) STR1,STR2;
+   CHARACTER*512 TSTR1,TSTR2;
+   $BOOLEAN L;				"Exact ?"
+   LOGICAL MATCHC;			"Subroutine to do matches"
+   INTEGER I1,I2;
+   T2_MATCHC=.true.;
+   IF (STR2 .eq. '*') RETURN;		"All match ?"
+   IF (L) THEN;				"Exact match ?"
+	T2_MATCHC=MATCHC(STR1,STR2);	"Check it"
+   ELSE;
+	TSTR1=STR1;			"Move orig string"
+	TSTR2=STR2;
+	I1=MIN(LEN(STR1),LEN(TSTR1));	"Get length"
+	I2=MIN(LEN(STR2),LEN(TSTR2));
+	CALL T2DNCS(TSTR1(:I1));	"Convert to upper case"
+	CALL T2DNCS(TSTR2(:I2));
+	T2_MATCHC=MATCHC(TSTR1(:I1),TSTR2(:I2));	"Check it"
+   ENDIF;
+END;
+%E  SUBROUTINE T2PNTS  --- Get range of points
+SUBROUTINE T2PNTS($INFO,$CARD,N1,N2);
+   INTEGER INFOIN(10);
+   CHARACTER*(*) CARDIN;
+   INTEGER N1,N2;
+   $SPECIFICATION;
+   $EQUIVALENCE;
+   $DATA;
+"
+	Process information following 'POINTS' or 'COLUMNS' for HIST,
+	PLOT, and JOIN commands.  returns N1 and N2
+"
+   REAL VAL1,VAL2,VAL3;
+   VAL3=NCCOL;
+   VAL1=1;
+   VAL2=$LARGE INTEGER;
+   CALL T2FRTO($INFO,$CARD,VAL1,VAL2,VAL3);
+   IF (VAL1 .ge. $LARGE INTEGER/2)THEN; N1=$LARGE INTEGER/2;
+				ELSE; N1=NINT(AMIN1(VAL1,VAL2));
+				ENDIF;
+   IF (VAL2 .ge. $LARGE INTEGER/2)THEN; N2=$LARGE INTEGER/2;
+				ELSE; N2=NINT(AMAX1(VAL1,VAL2));
+				ENDIF;
+   NCCOL=N1;
+END;
+%E  SUBROUTINE T2ROWS  --- Get row number of a mesh
+SUBROUTINE T2ROWS($INFO,$CARD,N1,N2);
+"
+	Routine to get row numbers of a mesh
+"
+   INTEGER INFOIN(10);
+   CHARACTER*(*) CARDIN;
+   INTEGER N1,N2;
+   $SPECIFICATION;
+   REAL VAL1,VAL2,VAL3;
+   VAL3=NCROW;
+   VAL1=1;
+   VAL2=$LARGE INTEGER;
+   CALL T2FRTO($INFO,$CARD,VAL1,VAL2,VAL3);
+   IF (VAL1 .ge. $LARGE INTEGER/2)THEN; N1=$LARGE INTEGER/2;
+				ELSE; N1=NINT(AMIN1(VAL1,VAL2));
+				ENDIF;
+   IF (VAL2 .ge. $LARGE INTEGER/2)THEN; N2=$LARGE INTEGER/2;
+				ELSE; N2=NINT(AMAX1(VAL1,VAL2));
+				ENDIF;
+   NCCOL=N1;
+END;
+%E  SUBROUTINE T2FRTO  --- Get numbers FROM TO
+SUBROUTINE T2FRTO($INFO,$CARD,VAL1,VAL2,VAL3);
+   INTEGER INFOIN(10);
+   CHARACTER*(*) CARDIN;
+   REAL T;
+   $SPECIFICATION;
+   $EQUIVALENCE;
+   $DATA;
+   INDEX=0; TEMP1=VAL1; TEMP2=VAL2; TEMP3=VAL3;
+   <TOKEN LOOP> <
+      KEY:: <
+	 FROM    <INDEX=1;>
+	 TO      <INDEX=2;>
+	 FIRST   <T=VAL1; GOTO :SAVE:;>
+	 LAST    <T=VAL2; GOTO :SAVE:;>
+	 CURRENT:0,PREVIOUS:-1,NEXT:1
+	    <T=TEMP3+FLOTNG; GOTO :SAVE:;>
+      >
+      NUMBER:: <T=FLOTNG;
+:SAVE:
+	 IF (T.ge.VAL1 .and. T.le.VAL2) THEN;
+	    TEMP3=T;
+	    IF (INDEX.eq.0) THEN;
+		TEMP1=T; TEMP2=T; INDEX=1;
+	    ENDIF;
+	    IF (INDEX.eq.1) TEMP1=T;
+	    IF (INDEX.eq.2) TEMP2=T;
+	    IF (INDEX.ge.3) THEN;
+		ERROR OUT;
+		  ('*** ERROR *** Extra numbers');
+	    ENDIF;
+	 ELSE;
+	    ERROR TOKEN VAL1,VAL2;
+		('*** ERROR *** Number out of range (',1p,G10.3,'-',G10.3,')');
+	 ENDIF;
+	 INDEX=INDEX+1;
+      >
+      ELSE:: <READ SAME TOKEN; <EXIT>;>
+   >
+   VAL1=TEMP1; VAL2=TEMP2;
+END;
+%E  SUBROUTINE T2_GET_SET_NAME(STRING);
+SUBROUTINE T2_GET_SET_NAME(IBGDAT,STRING);
+"
+	Get name string
+	Input:	IBGDAT	- Beginning of data set
+	Output:	STRING	- Blank if no name
+"
+   IMPLICIT NONE;
+   INTEGER IBGDAT;			"Points to beginning of data set"
+   CHARACTER*(*) STRING;		"Name string found"
+   $SPECIFICATION;
+   $POINT ARRAYS($NPOINTS);
+   INTEGER I,J,IMAX,IMIN;
+   STRING=' ';
+   IF (	IBGDAT .le. 1 .or.			"IBGDAT not in range ?"
+	IBGDAT .ge. $INEXTPTR) RETURN;
+   IF (DATBUF(IBGDAT).lt.$SEPARATOR) RETURN;	"No data ?"
+   I=IBGDAT+3;					"String pointer"
+   IMIN=I+1;					"Start of string"
+   IMAX=NINT(DATBUF(I));			"Length of string"
+   IMAX=MIN(IMAX,100);				"Limit it to 100"
+   IMAX=MIN(IMAX,LEN(STRING)/$CHARS);		"limit=string length"
+   IMAX=IMAX+I;					"End of string"
+   WRITE(STRING,:FMT:)(DATBUF(I),I=IMIN,IMAX);	"Get string"
+:FMT:	FORMAT(100A$CHARS);			"The format"
+END;
+%E  SUBROUTINE T2GDSET  --- Get location of data set
+SUBROUTINE T2GDSET(ISET,N1,N2,N3,N4,NVEC,TLIM,STRING);
+"
+Gets the requested data set.
+INPUT:
+	ISET	Data set number
+	N1,N2	Point limits
+	N3,N4	Row limits
+	TLIM	Data limits ( TLIM(1,1)=HNONE, no limits)
+	STRING	Data set name
+OUTPUT:
+	NVEC	Vector with data set locations
+	1.	Type (1 or 2)
+	2.	Words/point
+	3.	Points/row   (Same as 2 for regular data)
+	4.	Number of rows
+	5.	Location of symbol (1 if none)
+	6-11	Location of X,DX,Y,DY,Z,DZ
+	12	Number of points +N1-1
+	13	Number of rows +N3-1
+	14	Beginning of data ( either SYMBOL or X)
+	15	Beginning of entire set (including header)
+	16	End of set
+"
+   IMPLICIT NONE;
+   $POINT ARRAYS($NPOINTS);
+   $SPECIFICATION;
+   $SPECIFYNONE;
+   $BOOLEAN T2_MATCHC;
+   $MAINSPEC;
+   CHARACTER*(*) STRING;
+   INTEGER N1,N2,N3,N4,I,J,K,L,ISET,NVEC(NSETD),JLIM,IMIN,IMAX,JMIN,T2BTRIM;
+   REAL TLIM(3,2),TEMP,DVEC($MAXCOR);
+   INTEGER NN1,NN2,NN3,NN4,NN5,NN6,NN7,NN8,IPNT;
+   <I=1,8; IVRPTR(I)=1; >			"HACK"
+   <I=1,$MAXCOR; NVEC(I+NSDATA-1)=1; >		"HACK"
+   $ILASTPTR=1;
+   I=$IBASEPTR;
+   IF (ISET.gt.NDSETS.or.ISET.le.0) THEN;
+	<I=1,4; NVEC(I)=0; >
+	NVEC(NPDATA)=N1-1;
+	NVEC(NLDATA)=0;
+	NVEC(NMDATA)=1;
+	RETURN;
+   ENDIF;
+   <J=1,ISET;
+      L=I;
+      IF (DATBUF(I).lt.$SEPARATOR) THEN;
+	ERROR STRING;'*** ERROR *** Error in data set structure';
+	NDSETS=J-1;
+	$INEXTPTR=I;
+	NVEC(NPDATA)=N1-1;
+	RETURN;
+      ELSE;
+	I=I+NINT(DATBUF(I+2));
+      ENDIF;
+   >
+   IF (STRING .ne. '*') THEN;
+	CALL T2_GET_SET_NAME(L,OUTSTR);
+	IF (.not. T2_MATCHC(OUTSTR(:T2BTRIM(OUTSTR)),STRING,FLAGS(130))) THEN;
+	    NVEC(NPDATA)=N1-1;
+	    RETURN;
+	ENDIF;
+   ENDIF;
+   IBLKTP=1;
+   IF (DATBUF(L) .eq. $MESHSEPARATOR) IBLKTP=2;
+   NVEC(NBTYPE)=IBLKTP;
+   NVEC(NBGDAT)=L;				"Data base"
+   $ILASTPTR=L;					"Last set pointer"
+   NVEC(NENDAT)=I-1;				"Data end"
+   $IENDPTR=I-1;
+	L=L+DATBUF(L+1);			"Data location"
+   IF (IBLKTP.eq.2) THEN;
+      IDIMNS=3;					"3-d data"
+	L=L-3;
+	NVEC(NINDAT)=NINT(DATBUF(L));			"element size"
+	NMESH0=NVEC(NINDAT);
+	L=L+1;
+	NVEC(NINDAT+1)=NINT(DATBUF(L));			"Column size"
+	NMESH1=NVEC(NINDAT+1);
+	L=L+1;
+	NVEC(NINDAT+2)=NINT(DATBUF(L));			"Row size"
+	NMESH2=NVEC(NINDAT+2);
+	L=L+1;
+	NVEC(NMDATA)=L;				"Beginning of data"
+	$IMSPTR=NVEC(NMDATA);
+	I=NINT(DATBUF(NVEC(NMDATA)));			"Get X/Y"
+	MESH1=MOD(I,4);				"X/Y coordinates"
+	MESH2=I/4;
+	MESH3=6-MESH1-MESH2;
+	NVEC(NSDATA)=1;				"Symbol"
+	IF (N1 .ge. $LARGE INTEGER/2)	THEN; NN1=NMESH1-1;	"Last column ?"
+					ELSE; NN1=N1;
+					ENDIF;
+	IF (N3 .ge. $LARGE INTEGER/2)	THEN; NN3=NMESH2-1;	"Last row ?"
+					ELSE; NN3=N3;
+					ENDIF;
+	NVEC(NXDATA)  =NVEC(NMDATA)+NMESH0*NN1;		"X"
+	NVEC(NYDATA)  =NVEC(NMDATA)+NMESH0*NMESH1*NN3;	"Y"
+	NVEC(NZDATA)  =NVEC(NYDATA)+NMESH0*NN1;		"Z"
+	IVRPTR(2)=NVEC(NMDATA)+NMESH0;
+	IVRPTR(4)=NVEC(NMDATA)+NMESH0*NMESH1;
+	IVRPTR(6)=IVRPTR(4)+NMESH0;
+	IF (N2.ge.0) THEN;
+	    NVEC(NPDATA)=MIN(N2,NMESH1-1)-NN1;
+	ELSE;
+	    NVEC(NPDATA)=NMESH1+N2-NN1;
+	ENDIF;
+	IF (N4.ge.0) THEN;
+	    NVEC(NLDATA)=MIN(N4,NMESH2-1)-NN3;
+	ELSE;
+	    NVEC(NLDATA)=NMESH2-1-NN3;
+	ENDIF;
+      IF (TLIM(1,1).ne.HNONE) THEN;		"Check limits"
+	 IMIN=NN1;
+	 NN1=NMESH1;  NN2=0;
+	 IPNT=$IMSPTR;
+	 <I=IMIN,NVEC(NPDATA)+IMIN;			"Check column limits"
+	    TEMP=DATBUF(IPNT+I*NMESH0);
+	    IF (TEMP.ge.TLIM(MESH1,1).and.
+		TEMP.le.TLIM(MESH1,2)) THEN;
+		NN1=MIN(I,NN1); NN2=MAX(I,NN2);
+	    ENDIF;
+	 >
+	 IMIN=NN3;
+	 NN3=NMESH2; NN4=0;
+	 <I=IMIN,NVEC(NLDATA)+IMIN;			"Check row limits"
+	    TEMP=DATBUF(IPNT+I*NMESH0*NMESH1);
+	    IF (TEMP.ge.TLIM(MESH2,1).and.
+		TEMP.le.TLIM(MESH2,2)) THEN;
+		NN3=MIN(I,NN3); NN4=MAX(I,NN4);
+	    ENDIF;
+	 >
+	 NN7=0;  NN8=0; NN5=NMESH1; NN6=NMESH2;	"check Value limits"
+	 <I=NN3,NN4;				"Rows"
+	    <J=NN1,NN2;				"Columns"
+		TEMP=DATBUF(IPNT+(I*NMESH1+J)*NMESH0);
+		IF (TEMP.ge.TLIM(MESH3,1) .and. TEMP.le.TLIM(MESH3,2)) THEN;
+		  NN7=MAX(NN7,J); NN8=MAX(NN8,I);
+		  NN5=MIN(NN5,J); NN6=MIN(NN6,I);
+		ENDIF;
+	    >
+	 >
+	 NVEC(NXDATA) =NVEC(NMDATA)+NMESH0*NN5;
+	 NVEC(NPDATA)=NN7-NN5;
+	 NVEC(NYDATA) =NVEC(NMDATA)+NMESH0*NMESH1*NN6;
+	 NVEC(NLDATA)=NN8-NN6;
+	 NVEC(NZDATA)=NVEC(NYDATA)+NMESH0*NN5;		"Z"
+      ENDIF;
+      IF (NMESH0 .eq. 2) THEN;			"DX,DY,DZ ??"
+	 <I=0,2;	NVEC(NCSIZE*I+NDXDATA)=NVEC(NCSIZE*I+NXDATA)+1;
+			IVRPTR(2*I+3)=IVRPTR(2*I+2)+1; >	"HACK"
+      ENDIF;
+   ELSE;
+	<J=1,3; MESHN(J)=J; >			"Normal ordering 1,2,3"
+	IDIMNS=NDIMNS(3);			"Number of dimensions"
+	NMESH0=NINCR;				"Dist between points"
+	NMESH1=0;				"No mesh data"
+	NMESH2=0;
+	NVEC(NINDAT)=NINCR;				"Spacing between points"
+	NVEC(NINDAT+1)=NINCR;
+	NVEC(NINDAT+2)=0;
+"
+	insert data set name
+	L+1=data location
+	L+2=name length
+"
+	IF (N1 .ge. $LARGE INTEGER/2)	THEN; NN1=(I-L)/NINCR;	"Last point ?"
+					ELSE; NN1=N1;
+					ENDIF;
+	IF (N2.ge.0) THEN;
+	    NVEC(NPDATA)=MIN(N2,(I-L)/NINCR)-NN1;
+	ELSE;
+	    NVEC(NPDATA)=(I-L)/NINCR+N2-NN1;
+	ENDIF;
+	NVEC(NLDATA)=0;				"Only 1 row"
+	NVEC(NMDATA)=L;				"Beginning of data"
+	$IMSPTR=NVEC(NMDATA);
+	NN3=0;
+      J=MAX(NN1-1,0)*NINCR;
+      <I=1,NINCR;
+	 K=I_VORDER(IVARBL(I),2);
+	 IF(K .lt. 8) IVRPTR(K)=L+I-1;
+      > "HACK"
+      IF (TLIM(1,1).ne.HNONE) THEN;
+	 IMAX=NVEC(NPDATA)+NN1;
+	 IMIN=MAX(1,NN1);
+	 NN1=NN2+1; NN2=-1;
+	 IPNT=L+(IMIN-1)*NINCR;			"Data buffer pointer"
+	 JLIM=2; IF (IVRPTR(2).ne.1) JLIM=3;
+	 <I=IMIN,IMAX;
+	    <J=1,NINCR; DVEC(IVARBL(J))=DATBUF(IPNT); IPNT=IPNT+1; >
+	    <K=1,JLIM; TEMP=DVEC(NCSIZE*(K-1)+N_XDATA);	"Coordinate to check"
+		IF (TEMP.lt.TLIM(K,1) .or. TEMP.gt.TLIM(K,2)) GOTO :KILL:;
+	    >
+	    NN1=MIN(NN1,I); NN2=I;
+:KILL:
+	 >
+	 J=(NN1-1)*NINCR;
+	 NVEC(NPDATA)=NN2-NN1;
+	ENDIF;
+	<I=1,NINCR; NVEC(NSDATA-1+IVARBL(I))=L+I-1+J; >	"Save current loc"
+	NVEC(NMDATA)=L+J;				"Beginning of data"
+   ENDIF;
+   IF(.not.$DEF DATA) THEN;			"Data frame not set?"
+      $3D=NDIMNS(1).eq.3 .or.
+	  (IDIMNS.eq.3 .and. NDIMNS(1).ne.2);
+   ENDIF;
+   NVEC(NPDATA)=NVEC(NPDATA)+N1;
+   NVEC(NLDATA)=NVEC(NLDATA)+N3;
+END;
+%E  SUBROUTINE T2NSET  --- Set limits of data set
+SUBROUTINE T2NSET($INFO,$CARD,NS1,NS2);
+"
+    Get a range of data sets
+"
+   IMPLICIT NONE;
+   INTEGER INFOIN(10);
+   CHARACTER*(*) CARDIN;
+   INTEGER N1,N2,NS1,NS2,I,J;
+   REAL VAL1,VAL2,VAL3;
+   $POINT ARRAYS($NPOINTS);
+   $SPECIFICATION;
+   $EQUIVALENCE;
+   $DATA;
+"
+	PROCESS INFORMATION FOLLOWING 'POINTS' FOR HIST,
+	PLOT, AND JOIN COMMANDS.  RETURNS N1 AND N2
+"
+   NS1= 1; NS2=0;
+   VAL3=NCSETS;
+   VAL1=-NDSETS; VAL2=NDSETS;
+   CALL T2FRTO($INFO,$CARD,VAL1,VAL2,VAL3);
+   IF ($ERROR) RETURN;
+   If (VAL1.le.0) VAL1=VAL1+NDSETS;
+   If (VAL2.le.0) VAL2=VAL2+NDSETS;
+   NS1=MAX(1,NINT(AMIN1(VAL1,VAL2)));
+   NS2=MAX(1,NINT(AMAX1(VAL1,VAL2)));
+   NCSETS=NS1;
+END;
+%E  SUBROUTINE T2_READ_POINTS  --- Read in points (READ POINT command)
+SUBROUTINE T2_READ_POINTS($INFO,$CARD);
+"
+	Read in a series of data points
+"
+   INTEGER INFOIN(10);
+   CHARACTER*(*) CARDIN;
+   $SPECIFY NONE;
+   $SPECIFICATION;
+   $MAINSPEC;
+   $BOOLEAN LMAXP,LSYM,LNEW;
+   REAL TXSYM;   EXTERNAL TXSYM;
+   $POINT ARRAYS($NPOINTS);
+   INTEGER IBUFV($MAXVAR);
+   $EQUIVALENCE;
+   $DATA;
+
+"
+	IPOS = 1,...,NINCR = POSITION IN STORAGE IN DATBUF (SET STORAGE)
+	IVAL = 1,...,7  FOR SYM,X,DX,Y,DY,Z,DZ
+	IFLD = 1,...,15 = POSITION (FIELD) ON CARD (SET ORDER)
+	FACTXY(IVAL) = FACTOR TO APPLY (SET ORDER)
+	IBUFFR(IFLD) = 1,0,-1 FOR NUMBER, DUMMY, SYMBOL AT THAT FIELD
+	IFIELD(IVAL) = IFLD FOR THAT VAL (WHERE ON CARD TO FIND IT)
+	BUFFER(IFLD+2) = VALUE IN THAT FIELD
+	IVARBL(IPOS) = IVAL (WHAT IS STORED IN WHICH POSITION)
+	IBUFV(IPOS) = IFLD WHICH FIELD GOES TO WHICH POSITION)
+	IVRPTR(IVAL) = IPOS = POSITION IN STORE OF *FIRST* VALUE
+"
+   CALL T2GDSET(NDSETS,1,1,1,1,ISETD,HNONE,'*');
+   IF ((IBTYPE.EQ.2.and. revlev.lt.3) .or.FLAGS(28))
+	"Data plotted ? or mesh data ?"
+      CALL T2PNTR;		"Reset data buffer pointers"
+   IPRNT=1;
+   IF (FLAGS(57)) IPRNT=MXECHO+1;	"UNDER ORVYL->NO PRINT"
+   MX=NFIELD+2;	"ALL FIELDS PLUS 2 DEFAULTS"
+   <IFLD=1,MX; BUFFER(IFLD)=0.;IBUFFR(IFLD)=0;>
+   <IPOS=1,NINCR; IVAL=IVARBL(IPOS); IBUFV(IPOS)=IFIELD(IVAL);>
+   IV=IFIELD(1); IBUFFR(IV+2)=-1; BUFFER(IV+2)=SYMBOL;	"Symbol"
+   <I=2,15; IV=IFIELD(I); IBUFFR(IV+2)=1; >		"Value"
+   LMAXP = .TRUE.;		"FLAG SET WHEN BUFFER SIZE EXCEEDED"
+"
+   <TOKEN> <
+      ELSE:: <READ SAME TOKEN>;
+   >
+"
+   LNEW=.false.;
+	"Start a data set"
+   CALL T2GDSET(NDSETS,1,1,1,1,ISETD,HNONE,'*');
+   IF (ISETD(1).eq.2 .or. $INEXTPTR.eq.$IBASEPTR) CALL T2NEWS(0,' ');
+   CALL T2GDSET(NDSETS,1,1,1,1,ISETD,HNONE,'*');
+   $IVTEMP1=IBGDAT+2;
+   <LOOP> <
+      IF (IPRNT.LE.MXECHO.and.OUTFIL.gt.0) THEN;
+	 <PRINT CARD>;
+	 IF (IPRNT.EQ.MXECHO) THEN;
+	    <W,OUTFIL> MXECHO;
+		('  Printing suppressed after',i6,' points.',
+		'  (plot continues.)');
+	 ENDIF;
+	 IPRNT=IPRNT+1;
+      ENDIF;
+      LSYM=.false.;
+:VALUE:
+      <IFLD=1,NFIELD;
+	 IF (IBUFFR(IFLD+2)) :SYMBOL:,:DUMMY:,:NUMBER:;
+	 :NUMBER:
+	    <TOKEN> <
+		END OF CARD:: <
+		  <EXIT> :VALUE:;
+		>
+		NUMBER:: <BUFFER(IFLD+2)=FLOTNG;>
+		STRING:: < GOTO :NUM1:; >
+		ELSE::   <
+		  IF (IFLD.EQ.1) GOTO :RET1:;
+:NUM1:            IF (LSYM) THEN;
+		     <TOKEN ERROR>; GOTO :RET:;
+		  ENDIF;
+		  <READ SAME TOKEN>;
+	    >  >
+	    <NEXT>:VALUE:;
+	 :SYMBOL:
+	    <TOKEN> <
+		END OF CARD:: <
+		  <EXIT> :VALUE:;
+		>
+		ELSE:: <
+		  IF (LSYM .or. NSTRNG.gt.4) THEN;
+		     <TOKEN ERROR>; GOTO :RET:;
+		  ELSEIF (NSTRNG.gt.0) THEN;
+		     BUFFER(IFLD+2)=TXSYM(STRNG(1:NSTRNG));
+		  ELSE; BUFFER(IFLD+2)=NOSYMB; ENDIF;
+		  LSYM=.true.;
+	    >  >
+	    <NEXT>:VALUE:;
+	 :DUMMY:
+	    <TOKEN> <
+		END OF CARD:: <
+		  <EXIT>:VALUE:;
+		>
+		NUMBER::<DO NOTHING;>
+		ELSE:: <
+		  IF (IFLD.EQ.1) GOTO :RET1:;
+		>
+	    >
+      >
+      IF (IFLD.EQ.1) GOTO :RET:;	"BLANK CARD"
+"	At this point, up to NFIELD values are in.  BUFFER(2) is zero,
+	and any variable that wasnt mentioned on the latest
+	set order card points to BUFFER(2). (except IFIELD(1), which
+	points to BUFFER(1) in this case.)
+"
+      LNEW=.false.;
+      IF ($PFREE.le.0) CALL T2_VIRT(500*NINCR);
+      IF ($PFREE.le.0) CALL T2_VIRT(100*NINCR);
+      IF ($PFREE.le.0) CALL T2_VIRT(512);
+      IF ($PFREE.le.0) THEN;	"CHECK BUFFER SIZE"
+			"TOO MANY POINTS ?"
+	 IF (LMAXP) THEN;      LMAXP=.FALSE.;	"PRINT FLAG"
+	    ERROR TOKEN NPOINT;
+	      ('*** WARNING *** Point buffer size (',
+		i5,') reached. subsequent points ignored.');
+	 ENDIF;
+      ELSE;		"ADD THIS POINT TO BUFFER"
+	 IFIRST=$INEXTPTR-1;
+	 <IPOS=1,NINCR;
+	    IFLD=IBUFV(IPOS); K=IPOS+IFIRST;
+	    IVAL = IVARBL(IPOS);
+	    DATBUF(K)=BUFFER(IFLD+2)*FACTXY(IVAL);
+	    IF ( FLAGS(RELFLAG-1+IVAL) ) THEN;	"Relative error ?"
+		IVAL=MOD(IVAL-N_XDATA,NCSIZE);
+		DATBUF(K)=ABS(DATBUF(K-IVAL))*DATBUF(K);
+	    ENDIF;
+	 >
+	 DATDAT(1,1)=HNONE;
+	 NPOINT=NPOINT+1;			"Number of points"
+	 ICPOIN(1)=$INEXTPTR;			"Save current point"
+	 $INEXTPTR=$INEXTPTR+NINCR;		"Next point"
+	 $IENDPTR=$IENDPTR+NINCR;		"End of buffer"
+	 DATBUF($IVTEMP1)=DATBUF($IVTEMP1)+NINCR;	"Update header"
+      ENDIF;
+      CALL T2JOUR;
+      if (FLAGS(12)) <NEXT>;
+	 <READ CARD>;		"Read card if not PACKED"
+	 LNEW=.true.;
+	 IF (END OF INPUT FILE) GOTO :RET1:;
+   >
+:RET1:
+   IF (LNEW) THEN; <READ SAME CARD>;
+	     ELSE; <TOKEN ERROR>;
+	     ENDIF;
+:RET:
+END;
+%E  SUBROUTINE T2TTXT  --- TITLE command
+SUBROUTINE T2TTXT($INFO,$CARD,ITMODE,TITLE1,CASE1);
+"
+	Called by T2MAIN for TITLE and TEXT commands
+	ITMODE  1=TITLE, 2=TEXT,3=TITLE (No read)
+	JCHAR	1--X, LEFT
+		2--Y, BOTTOM
+		3--Z, RIGHT
+		4--G, TOP
+		5--POSITION FROM (X,Y)
+		6--BLANK (NEXT LINE)
+	(TANGDF has defaults for angle, indexed according to JCHAR.)
+	IPSET	0--(TITX,TITY) not set in this scan
+		1--  set by number pair
+"
+   CHARACTER*(*) $CARD;
+   INTEGER $INFO(10);
+   INTEGER ITMODE;
+   CHARACTER*(*) CASE1,TITLE1;
+   LOGICAL T2_GET_ENV, ISTAT ;
+   CHARACTER*$MAXTIT CASE,TITLE;
+   $SPECIFICATION;
+   $SPECIFYNONE;
+   CHARACTER*20  CVALUE;
+   REAL TCON(5),TANGDF(6),XY(2),XYZ(6),XYZ0(3),XYZ1(3),XYZ2(3),
+	XYZWRL(3,2),XYZLAB(3),ALONG(3),UPDIR(3);
+   INTEGER IXYZFG(3),IAX1,IAX2,IAX3,IAX(4) ;
+   LOGICAL LFIT ;
+   CHARACTER*1	BLANK /' '/
+		,ESCAPE/'@'/
+		,PLUS/'+'/
+		,MINUS/'-'/
+		,AMPRSN/'&'/
+		,ZERO/'0'/;
+   $BOOLEAN ERRSAV,TDGETV,LNEXT;
+   $BOOLEAN LDATA/.false./,LF1,LF2;
+   INTEGER JCHTR(6);
+   INTEGER NCASE,NTITLE;
+   DATA JCHTR/2,1,4,3,5,6/;
+   $EQUIVALENCE;
+   $DATA;
+   DATA TANGDF /90.,0.,-90.,0.,0.,0./;
+   DATA IAX/2,3,1,2/;
+   ERRSAV=$ERROR;
+   $ERROR=.FALSE.;
+   IF (FLAGS(127)) CALL TXXMT;	"New segment ?"
+   CALL T2CWTS(TITEX,ITXSAV);	"set color width texture"
+   ICOL=0;
+   INTEN=0;
+   LDATA=.FALSE.;		"True if data"
+   JCHAR = 6;			"Start it off with 'next line' pos"
+   MAXTIT=LEN(TITLE);
+   MAXCAS=LEN(CASE);
+   NTITLE=0;
+   IF (ITMODE .eq. 3) THEN;
+	CASE=CASE1;
+	NCASE=MIN(MAXCAS,LEN(CASE1));
+	CALL T2_PARSE_TITLE(TITLE1
+		,TITLE,NTITLE
+	        ,CASE,NCASE);
+   ELSE;
+	CASE=' ';
+	NCASE=0;		"Start with no case characters"
+	NTITLE=0;		"Flag for no string input"
+   ENDIF;
+   <I=1,3; IXYZFG(I)=0;>	"Flags for coordinate system. 0=TEXT,1=DATA"
+   IPSET=0;			"Position not set"
+   ICNTR=-1;			"Flag for centering"
+   $TITLINES=1.;		"Default number of lines, for spacing"
+   <I=1,5; TCON(I) = HNONE;>
+   IF (.NOT.$DEF TEXT) CALL TXDEF1;	"SET UP COORD SYS"
+   IDIGIT=ISIGFG; IF (IDIGIT.eq.0) IDIGIT=4;
+   IHIDE=0;
+   LNEXT=.false.;
+   <TOKEN LOOP>  <		"On input fields"
+      NUMBER:: <		"Must be X-value, and Y-value follows"
+	 IF (JCHAR.eq.6) JCHAR=5;
+	 IPSET=IPSET+1;
+	 IF (IPSET .eq. 1) THEN;
+	    TITX = FLOTNG;
+	 ELSEIF (IPSET .eq. 2) THEN;
+	    TITY = FLOTNG;
+	 ELSEIF (IPSET .eq. 3) THEN;
+	    IF ($3D) THEN; <I=1,3; IXYZFG(I)=1;>; ENDIF;
+	    TITZ = FLOTNG;
+	 ELSE;
+	    ERROR OUT;
+		('*** ERROR *** Too many coordinates');
+	 ENDIF;
+      >
+      STRING::  <
+:TITSTR: IF (NSTRNG.gt.0) THEN;
+	    CALL T2_PARSE_TITLE(STRNG(1:NSTRNG)
+		,TITLE,NTITLE
+	        ,CASE,NCASE);
+	 ENDIF;
+      >
+      KEY:: <
+	 TIME <
+	    CALL DATE(STRNG);
+	    CALL TDTIME(STRNG(11:20));
+	    CALL T2SQEZ(STRNG(1:20),NSTRNG);
+	    NSTRNG=MIN(MAXTIT-NTITLE,NSTRNG);
+	    GOTO :TITSTR:;
+	 >
+	 CURSOR <
+	    NSTJOU=LSTJOU;
+	    CALL T2CURS(J,XYZ0,XYZ1,XYZ2,LF1,LF2);
+	    IF (J.eq.ICHAR(' ')) THEN;
+		I=23;
+		IF (JOUFIL.ne.0.and. LSTJOU+I.le.LEN(STJOU)) THEN;
+		  WRITE(STJOU(LSTJOU+1:LSTJOU+I),'(1p,2(A,G10.3))'
+		     ,ERR=:CURERR2:)
+		     ' ',XYZ1(1),',',XYZ1(2);
+		  CALL T2SQEZ(STJOU(LSTJOU+2:LSTJOU+I),I);
+		  NSTJOU=NSTJOU+I+1;
+		  :CURERR2: CONTINUE;
+		ENDIF;
+		IF (JCHAR.eq.6) JCHAR=5;
+		IPSET=3;
+		TITX = XYZ1(1);
+		TITY = XYZ1(2);
+	    ENDIF;
+	 >
+	 X:1,Y:2,Z:3<
+	    JCHAR=INTEG;			"1,2,3 FOR X,Y,Z"
+	    IF (.NOT.$DEF WINDOW) THEN;	"No window ?"
+		CALL TXDEFW;		"Get window params"
+		IF (.NOT. $3D) $DEF WINDOW=.FALSE.;	"Reset it?"
+	    ENDIF;
+	    IF ($3D) THEN;
+		LDATA=.TRUE.; <I=1,3; IXYZFG(I)=1;>
+	    ELSE;
+		IF (ICNTR.eq.-1) ICNTR = 1;
+		<I=1,3; IXYZFG(I)=0;>	"Data system not possible"
+	    ENDIF;
+	 >
+	 INTENSITY:1:5:2,WIDTH:1:5:2 < INTEN=INTEG; >
+	 WHITE:1,RED:2,GREEN:3,BLUE:4,YELLOW:5,MAGENTA:6,CYAN:7
+	    <ICOL=INTEG;>
+	 BOTTOM:1,LEFT:2,G:3,GENERAL:3,TOP:3,RIGHT:4 <
+	    JCHAR=INTEG;			"1,2,3 FOR X,Y,G"
+	    IF (ICNTR.eq.-1) ICNTR = 1;		"Justification"
+	    IF (.NOT.$DEF WINDOW) THEN;	"No window ?"
+		CALL TXDEFW;			"Get window params"
+		$DEF WINDOW=.FALSE.;		"Reset it"
+	    ENDIF;
+	    <I=1,3; IXYZFG(I)=0;>		"Data system not possible"
+	 >
+	 CASE:S <
+	    IF (NSTRNG.gt.0) THEN;
+		IF (NSTRNG+NCASE.gt.MAXCAS) THEN;
+		  ERROR OUT;
+		     ('*** ERROR *** String too long');
+		  NSTRNG=MAXCAS;
+		ENDIF;
+		CALL T2UPCS(STRNG(1:NSTRNG));	"Convert to upper"
+		CASE(NCASE+1:LEN(CASE))=STRNG(1:NSTRNG);
+		NCASE=NTITLE;
+	    ENDIF;
+	 >
+	 NEXT           <LNEXT=.true.;>
+	 HIDE:4:Y       <IHIDE=0; IF (LTOKEN) IHIDE=INTEG; >
+	 DIGITS:1:7:4   <IDIGIT=INTEG; >
+	 TEXT:0,DATA:1  <<I=1,3; IXYZFG(I)=INTEG;> >
+	 XDATA:1,YDATA:2,ZDATA:3 <IXYZFG(INTEG)=1;>
+	 LJUSTIFY:0,CENTER:1,RJUSTIFY:2 <ICNTR=INTEG; ITCNTR=INTEG;>
+	 SIZE:1,ANGLE:2,SPACES:3,INDEX:4,LINES:5
+	 <
+	    I=INTEG;		"1,2,3,4 for SIZE, ANGLE, SPACE,INDEX"
+	    <TOKEN NUMBER> < IF (I.eq.1) FLOTNG=FLOTNG/REDUCE(2);
+			     TCON(I)=FLOTNG;>
+	 >
+      >
+      ELSE:: <
+	IF (STRNG(1:2).ne.'T_') THEN;
+	    <TOKEN ERROR>; GOTO :END TITLE BLOCK:;
+	ENDIF;
+	CVALUE=STRNG(1:NSTRNG); ISTRNG=NSTRNG; CVALUE(1:1)='V';
+	IF (TDGETV(CVALUE(1:NSTRNG),VALUE) ) THEN;	"Get value for output"
+	    J=MIN(15,MAXTIT-NTITLE);
+	    CALL T2TLAB(9,VALUE,SCLPRM,IDIGIT,1,TITLE(NTITLE+1:NTITLE+J),J,
+		CASE(NTITLE+1:NTITLE+J),K,IFIR);
+	    NTITLE=NTITLE+J;
+	    NCASE=NTITLE;
+	ELSE;
+	    <TOKEN ERROR>; GOTO :END TITLE BLOCK:;
+	ENDIF;
+      >
+   >
+   IF ($TRAP.or.$ERROR) GOTO :END TITLE BLOCK:;
+
+	"Unless this is a 'next line' pos, put in defaults"
+
+   IF (LNEXT .and. JCHAR .lt. 6) TCON(5)=N_LINES(JCHAR);
+   N_LINES(JCHAR)=N_LINES(JCHAR)-1;
+   IF (ICOL.gt.0) LINCOL=ICOL;		"New color/intensity/textur ?"
+   IF (INTEN .gt. 0) LINWID=INTEN;
+   CALL TXSDEF;			"Now set them"
+   JCH=JCHTR(JCHAR);
+   ICNTR=MAX(ICNTR,0);
+   IF (JCHAR.eq.6) THEN;		"Keep old defaults ?"
+      ICNTR=ITCNTR;
+      LDATA=LTDATA;
+      <I=1,3; IXYZFG(I)=ITITDT(I);>	"Keep old flag"
+   ELSE;
+      LTDATA=LDATA;
+      ITCNTR=ICNTR;			"New default"
+      $TITANGLE = TANGDF(JCH);
+      $TITSIZE = TITSIZ;
+      IF (JCH.le.4) $TITSIZE = TITFAC(JCH)*TITSIZ;	"TOP is bigger"
+      $TITINDEX = TITINX;
+      <I=1,3; ITITDT(I)=IXYZFG(I);>	"New TEXT/DATA flag"
+   ENDIF;
+   LFIT=JCHAR.le.4;			"Set up to fit data in space"
+   COFF=(1-ICNTR)*HSPACE/2;		"Length of line"
+   FACR=FLOAT(ICNTR)/2; FACL=1-FACR;
+
+	"Any new info overrides the old/default values"
+
+   <I=1,5;
+      IF (TCON(I).NE.HNONE) THEN;	"New parameter ?"
+	 TITCON(I)=TCON(I);		"Save it"
+	 IF (I.lt.4) LFIT=.false.;	"If angle,size,... can't fit"
+      ENDIF;
+   >
+   HSPACE = 0.1*REDUCE(2)*ABS($TITSIZE);	"Horiz spacing/char"
+   VSPACE = $TITINDEX*HSPACE;		"Vertical Spacing/line"
+   IF (LTDATA) THEN;
+      IF (.NOT.$DEF DATA) CALL TXDEF2;	"Set up coord sys"
+      IF (JCHAR.ge.1 .and. JCHAR.le.3) THEN;
+	 <I=1,3;
+	    IF (LSCREV(I)) THEN;
+		XYZ(I)=XYZLIM(I,2);
+		XYZ(I+3)=XYZLIM(I,1);
+	    ELSE;
+		XYZ(I)=XYZLIM(I,1);
+		XYZ(I+3)=XYZLIM(I,2);
+	    ENDIF;
+	    IF (FLAGS(82).and.I.ne.JCHAR)XYZ(I)=ORAXES(I);>
+			"FIND ENDS OF AXIS IN WORLD SYSTEM"
+	 IAX1=JCHAR;
+	 IF (ABS(AXANG(IAX1)) .le. 360.) THEN;	"Axes specified ?"
+	    IAX2=IAX(IAX1); IAX3=IAX(IAX1+1);	"Permuted axes"
+	    COSTX=COSD(AXANG(IAX1));
+	    SINTX=SIND(AXANG(IAX1));
+	 ELSE;
+	    COSTX=1.0; SINTX=0.0;
+	    CALL T2XFRM(3,2,XYZ,NONLIN,XFRM12,3,XYZWRL);
+	    CALL T2AXST(XYZWRL,IAX1,IAX2,IAX3,COSTX);
+	 ENDIF;
+	 XYZ(IAX1)=FACL*XYZ(IAX1)+FACR*XYZ(IAX1+3);
+	 CALL T2XFRM(3,1,XYZ,NONLIN,XFRM12,3,XYZWRL);
+	 XYZWRL(IAX2,1)=XYZWRL(IAX2,1)
+	     -COSTX*(TIKFAC*ABS(TIKSIZ(1))+.2*ABS(LBLSIZ)+0.7*VSPACE);
+	 XYZWRL(IAX3,1)=XYZWRL(IAX3,1)
+	     -SINTX*(TIKFAC*ABS(TIKSIZ(1))+.2*ABS(LBLSIZ)+0.7*VSPACE);
+      ELSE;				"Next location given"
+	 IF (IAX1.eq.0) THEN;
+	    IAX1=1;IAX2=1;IAX3=3;
+	 ENDIF;
+      ENDIF;
+      IF (IPSET.ne.0) THEN;
+	 XYZ(1)=TITX;
+	 IF (IPSET.ge.2)XYZ(2)=TITY;
+	 IF (IPSET.ge.3)XYZ(3)=TITZ;
+	 CALL T2XFRM(3,1,XYZ,NONLIN,XFRM12,3,XYZWRL);
+      ENDIF;
+      COST=COSTX*VSPACE;
+      SINT=SINTX*VSPACE;
+      IF (JCHAR.eq.6) THEN;		"Next line ?"
+	 XYZWRL(IAX2,1)=TITX1-COST/2;	"Next loc"
+	 XYZWRL(IAX3,1)=TITY1-SINT/2;
+	 XYZWRL(IAX1,1)=TITZ;
+      ENDIF;
+      XYZWRL(IAX2,1)=XYZWRL(IAX2,1)-COST*($TITLINES-1);	"Current loc"
+      XYZWRL(IAX3,1)=XYZWRL(IAX3,1)-SINT*($TITLINES-1);
+      XYZLAB(IAX2)=XYZWRL(IAX2,1);
+      XYZLAB(IAX3)=XYZWRL(IAX3,1);
+      XYZLAB(IAX1)=XYZWRL(IAX1,1);
+      <I=1,3; ALONG(I)=0.; UPDIR(I)=0.;>
+      ALONG(IAX1)=ABS($TITSIZE);	"DIRECTION/SIZE"
+      UPDIR(IAX2)=1.*ABS(COST);	"UP"
+      UPDIR(IAX3)=1.*ABS(SINT);	"UP"
+   ELSE;
+      IF (IPSET.ne.0) XYZ(1)=TITX;
+      IF (IPSET.ge.2) XYZ(2)=TITY;
+
+
+      IF (JCH.le.4) THEN;
+	 TITOFF = ($TITLINES-1.5)*VSPACE;	"Offset from location"
+	 TEMP = ABS(TITLOC(JCH)) + TITOFF;
+      ENDIF;
+	"Now set up X/Y for titles"
+      <CASE> JCHAR <OF>:X TITLE:,:Y TITLE:,:G TITLE:,
+	 :R TITLE:,:POSITION GIVEN:,:NEXT LINE: <
+	 :X TITLE: <
+	    TITY = TEMP;
+	    TITX = FACL*WINDOW(1)+FACR*WINDOW(3)+COFF;
+	    TITMAX=WINDOW(3)-WINDOW(1);
+	 >
+	 :Y TITLE: <
+	    TITX = ABS(TITLOC(JCH)) - TITOFF;
+	    TITY = FACL*WINDOW(2)+FACR*WINDOW(4)+COFF;
+	    TITMAX=WINDOW(4)-WINDOW(2);
+	 >
+	 :G TITLE: <
+	    TITX = FACL*WINDOW(1)+FACR*WINDOW(3)+COFF;
+	    TITY = TEMP;
+	    TITMAX=WINDOW(3)-WINDOW(1);
+	 >
+	 :R TITLE: <
+	    TITX = TEMP;
+	    TITY = FACL*WINDOW(2)+FACR*WINDOW(4)+COFF;
+	    TITMAX=WINDOW(4)-WINDOW(2);
+	 >
+	 :NEXT LINE: <			"POSITION NOT EXPLICIT"
+	    TITX = TITX1 + VSPACE*SIND($TITANGLE)/2;
+	    TITY = TITY1 - VSPACE*COSD($TITANGLE)/2;
+	 >
+	 :POSITION GIVEN: <DO NOTHING;>
+      >
+      IF (IPSET.ne.0) TITX=XYZ(1);
+      IF (IPSET.ge.2) TITY=XYZ(2);
+      IF (ITITDT(1)+ITITDT(2)+ITITDT(3).NE.0) THEN;	"'DATA' coord system ?"
+	 IF (.NOT.$DEF DATA) CALL TXDEF2;	"Set up data frame ?"
+	 IF ($DEF DATA) THEN;		"COORD SYS OK ?"
+	    <I=1,3;
+		IF (LSCREV(I)) THEN; XYZ(I)=XYZLIM(I,2);
+			      ELSE; XYZ(I)=XYZLIM(I,1); ENDIF;
+	    >
+	    IF (ITITDT(1).NE.0) XYZ(1)=TITX;
+	    IF (ITITDT(2).NE.0) XYZ(2)=TITY;
+	    IF (ITITDT(3).NE.0) XYZ(3)=TITZ;
+	    CALL T2XFRM(3,1,XYZ,NONLIN,XFRM13,2,XY);	"DATA->TEXT"
+	    IF (ITITDT(1).NE.0) TITX=XY(1);
+	    IF (ITITDT(2).NE.0) TITY=XY(2);
+	    <I=1,3; ITITDT(I)=0;>	"BACK IN TEXT SYSTEM"
+	 ELSE;				"COORD SYS UNDEFINED"
+	    NTITLE=0;			"FLAG FOR NO TITLE"
+	    ERROR OUT;
+		('*** ERROR *** Data coordinate system not set.');
+	 ENDIF;
+      ENDIF;
+   ENDIF;
+
+	"Position, size, and orientation now set also"
+
+   CALL TXSCIS(1);		"Full-screen scissoring"
+
+   IF (ITMODE.ne.2) THEN;	"Title mode"
+				"Look for continuation or case card"
+     IF (ITMODE.eq.1) THEN;	"Title mode, Read new card"
+      <LOOP> <
+	CALL T2JOUR;
+	<READ CARD>; IF (END OF INPUT FILE) <EXIT>; <PRINT CARD>;
+	IUSED=0;		"This card not yet used"
+	<TOKEN LOOP> <
+	    KEY:: <
+		DIGIT:1:7:4   < IF (IUSED.eq.0) <EXIT>; IDIGIT=INTEG; >
+		TIME <
+		  IF (IUSED.eq.0) <EXIT>;
+		  CALL DATE(STRNG);
+		  CALL TIME(STRNG(11:20));
+		  CALL T2SQEZ(STRNG(1:20),NSTRNG);
+		  NSTRNG=MIN(MAXTIT-NTITLE,NSTRNG);
+		  GOTO :MORE:;
+		>
+		MORE < IUSED=1; >
+		CASE:S <
+		  IUSED=1;
+		  IF (NSTRNG.gt.0) THEN;
+		     IF (NSTRNG+NCASE.gt.MAXCAS) THEN;
+			ERROR OUT;
+			('*** ERROR *** String too long');
+			NSTRNG=MAXCAS-NCASE;
+		     ENDIF;
+		     CALL T2UPCS(STRNG(1:NSTRNG));	"Convert to upper"
+		     CASE(NCASE+1:NCASE+NSTRNG)=STRNG(1:NSTRNG);
+		     NCASE=NCASE+NSTRNG;
+		  ENDIF;
+		>
+	    >
+	    STRING:: <
+		IF (IUSED.eq.0) <EXIT>;
+:MORE:		IUSED=1;
+		IF (NSTRNG.gt.0) THEN;
+		    CALL T2_PARSE_TITLE(STRNG(1:NSTRNG)
+			,TITLE,NTITLE
+		        ,CASE,NCASE);
+		ENDIF;
+	    >
+	    ELSE:: <
+		IF (STRNG(1:2).eq.'T_') THEN;
+		  CVALUE=STRNG(1:NSTRNG); ISTRNG=NSTRNG; CVALUE(1:1)='V';
+		  IF (TDGETV(CVALUE(1:NSTRNG),VALUE) ) THEN;
+			"Get value for output"
+		    J=MIN(15,MAXTIT-NTITLE);
+		    CALL T2TLAB(9,VALUE,SCLPRM,IDIGIT,1,
+			TITLE(NTITLE+1:NTITLE+J),J,
+			CASE(NTITLE+1:NTITLE+J),K,IFIR);
+		    NTITLE=NTITLE+J; NCASE=NTITLE;
+		  ELSE;
+		    <TOKEN ERROR>; GOTO :END TITLE BLOCK:;
+		  ENDIF;
+		ELSEIF (IUSED.eq.0) THEN;
+		  N_SELECT=0;
+		  ISTAT=T2_GET_ENV('TD_C_'//STRNG(1:NSTRNG)
+			,C_SELECT,N_SELECT);
+		  IF (ISTAT.and.N_SELECT.gt.0) THEN;
+		   IF($INFO(6).lt.MAX_SUBST) THEN;
+		    $INFO(6)=$INFO(6)+1;
+		    IF ($INFO(5) .eq. 1) $INFO(6)=$INFO(6)+MAX_SUBST/3;
+		    IF ($INFO(3) .lt. $INFO(1)) THEN;
+			C_SELECT(N_SELECT+1:LEN(C_SELECT))=
+				$CARD($INFO(3)+1:LEN($CARD));
+			$INFO(1)=$INFO(1)+N_SELECT-$INFO(3);
+		    ELSE;
+			C_SELECT(N_SELECT+1:LEN(C_SELECT))=' ';
+			$INFO(1)=N_SELECT;
+		    ENDIF;
+		    IF ($INFO(1) .gt. LEN($CARD)) THEN;
+			ERROR OUT;('*** ERROR *** Command truncated');
+			$INFO(1)=LEN($CARD);
+		    ENDIF;
+		    NSTJOU=0; LSTJOU=0;
+		    $CARD=C_SELECT;
+		    <I=3,5; $INFO(I)=0; > $INFO(8)=0;
+		   ELSE;
+		    ERROR OUT;'*** ERROR *** Too many command substitutions:'
+			//C_SELECT(:N_SELECT);
+		    RETURN;
+		   ENDIF;
+		  ELSE;
+		    <EXIT>;
+		  ENDIF;
+		ELSE;
+		  <EXIT>;
+		ENDIF;
+	    >
+	 >
+	 IF (IUSED.EQ.0.or.ITMODE.eq.3) <EXIT>;
+      >
+      <READ SAME CARD>;		"CURRENT CARD WAS NOT USED"
+      NCASE=NTITLE;
+    ENDIF;
+      IF (NTITLE.GT.0) THEN;
+	 IF (LTDATA) THEN;
+	    CALL TXSCIS(2);		"Data SCISSORING"
+	    IF (.not.($ERROR.AND.$ABORT))
+	    CALL TX3TXT(XYZLAB,ALONG,UPDIR,
+		   TITLE(1:NTITLE),CASE(1:NTITLE),ICNTR+IHIDE);
+	    TITX1=XYZWRL(IAX2,1)-COST/2;	"Next loc"
+	    TITY1=XYZWRL(IAX3,1)-SINT/2;
+	    TITZ= XYZWRL(IAX1,1);
+	    CALL TXSCIS(1);		"Full-screen scissoring"
+	 ELSE;
+	    IF (ICNTR.gt.0.or.LFIT) THEN;	"Must center"
+		SPACE = TXXCSZ(TITLE(1:NTITLE),
+			      CASE(1:NCASE),0.1*REDUCE(2)*$TITSIZE);
+		IF (LFIT.and.SPACE.gt.TITMAX) THEN;	"Fit in avail space ?"
+		  T=MAX(0.25,ABS(TITMAX/SPACE));
+		  $TITSIZE=T*$TITSIZE;
+		  SPACE=T*SPACE;
+		  VSPACE=T*VSPACE;
+		  HSPACE=T*HSPACE;
+		  LFIT=.false.;
+		ENDIF;
+		SPACE=ICNTR*0.5*SPACE;
+		XYZ(1) = TITX - SPACE*COSD($TITANGLE);
+		XYZ(2) = TITY - SPACE*SIND($TITANGLE);
+	    ELSE;
+		XYZ(1) = TITX;
+		XYZ(2) = TITY;
+	    ENDIF;
+		"TRANSFORM FROM TEXT TO DEVICE SYSTEM FOR CALL"
+	    CALL T2XFRM(2,1,XYZ,LINEAR,XFRM34,2,XY);
+	    IF (.not.($ERROR.AND.$ABORT)) THEN;
+		CALL TXTEXT(XY(1),XY(2),$TITSIZE,
+		  $TITANGLE,TITLE(1:NTITLE),CASE(1:NTITLE));
+		TITX1 = TITX + VSPACE*SIND($TITANGLE)/2;
+		TITY1 = TITY - VSPACE*COSD($TITANGLE)/2;
+		<J=1,2; XYZ(J)=XYZ(J)+SPACE; >
+		<I=1,2; CALL T2_SET_EXTENT(XYZ,1);
+		    <J=1,2; XYZ(J)=XYZ(J)-SPACE; > >
+	    ENDIF;
+	 ENDIF;
+      ENDIF;
+   ELSE;	"'TEXT' MODE. KEEP GOING"
+      XSPACE= VSPACE*SIND($TITANGLE);
+      YSPACE=-VSPACE*COSD($TITANGLE);
+      IF (NTITLE.LE.0) THEN;	"NO TEXT ON TEXT CARD"
+	 TITX=TITX-XSPACE;
+	 TITY=TITY-YSPACE;
+      ENDIF;
+      IESCMD = 0;	"TEXT MODE"
+      <LOOP> <	"ON CARDS"
+	"Remove trailing blanks from text stream"
+	    <LOOP> <
+		IF (NTITLE.LE.0) <EXIT>;
+		IF (TITLE(NTITLE:NTITLE).ne.' ') <EXIT>;
+		NTITLE=NTITLE-1;
+	    >
+	"READ ANOTHER CARD"
+	    CALL T2JOUR;
+	    $INFO(3)=9999;	"COLUMN COUNTER TO GET NEW CARD"
+	    <READ CARD>; IF ($INFO(1).LE.0) <EXIT>; <PRINT CARD>;
+	    ICOL=1;	"IF FIRST IS A AMPRSN"
+	"CHECK COLUMN 1"
+	    IF (CARDIN(1:1).ne.AMPRSN) THEN;
+		ICOL=0;	"FIRST CHAR WILL BE COL 1"
+		TITX=TITX+XSPACE;
+		TITY=TITY+YSPACE;
+		IF (NTITLE.GT.0) THEN;
+		  XYZ(1)=TITX; XYZ(2)=TITY;
+		  CALL T2XFRM(2,1,XYZ,LINEAR,XFRM34,2,XY);
+		  IF (.not.($ERROR.AND.$ABORT)) THEN;
+		     CALL TXTEXT(XY(1),XY(2),$TITSIZE,
+			$TITANGLE,TITLE(1:NTITLE),CASE(1:NTITLE));
+		     <J=1,2; XYZ(J)=XYZ(J)+SPACE; >
+		     <I=1,2; CALL T2_SET_EXTENT(XYZ,1);
+			 <J=1,2; XYZ(J)=XYZ(J)-SPACE; > >
+		  ENDIF;
+		ENDIF;
+		NTITLE=0;	"COUNT OUTPUT CHARACTERS"
+		IF (CARDIN(1:1).eq.ESCAPE) THEN; <EXIT>;
+		ELSEIF (CARDIN(1:1).eq.BLANK) THEN; ICOL=1;
+		ELSEIF (CARDIN(1:1).eq.PLUS) THEN;
+		  ICOL=1;
+		  TITX=TITX-XSPACE; TITY=TITY-YSPACE;
+		ELSEIF (CARDIN(1:1).eq.MINUS) THEN;
+		  ICOL=1;
+		  TITX=TITX+2.*XSPACE; TITY=TITY+2.*YSPACE;
+		ELSEIF (CARDIN(1:1).eq.ZERO) THEN;
+		  ICOL=1;
+		  TITX=TITX+XSPACE; TITY=TITY+YSPACE;
+		ENDIF;
+	    ENDIF;
+	 <LOOP> <
+	    IF (ICOL.GE.$INFO(1)) <EXIT>;
+	    IF (NTITLE.GE.MAXTIT) <EXIT>;
+	    ICOL=ICOL+1; NTITLE=NTITLE+1;
+	    IF (CARDIN(ICOL:ICOL).eq.ESCAPE) THEN;
+		IF (CARDIN(ICOL+1:ICOL+1).NE.ESCAPE) THEN;
+		  IESCMD=1-IESCMD; NTITLE=NTITLE-1;
+		  <NEXT>;
+		ENDIF;
+		ICOL=ICOL+1;
+	    ENDIF;
+	    IF (IESCMD.EQ.0) THEN;	"TEXT MODE"
+		TITLE(NTITLE:NTITLE) = CARDIN(ICOL:ICOL);
+		CASE(NTITLE:NTITLE)=' ';
+	    ELSE;	"CASE MODE. READ 2 CHARS"
+		TITLE(NTITLE:NTITLE) = CARDIN(ICOL:ICOL);
+		ICOL=ICOL+1;
+		CASE(NTITLE:NTITLE)=CARDIN(ICOL:ICOL);
+	    ENDIF;
+	 >
+      >
+   ENDIF;
+   :END TITLE BLOCK: CONTINUE;
+   CALL T2CWTS(ITXSAV,IDUM);	"set color width texture"
+   IF (FLAGS(127)) CALL TXXMT;	"New segment ?"
+   $ERROR=ERRSAV.or.$ERROR;
+END;
+%E  SUBROUTINE T2_PARSE_TITLE --- Parse title string
+   SUBROUTINE T2_PARSE_TITLE(STRING
+			,TITLE,NTITLE
+		        ,CASE,NCASE);
+   CHARACTER*(*) STRING,TITLE,CASE;
+   INTEGER NTITLE,NCASE;
+   INTEGER I,J,K,NSTRING,JMIN,JMAX,KMAX;
+
+   $SPECIFICATION;
+   CHARACTER*256 STRINGX ;
+   IF (NCASE .lt. NTITLE) NCASE=NTITLE;
+   NSTRING=LEN(STRING);
+   I=1;				"First char in string"
+   IF ( C_TIT_SUBSTITUTE(:1) .ne. CHAR(0) .or.
+	C_TIT_ESCAPE .ne. CHAR(0) ) THEN;	"Substitute or escape ?"
+	DO WHILE (I .le. NSTRING);
+	    IF (NTITLE .ge. LEN(TITLE)) GOTO :ERROR:;
+	    IF (C_TIT_ESCAPE .eq. STRING(I:I) .and. I.lt.NSTRING-1) THEN;
+		NTITLE=NTITLE+1;
+		I=I+1;
+		TITLE(NTITLE:NTITLE)=STRING(I:I);
+		I=I+1;
+		CASE(NTITLE:NTITLE)=STRING(I:I);
+	    ELSEIF (C_TIT_SUBSTITUTE(:1) .eq. STRING(I:I)
+			.and. I .lt. NSTRING-1) THEN;
+		JMIN=I;
+		JMAX=INDEX(STRING(JMIN+1:),C_TIT_SUBSTITUTE(2:2))+JMIN;
+		IF (JMAX .gt. JMIN+1) THEN;
+                    STRINGX = 'TD_S_'//STRING(JMIN+1:JMAX-1) ;
+		    CALL T2_GET_ENV ( STRINGX(:JMAX+4), OUTSTR, KMAX ) ;
+		    IF (KMAX .gt. 0) THEN;
+			K=1;
+			DO WHILE (K .le. KMAX);
+			    NTITLE=NTITLE+1;
+			    IF (C_TIT_ESCAPE .eq. OUTSTR(K:K)
+				.and. K.lt.KMAX-1) THEN;
+				K=K+1;
+				TITLE(NTITLE:NTITLE)=OUTSTR(K:K);
+				K=K+1;
+				CASE(NTITLE:NTITLE)=OUTSTR(K:K);
+			    ELSE;
+				TITLE(NTITLE:NTITLE)=OUTSTR(K:K);
+			    ENDIF;
+			    K=K+1;
+			ENDDO;
+			I=JMAX;
+		    ELSE;
+			NTITLE=NTITLE+1;
+			TITLE(NTITLE:NTITLE)=STRING(I:I);
+		    ENDIF;
+		ELSE;
+		    NTITLE=NTITLE+1;
+		    TITLE(NTITLE:NTITLE)=STRING(I:I);
+		ENDIF;
+	    ELSE;
+		NTITLE=NTITLE+1;
+		TITLE(NTITLE:NTITLE)=STRING(I:I);
+	    ENDIF;
+	    I=I+1;
+	ENDDO;
+   ELSE;
+	TITLE(NTITLE+1:)=STRING;
+	NTITLE=NTITLE+NSTRING;
+	IF ( NTITLE .gt. LEN(TITLE) ) THEN;
+:ERROR:
+	   ERROR STRING;'*** ERROR *** Title string too long';
+	   NTITLE=LEN(TITLE);
+	ENDIF;
+   ENDIF;
+END;
+%E  LOGICAL FUNCTION T2_SET_ENV
+LOGICAL FUNCTION T2_SET_ENV(STRING,OUTSTR);
+"
+	This sets up Environmental variable (Logical symbols)
+"
+   IMPLICIT NONE;
+   CHARACTER*(*) STRING,OUTSTR;
+$VAX;
+   INCLUDE '($LIBCLIDEF)';
+   LOGICAL LIB$SET_SYMBOL;
+   T2_SET_ENV=LIB$SET_SYMBOL(STRING,OUTSTR,LIB$K_CLI_LOCAL_SYM);
+$ELSE;
+   T2_SET_ENV=.false.;
+$END;
+END;
+%E  LOGICAL FUNCTION T2_GET_ENV
+LOGICAL FUNCTION T2_GET_ENV(STRING,OUTSTR,N_OUTSTR);
+"
+	This gets Environmental variables (Logical symbols)
+"
+   IMPLICIT NONE;
+   CHARACTER*(*) STRING,OUTSTR;
+   INTEGER N_OUTSTR;
+$VAX;
+   LOGICAL LIB$GET_SYMBOL;
+   N_OUTSTR=0;
+   T2_GET_ENV=LIB$GET_SYMBOL(STRING,OUTSTR,N_OUTSTR);
+$ELSE;
+   T2_GET_ENV=.false.;
+$END;
+END;
+%E  SUBROUTINE T2BNDA  --- Select band of mesh data
+SUBROUTINE T2BNDA($INFO,$CARD,TLIM);
+   IMPLICIT NONE;
+   INTEGER INFOIN(10);
+   CHARACTER*(*) CARDIN;
+   REAL TLIM(3,2);
+   INTEGER IXYZ,INDEX,I,J;
+   REAL T;
+   $SPECIFICATION;
+   $BOOLEAN LFIRST;
+   $EQUIVALENCE;
+   $DATA;
+"
+	PROCESS INFORMATION FOLLOWING 'POINTS' FOR HIST,
+	PLOT, AND JOIN COMMANDS.  RETURNS N1 AND N2
+"
+   INDEX=1;
+   T=$LARGE REAL;
+   <I=1,2; T=-T; <J=1,3; TLIM(J,I)=T; >  >	"Setup infinite limits"
+   IXYZ=MESH2D;				"Initial Axes"
+   LFIRST=.true.;
+   <TOKEN LOOP> <
+      KEY:: <
+	 X:1,Y:2,Z:3 <
+	    IF (LFIRST) THEN;
+		IF (MESH2D.ne.0 .and.
+		   NDIMNS(2).eq.2 .and.
+		   MESH2D.ne.INTEG ) THEN;
+		  ERROR OUT;
+		     ('*** WARNING *** Inconsistent axes selected');
+		ENDIF;
+		"IF (MESH2D.ne.MESH3)" MESH2D=INTEG;
+		LFIRST=.false.;
+	    ENDIF;
+	    IXYZ=INTEG;
+	    INDEX=1;
+	 >
+	 FROM <INDEX=1;>
+	 TO   <INDEX=2;>
+      >
+      NUMBER:: <
+	 IF (IXYZ.le.0) THEN;
+	    ERROR OUT; ('*** ERROR *** No axis selected');
+	    RETURN;
+	 ENDIF;
+	 IF (INDEX.gt.2) THEN;
+	    ERROR OUT;('*** ERROR *** Redundant number');
+	    RETURN;
+	 ENDIF;
+	 TLIM(IXYZ,INDEX)=FLOTNG;
+	 INDEX=INDEX+1;
+      >
+      ELSE:: <READ SAME TOKEN; <EXIT>;>
+   >
+   <I=1,3; IF (TLIM(I,1) .gt. TLIM(I,2)) THEN;
+	      T=TLIM(I,1); TLIM(I,1)=TLIM(I,2); TLIM(I,2)=T;
+	   ENDIF;
+   >
+END;
+%E  SUBROUTINE T2NEWS  --- DATA SET command
+SUBROUTINE T2NEWS(IPTS,STRING);	"New data set"
+"
+	Create a new data set
+	Format:
+	1.	Data set indicator
+	2.	Data offset
+	3.	End of data set offset
+	4.	Name length
+	5.	Name
+"
+   IMPLICIT NONE;
+   CHARACTER*(*) STRING;
+   LOGICAL T2_VIRT;
+   $POINT ARRAYS($NPOINTS);
+   $SPECIFICATION;
+   $MAINSPEC;
+   $SPECIFYNONE;
+   INTEGER IPTS,J,K, ISIZ, ISTR, T2BTRIM;
+   FLAGS(28)=.false.;
+   J=$ILASTPTR;					"Last data set"
+   DATDAT(1,1)=HNONE;				"Data sets modified"
+   IF (NDSETS.gt.0) THEN;			"Already have some sets ?"
+      CALL T2GDSET(NDSETS,1,1,1,1,ISETD,HNONE,'*');	"Check the last one"
+      IF (NP .lt. 1) THEN;			"Zero length ?"
+	$INEXTPTR=IBGDAT;			"Kill the data set"
+	NDSETS=NDSETS-1;			"Decrement data set counter"
+      ENDIF;
+   ENDIF;
+   ISTR=LEN(STRING);				"LEngth of Name of data set"
+   OUTSTR=STRING;				"In temporary storage"
+   IF (STRING(ISTR:ISTR) .eq. '%') THEN;	"Append last name ?"
+	CALL T2_GET_SET_NAME(J,OUTSTR(ISTR:));
+   ENDIF;
+   ISTR=T2BTRIM(OUTSTR);
+   ISTR=(MIN(ISTR,$MAXNAM)+$CHARS-1)/$CHARS;	"Maximum number of words"
+   ISIZ=NINCR*IPTS+4+ISTR;			"Number of words in data set"
+   IF (.not. T2_VIRT(ISIZ)) THEN;
+      $ERROR=.true.;
+      ERROR STRING; ('*** ERROR *** Insufficient memory');
+      RETURN;
+   ENDIF;
+   J=$INEXTPTR;				"Buffer pointer"
+   $ILASTPTR=J;				"Data pointer"
+   <K=1,ISIZ; DATBUF($INEXTPTR)=0; $INEXTPTR=$INEXTPTR+1; >	"Clear it"
+   $IENDPTR=$INEXTPTR-1;
+   NDSETS=NDSETS+1;
+   NPOINT=NPOINT+IPTS;
+   DATBUF(J)=$SEPARATOR;
+   J=J+1;
+   DATBUF(J)=ISTR+4;			"Data offset"
+   J=J+1;
+   DATBUF(J)=ISIZ;			"Next set offset"
+   J=J+1;
+"
+	Add data set name
+"
+   DATBUF(J)=ISTR;			"String size"
+   READ(OUTSTR,:FMT:)(DATBUF(K),K=J+1,J+ISTR);	"String"
+   J=J+ISTR;
+:FMT:	FORMAT(100A$CHARS);
+   <K=1,8; IVRPTR(K)=1; >
+   $IMSPTR=J+1;
+   <K=1,NINCR; IF(IVARBL(K) .lt. 8) IVRPTR(IVARBL(K))=IVARBL(K)+J; > "HACK"
+END;
+%E  SUBROUTINE T2NEWM  --- New mesh data set
+SUBROUTINE T2NEWM(NIN0,NIN1,NIN2,STRING);	"New data set"
+"
+      Set up a data buffer for mesh data
+	Format:
+	1.	Data set indicator
+	2.	Data offset
+	3.	End of data set offset
+	4.	Name length
+	5.	Name
+	6.	NMesh0=	1 values only
+			2 values + errors (width)
+	7.	NMesh1=	Number of entries per row
+	8.	NMesh2=	Number of rows
+		First row contains X,Y,Z indicator+X data
+		Each subsequent row contains Y+data
+	9.	NMESH0*NMESH1*NMESH2 entries
+	10.	4*NMESH0 entries=Initial/final X,Z values
+"
+   IMPLICIT NONE;
+   LOGICAL T2_VIRT;
+   INTEGER NIN0,NIN1,NIN2;
+   CHARACTER STRING*(*);
+   $POINT ARRAYS($NPOINTS);
+   $SPECIFICATION;
+   $MAINSPEC;
+   $SPECIFYNONE;
+   INTEGER J,K,IPTS,ISIZ,ISTR,T2BTRIM;
+   FLAGS(28)=.false.;
+   J=$ILASTPTR;					"Last data set"
+   DATDAT(1,1)=HNONE;				"Data modified"
+   IF (NDSETS.gt.0) THEN;			"Already have some sets ?"
+      CALL T2GDSET(NDSETS,1,1,1,1,ISETD,HNONE,'*');	"Check the last one"
+      IF (NP .lt. 1) THEN;			"Zero length ?"
+	$INEXTPTR=IBGDAT;
+	NDSETS=NDSETS-1;
+      ENDIF;
+   ENDIF;
+   ISTR=LEN(STRING);				"LEngth of Name of data set"
+   OUTSTR=STRING;				"In temporary storage"
+   IF (STRING(ISTR:ISTR) .eq. '%') THEN;	"Append last name ?"
+	CALL T2_GET_SET_NAME(J,OUTSTR(ISTR:));
+   ENDIF;
+   ISTR=T2BTRIM(OUTSTR);
+   ISTR=(MIN(ISTR,$MAXNAM)+$CHARS-1)/$CHARS;	"Maximum number of words"
+   ISIZ=MIN(MAX(NIN0,1),2)*(NIN1*NIN2+4)+7+ISTR;	"Space needed"
+   IF (.not. T2_VIRT(ISIZ)) THEN;
+      ERROR STRING; ('*** ERROR *** Insufficient memory');
+      $ERROR=.true.;
+      RETURN;
+   ENDIF;
+"
+	NDIMNS(2)=3;
+"
+   NDSETS=NDSETS+1;
+   J=$INEXTPTR;				"Buffer pointer"
+   $ILASTPTR=J;				"Data pointer"
+   <K=1,ISIZ; DATBUF($INEXTPTR)=0; $INEXTPTR=$INEXTPTR+1; >	"Clear it"
+   $IENDPTR=$INEXTPTR-1;
+   DATBUF(J)=$MESHSEPARATOR;		"Header"
+   J=J+1;
+   DATBUF(J)=7+ISTR;			"Data offset"
+   J=J+1;
+   DATBUF(J)=ISIZ;			"Next set offset"
+   J=J+1;
+"
+	Add DATA set name
+"
+   DATBUF(J)=ISTR;
+   READ(OUTSTR,:FMT:)(DATBUF(K),K=J+1,J+ISTR);
+   J=J+ISTR+1;
+:FMT:	FORMAT(100A$CHARS);
+   DATBUF(J)=NIN0;				"Fill  in mesh indices"
+   J=J+1;
+   DATBUF(J)=NIN1;
+   J=J+1;
+   DATBUF(J)=NIN2;
+   J=J+1;
+   $IMSPTR=J;
+   IBLKTP=2;					"Block type"
+   MESH1=1; MESH2=2; MESH3=3;			"Mesh X,Y,Z"
+   NMESH0=NIN0; NMESH1=NIN1; NMESH2=NIN2;
+   DATBUF(J)=1+2*4;				"Indicate it"
+   <J=1,7; IVRPTR(J)=1; >
+   $IXPTR=$IMSPTR+NIN0;
+   $IYPTR=$IMSPTR+NIN0*NIN1;
+   $IZPTR=$IYPTR+NIN0;
+   IF (NMESH0.eq.2) THEN;
+      <J=2,7,2; IVRPTR(J+1)=IVRPTR(J)+1; >
+   ENDIF;
+   NPOINT=NPOINT+(NMESH1-1)*(NMESH2-1);		"Total number of points"
+END;
+%E  SUBROUTINE T2JOUR  --- Journaling routine
+SUBROUTINE T2JOUR;
+   CHARACTER*160 STR;
+   $SPECIFICATION;
+   $BOOLEAN INTRAC;
+   IF (JOUFIL.gt.0 .and. INTRAC(I)  .and.
+      INPFIL.eq.$INPUT FILE .and. NSTJOU.gt.0) THEN;
+	 NSTJOU=MIN(NSTJOU,LEN(STJOU));	"Limit NSTJOU"
+	 IF (STJOU(1:NSTJOU).ne. ' ') THEN;
+	    IF (STJOU(NSTJOU:NSTJOU).eq.' ') NSTJOU=MAX(1,NSTJOU-1);
+	    WRITE (JOUFIL,'(1X,A)',ERR=:ERROR:) STJOU(1:NSTJOU);
+	    IF (JOUFIL.le.NINMAX)NINP(JOUFIL)=NINP(JOUFIL)+1;
+	    JOUCNT=JOUCNT+1;
+	    IF (MOD(JOUCNT,10).eq.0) THEN;
+		INQUIRE(UNIT=JOUFIL,NAME=STR);
+		CLOSE(UNIT=JOUFIL);
+		OPEN(UNIT=JOUFIL,STATUS='OLD',FILE=STR);
+	    ENDIF;
+	 ENDIF;
+   ENDIF;
+:ERROR:
+   NSTJOU=0; LSTJOU=0;
+END;
+%E  SUBROUTINE T2GTEX  --- Assemble texture variable
+SUBROUTINE T2GTEX(ITXTUR);
+   IMPLICIT NONE;
+   $SPECIFICATION;
+   $BOOLEAN LTEST,LTEST1;
+   INTEGER I,IFUNNY,ITXTUR,IMAX;
+   IF (ITXTUR.le.0 ) THEN;
+      IF (INTEG.eq.8) INTEG=0;
+      ITXTUR=INTEG;
+      LTEST=.TRUE.;
+      LTEST1=.TRUE.;
+      IFUNNY=1;
+   ELSEIF (INTEG+ITXTUR .eq. 3) THEN;	"DOT DASH combination ?"
+      ITXTUR=3;
+   ELSEIF (INTEG.EQ.5) THEN;		"Funny ?"
+      IFUNNY=-1;
+   ELSE;
+      IF (LTEST) THEN;
+	 FLAGS(98)=.TRUE.; NPATRN(IPATRN)=0; LTEST=.FALSE.;
+	 IF (ITXTUR .eq. 4) ITXTUR=2;
+	 IF (ITXTUR .le. 2) THEN;		"Dot or Dash"
+	    NPATRN(IPATRN)=2;
+	    PATRN(1,IPATRN)=(ITXTUR-1)*PATSZ; PATRN(2,IPATRN)=PATSZ;
+	 ELSEIF (ITXTUR .eq. 3) THEN;		"Dot dash"
+	    NPATRN(IPATRN)=4; PATRN(1,IPATRN)=0.0; PATRN(2,IPATRN)=PATSZ;
+			      PATRN(3,IPATRN)=PATSZ;  PATRN(4,IPATRN)=PATSZ;
+	 ELSEIF (ITXTUR .eq. 5) THEN; IFUNNY=-1;	"Funny"
+	 ELSEIF (ITXTUR .eq. 7) THEN;			"DAASH"
+	    NPATRN(IPATRN)=2; PATRN(1,IPATRN)=0.3; PATRN(2,IPATRN)=PATSZ;
+	 ENDIF;
+	 ITXTUR=6;
+      ENDIF;
+      IF (INTEG.ne.6) THEN;
+	 IF (INTEG .eq. 4) INTEG=2;
+	 IMAX=2; IF (INTEG.EQ.3) IMAX=4;
+	 IF (INTEG.eq.2) THEN; INTEG=1;
+	 ELSEIF (INTEG.eq.7) THEN;
+	    INTEG=3;
+	 ELSEIF (INTEG.eq.8) THEN;
+	    IMAX=0;
+	    IF (NPATRN(IPATRN).gt.1)
+		PATRN(NPATRN(IPATRN),IPATRN)=
+		  PATRN(NPATRN(IPATRN),IPATRN)+PATSZ*IFUNNY;
+	 ELSE;
+	    INTEG=0;
+	 ENDIF;
+	 <I=1,IMAX;
+	    IF (NPATRN(IPATRN).ge.$PATMAX) THEN;
+		IF (LTEST1) THEN; ERROR STRING;
+		  ('*** ERROR *** Maximum pattern size exceeded');
+		  LTEST1=.FALSE.;		"Only 1 error message"
+		ENDIF;
+		<EXIT>;
+	    ENDIF;
+	    NPATRN(IPATRN)=NPATRN(IPATRN)+1;
+	    IF (MOD(NPATRN(IPATRN),2).eq.0) THEN;
+		PATRN(NPATRN(IPATRN),IPATRN)=PATSZ*IFUNNY;
+	    ELSE;
+		PATRN(NPATRN(IPATRN),IPATRN)=PATSZ*IFUNNY*INTEG;
+		INTEG=1;
+	    ENDIF;
+	 >
+	 IFUNNY=1;
+      ENDIF;
+   ENDIF;
+END;

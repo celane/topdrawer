@@ -1,0 +1,55 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.62.3.1</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.62.3.1  Options</H4></B>  - 
+     1.  AREA  selects  the directory of the disk file/global section.  If
+         this is unspecified then  the  subdirectory  on  the  file/global
+         section  is  assumed  to be the same as specified by the previous
+         SET HIST AREA command.
+     2.  FETCH is for histograms stored in machine dependent HBOOK3 format
+         by HSTORE.  Either all  histograms  or  1  histogram  ID  may  be
+         fetched.
+     3.  FILE=file_name  selects  the file name or global section name for
+         the shared histograms.  If FILE is not specified then it defaults
+         to  HBOOK.BIN.   If  the  filename  is  NONE then no file name is
+         selected.
+     4.  IDENT Selects the ID of the histogram to get.  If unspecified all
+         histograms are fetched.
+     5.  INPUT gets histograms from a direct access file in HBOOK4 format.
+         This is the default.
+         <U>NOTE</U> Topdrawer checks the file and will try to figure out whether
+<A NAME="118">         to FETCH, READ, or INPUT the file. </A>
+     6.  READ is for the machine independent HBOOK3 format.
+     7.  RELATIVE  saves  histograms in a relative file for faster access.
+         Otherwise a sequential file is used.
+         (Default:RELATIVE=OFF)
+     8.  SECTION  gets  histograms  from the specified global section.  If
+         SECTION="" the current section is used.  SEE:TOPDRAWER LINK
+     9.  SHARE shares the file with other users.  SHARE=OFF prohibits file
+         sharing.
+         (Default:SHARE=ON)
+    10.  VERSION  Selects  the  cycle (version number) of the histogram to
+         get.  (INPUT only)
+    11.  IOFSET is added to the hist ID when fetched.  (INPUT only)
+    12.  APPEND Sets IOFSET=largest hist ID.
+    13.  ADD adds the new histograms to the current ones.  Normally all in
+         the current directory are deleted.  ADD works only with INPUT, or
+         with Global sections.
+
+         NOTE:  If you have a large number of histograms resident, you may
+         not have enough memory to RESTORE ADD all at once.  You may force
+         TOPDRAWER to add one at a time by:
+              RESTORE HISTOGRAM ADD ID FROM 1 TO 99999
+    14.  SUBTRACT,MULTIPLY,DIVIDE  works  in  a  similar  fashion  to ADD.
+         SUBTRACT subtracts the new histogram from the old  one...   These
+         do not work for HBOOK3 histograms.
+    15.  TREE restores the entire directory tree.  (INPUT/SECTION only) If
+         this is selected along with AREA it is possible to graft  a  file
+         resident directory tree to a new root.
+
+
+</PRE>
+</BODY>

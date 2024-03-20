@@ -1,0 +1,35 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.65.4</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.65.4  LEVEL</H4></B>   - INSIDE,OUSIDE,  or  LEVEL=n  sets  the window level.
+Levels may range from 1 to 4.  INSIDE increases the level by 1 and OUTSIDE
+decreases  the level by 1.  Using this option you may inset windows inside
+other windows.  When you increase the LEVEL by 1  the  current  window  is
+used  to set the maximum limits of the new window.  You may increase LEVEL
+by 1 or decrease it to any number from 1 to the current level.   When  you
+increase  the  level,  you have effectively decreased the plot size to the
+current window size.
+
+                                  example
+As  an  example  you wish to create a set of six windows within a definite
+location.
+     TD:<U>SET</U> <U>WINDOW</U> <U>X</U> <U>FROM</U> <U>1</U> <U>TO</U> <U>12</U> <U>Y</U> <U>FROM</U> <U>1</U> <U>TO</U> <U>7</U>
+Set the outer level
+     TD:<U>SET</U> <U>WINDOW</U> <U>1</U> <U>OF</U> <U>6</U> <U>INSIDE</U>
+          or...
+     TD:<U>SET</U> <U>WINDOW</U> <U>1</U> <U>OF</U> <U>6</U> <U>LEVEL=2</U>
+Now  you  have 6 equal size windows bounded by 1,1 and 12,7.  To return to
+having only 1 window
+     TD:<U>SET</U> <U>WINDOW</U> <U>LEVEL=1</U>
+                                  example
+     TD:<U>SET</U> <U>WINDOW</U> <U>X</U> <U>FROM</U> <U>1</U> <U>TO</U> <U>12</U> <U>Y</U> <U>FROM</U> <U>5</U> <U>TO</U> <U>7</U>
+     TD:<U>SET</U> <U>WINDOW</U> <U>LEVEL=2</U> <U>FROM</U> <U>1,1</U> <U>TO</U> <U>2,2</U>
+Insets  a  window within another.  The actual physical location of the new
+window is X=2 to X=3 and Y=6 to Y=7.
+
+
+</PRE>
+</BODY>

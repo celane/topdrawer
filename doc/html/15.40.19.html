@@ -1,0 +1,20 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.40.19</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.40.19  Shading_example</H4></B> 
+
+Shading is produced by the options:
+     XY YZ ZX DX DY DZ CROSS RANDOM
+If  you  wish to shade the 3 faces differently, you must histogram 3 times
+with each pattern you wish.  For example you wish parallel lines on the YZ
+face, dots on the ZX face, and crosses on the XY face:
+     TD:<U>HISTOGRAM</U> <U>XY</U> <U>CROSS</U>
+     TD:<U>HISTOGRAM</U> <U>YZ</U> <U>DX=0.1</U> <U>DY=0.1</U>
+     TD:<U>HISTOGRAM</U> <U>ZX</U> <U>RANDOM</U> <U>DX=1000</U>
+
+
+</PRE>
+</BODY>

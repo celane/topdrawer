@@ -1,0 +1,81 @@
+################################################################
+#       Makefile for Topdrawer on a generic Unix system.       #
+################################################################
+
+MAKE = make
+
+ifeq ($(strip $(ARCH)),)
+default: linux
+endif
+
+#------------------------------------------------
+
+UGS    = /home/common/ugs/ugs.a
+
+ifeq ($(ARCH),LINUX)
+FORLIB = /home/common/forlib/*.a
+endif
+
+all: tdlib misclib $(UGS)
+	$(F77) -o td src/td.o td.a misc.a \
+	$(UGS) $(FORLIB) $(XLIB) -lXt -lX11
+
+tdlib:
+	cd src ;\
+	$(MAKE)
+
+misclib:
+	cd misc ;\
+	$(MAKE)
+
+clean:
+	rm -f td.a misc.a src/*.o src/*~ misc/*.o misc/*~
+
+#-------- Platform dependent parameters ---------
+
+linux:
+	$(MAKE) \
+	"ARCH = LINUX" \
+	"F77  = f77 -O2" \
+	"CC   = gcc -O2" \
+	"AR   = ar  rvs" \
+	"XLIB = -L/usr/X11/lib"
+
+osf1:
+	$(MAKE) \
+	"ARCH = OSF1"   \
+	"F77  = f77 -O0 -nocpp" \
+	"CC   = cc  -O2" \
+	"AR   = ar  rv" \
+	"XLIB = -L/usr/X11/lib"
+
+ultrix:
+	$(MAKE) \
+	"ARCH = ULTRIX" \
+	"F77  = f77 -O1 -w -Olimit 1500 -nocpp -static" \
+	"CC   = cc  -O2" \
+	"AR   = ar  rvs"
+
+sunos:
+	$(MAKE) \
+	"ARCH = SUNOS"  \
+	"F77  = f77 -O3 -w -Nl100 -libmil -xl" \
+	"CC   = cc  -O2" \
+	"AR   = ar  rv"  \
+	"RAN  = ranlib" \
+	"XLIB = -L/usr/openwin/lib"
+
+aix:
+	$(MAKE) \
+	"ARCH = AIX"    \
+	"F77  = xlf -NQ20000 -qextname -qrndsngl -qcharlen=2048" \
+	"CC   = cc  -O2" \
+	"AR   = ar  rv"
+
+iris:
+	$(MAKE) \
+	"ARCH = IRIX"   \
+	"F77  = f77 -O0 -nocpp -g1 -trapuv -static" \
+	"CC   = cc  -O2" \
+	"AR   = ar  rv"
+

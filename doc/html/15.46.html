@@ -1,0 +1,39 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.46</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.46  MERGE</H4></B> 
+
+<U>ME</U>RGE [<U>AL</U>L]
+     [<U>SET</U>S=[<U>FR</U>OM] n1 [<U>TO</U>] [n2]]
+     [<U>SEL</U>ECT="name"]
+     [<U>NAMe="name"]</U>
+     <U>[PO</U>INTS=[<U>FR</U>OM] n1 [<U>TO</U>] [n2]]
+     [<U>AP</U>PEND[=<U>ON</U>|<U>OF</U>F]] [<U>NAM</U>E="name"] [<U>LO</U>G[=<U>ON</U>|<U>OF</U>F]]
+     [<U>LIM</U>ITED [<U>VL</U>OG[=<U>ON</U>|<U>OF</U>F]] [[<U>FR</U>OM]|<U>TO</U> [[<U>X</U>=]nx,[[<U>Y</U>=]ny[,[<U>Z</U>=]nz]]]
+          [<U>CU</U>RSOR] ]
+
+Merges the specified data points into a single data set.
+     1.  ALL merges all data
+     2.  APPEND  creates  a  new  data set and copies all of the specified
+         sets into it.  If not specified then the specified range of  data
+         sets is deleted.
+     3.  LIMITED  allows you to specify which points to retain, all others
+         are deleted or omitted in the case of APPEND.
+     4.  LOG shows which sets are merged.
+     5.  NAME specifies the name of the new data set.
+     6.  POINTS selects the data points by number
+     7.  SETS selects the range of data sets to merge.
+     8.  SELECT selects the data sets by name
+You must specify either SETS, POINTS, LIMITED, or ALL If the range of data
+sets contains a mesh data set and APPEND is not specified,  the  data  can
+not be merged.
+
+After  merging several data sets you may need to SORT the data if you wish
+to HISTOGRAM, JOIN, or BARCHART it.
+
+
+</PRE>
+</BODY>

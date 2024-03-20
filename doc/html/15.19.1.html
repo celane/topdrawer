@@ -1,0 +1,26 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.19.1</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.19.1  DATA</H4></B> 
+
+<U>DE</U>LETE [<U>AL</U>L]
+     [<U>SET</U>S=[<U>FR</U>OM] n1 [<U>TO</U>] [n2]]
+     [<U>SEL</U>ECT="name"]
+     [<U>PO</U>INTS=[<U>FR</U>OM] n1 [<U>TO</U>] [n2]]
+     [<U>LIM</U>ITED [<U>VL</U>OG[=<U>ON</U>|<U>OF</U>F]] [[<U>FR</U>OM]|<U>TO</U> [[<U>X</U>=]nx,[[<U>Y</U>=]ny[,[<U>Z</U>=]nz]]]
+          [<U>RE</U>CURSOR] [<U>CU</U>RSOR] ]
+     [<U>CO</U>NFIRM[=<U>ON</U>|<U>OF</U>F]] [<U>LO</U>G[=<U>ON</U>|<U>OF</U>F]]
+
+Deletes  the  specified  data points.  If all the points in a data set are
+<A NAME="51">deleted, the entire set is deleted.  If an entire data set is deleted, all </A>
+the  following  sets are renumbered.  You must specify either ALL, POINTS,
+SETS or LIMITS.  POINTS or SETS may be combined with LIMITS to select only
+certain  points  within a range.  For mesh data LIMITED and POINTS are not
+legal options.
+
+
+</PRE>
+</BODY>

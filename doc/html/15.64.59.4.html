@@ -1,0 +1,36 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.59.4</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.59.4  DISTANCE,SCRD,RDIST</H4></B>  - 
+     DISTANCE=nnn
+Distance from CENTER to the EYE (Default:35in.)
+     SCRD=nnn
+Distance from screen or viewing window to EYE.  (Default:-18in.)
+     RDISTANCE=nnn
+Same  as distance, but the SCRD is changed also to keep the view the same.
+(Relative distance)
+
+If  SCRD  is negative then the actual SCRD is adjusted so that the view is
+the same independent of the current window size.  If |SCRD| = 0.5*DISTANCE
+then the plot will fill the current window.
+
+Essentially  the SCRD is the distance from you to the screen, and DISTANCE
+is the distance to the object being viewed.  The  ratio  of  SCRD/DISTANCE
+determines  the  plot  size  while  the  absolute  distance determines the
+perspective of the plot.  Large distances produce essentially  a  parallel
+projection.  If you wish to modify the plot size use the MAGNIFY or REDUCE
+option.
+
+Sometimes vertical lines are treated as being hidden when in fact they are
+visible.  This may be corrected by moving the  view  point  far  from  the
+screen.  To set a distant viewpoint:
+     TD:<U>SET</U> <U>THREE</U> <U>RDIST=8000</U>
+RDIST  adjusts  the  viewpoint  without changing the size of the resulting
+<A NAME="181">plot. </A>
+
+
+</PRE>
+</BODY>

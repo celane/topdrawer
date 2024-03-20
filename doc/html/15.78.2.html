@@ -1,0 +1,36 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.78.2</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.78.2  BINS|VALUES</H4></B> 
+
+     BINS
+creates values at the centers of bins whose edge is defined by the values.
+     VALUES
+specifies the values for the specified coordinate.  If you specify a range
+of  values  or  bins,   you   may   not   specify   operations   such   as
+TIMES,DIVIDE,MINUS,PLUS or a coordinate such as X,Y,DX...  or an equation.
+If you generate a new data set you must specify 3 numbers for  FROM,TO,BY,
+and  N.   If  you modify an existing data set only 2 numbers are spcified.
+You may also specify a single value.
+                                 examples
+     TD:DX=0.5
+Sets all DX values to 0.5
+     TD:<U>X=BINS</U> <U>FROM</U> <U>1</U> <U>to</U> <U>10</U> <U>by</U> <U>2</U>
+Generates a new data set with values X=2,4,6,8
+     TD:<U>X=VALUES</U> <U>FROM</U> <U>1</U> <U>TO</U> <U>10</U> <U>BY</U> <U>2</U>
+          or...
+     TD:<U>X</U> <U>FROM</U> <U>1</U> <U>TO</U> <U>10</U> <U>BY</U> <U>2</U>
+Generates a new data set with values X=1,3,5,7,9
+     TD:<U>X</U> <U>FROM</U> <U>1</U> <U>BY</U> <U>2</U> <U>SET=2</U>
+Modifies data set 2 with values X=1,3,5,7,9...
+     TD:<U>X=Y</U> <U>TIMES</U> <U>FROM</U> <U>1</U> <U>TO</U> <U>10</U> <U>BY</U> <U>2</U>
+Is illegal
+     TD:<U>X=Y</U> <U>TIMES</U> <U>2</U>
+is legal
+
+
+</PRE>
+</BODY>

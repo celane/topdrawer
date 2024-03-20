@@ -1,0 +1,19 @@
+19940729	kreymer@fnal.gov
+
+UGS 2.10d is a port of SLAC's Unified Graphics System to Unix.
+The source of this code is the SLAC VMS version of UGS.
+
+This library has been ported strictly for use with Topdrawer.
+Any other use may fail, and is not supported.
+
+UGS has been built with these operating system releases:
+    IRIX    4.0.5
+    IRIX    5.1.1.1
+    AIX     3.2
+    ULTRIX  4.4
+    SunOS   4.1.3 
+
+Postscript, Xwindow and Tek4010  drivers have been ported initially,
+as these are the most useful for current UNIX Topdrawer users.
+
+Please report bugs, problems, and suggestions to  kreymer@fnal.gov .

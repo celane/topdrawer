@@ -1,0 +1,20 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.49.5</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.49.5  LIMITED</H4></B> 
+
+You may specify the limits over which the histograms are to be multiplied.
+If you specify the Y or Z limits,  then  all  data  that  contains  values
+inside these limits will be multiplied.  For example if you
+     MULTIPLY 1 to 2 LIMITED FROM Y=10 to Y=11
+But data set 1 contains the followind data:
+<A NAME="100">1,0;  2,10;  3,0;  4,11;  5,0 </A>
+Points  2  to 4 inclusive will be multiplied, and only points 1 and 5 will
+be omitted.
+
+
+</PRE>
+</BODY>

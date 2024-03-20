@@ -1,0 +1,19 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.18.16.3</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.18.16.3  Falco</H4></B>   - The  Falco  infinity  series can display up to 49
+lines of FBG-II graphics.  You should calculate the number of available  y
+pixels as
+  For FBG-II
+     pixels=3120*(lines/49)
+  For FBG-I
+     pixels=3120*(lines/23)
+Then you set:
+     TD:SET DEVICE TEKTRONIX "RVT100,YPIXELS=pixels"
+
+
+</PRE>
+</BODY>

@@ -1,0 +1,58 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 20.5</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>20.5  89</H4></B> 
+
+     1.  Jan-1989  -  Fixed  error calculations for fitting routines.  The
+         quoted errors were too large.  Added ERROR option to FIT command.
+         Fitted curves are generated with error bars now.  ADD FIT to data
+         set  now  also  adds  the  fitted  errors  unless  ERROR=OFF   is
+         specified.   Fixed equation evaluation.  Exponents were evaluated
+         incorrectly ie.  &lt;1.0E-3&gt;--&gt;1000.  and &lt;1.0E+3&gt;--&gt;.001
+
+<A NAME="242">     2.  Feb-1989  -  Added  file  spec/LIST=/COMMAND=/JOURNAL= options to </A>
+         TOPDRAWER command line.
+     3.  Mar-1989 - Added MERGE command to merge data sets.
+     4.  Apr-1989  - Added mixed data sets.  Mesh + regular data may exist
+         as separate data sets.  Added error display to JOIN  command  for
+         mesh  data.   ADD/SUB/MUL/DIV  commands  now  may  add mesh data.
+         Added errors to mesh data.  SHOW STAT now shows mean/std...   for
+         mesh data.  New options:
+              ERROR had been added to command READ MESH,JOIN,CREATE MESH.
+              APPEND has been added to READ MESH,CREATE MESH
+         Modified options:
+              SETS,   POINTS|COLUMNS,   LINES|ROWS   are  now  independent
+         options.
+         SETS - Specifies the data set only.
+         POINTS - Specifies the point/column number within the set.
+         When the LIMITED option is used, the Z value is used to limit the
+         data.
+         Created NETWINDOW files to use TD over the DECnet.
+     5.  June-1989  -  Added  TEK4207  support  to TEK driver.  Speeded up
+         REGIS/TEK drivers.  Added VAXSTATION (UGUISD driver) support.
+     6.  Nov-1989  -  Added support for NTUPLES to NTOPDAWER.  Removed the
+         slash as a separator.  It may be put back by the command:
+              SET CHARACTER SEPARATOR "/"
+     7.  Dec-1989 - A number of enhancements have been made to NTOPDRAWER.
+         Added the options TREE to SAVE/RESTORE/SET HISTOGRAM commands and
+         added   support   for   "wild"   characters  for  histogram  area
+         specification.   Added  the   MONITOR   HISTOGRAM,   and   DELETE
+         HISTOGRAM.   Removed support for RICE histograms from NTOPDRAWER.
+         Added support for a GLOBAL SECTION containing HBOOK4  histograms.
+         NTOPDRAWER  is  now  capable  of  handling HBOOK4 histograms in a
+         fairly simple fashion.
+
+         Both NTOPDRAWER and TOPDRAWER have been enhanced as follows.  The
+         driver for TEK4010 has been modified to allow you to specify  the
+         necessary escape sequences for entering and exiting TEK-4010 mode
+         as well as for reproducing  colors.   Support  for  the  LSI-7107
+         color  terminal  has  been  added.  Support for postscript and am
+         IMAGEN printer has been added.  The options SPACE has been  added
+         in addition to DOTS,DASH...  for line structure.
+
+
+</PRE>
+</BODY>

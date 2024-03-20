@@ -1,0 +1,35 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.74</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.74  TYPE</H4></B> 
+
+<U>TY</U>PE  [<U>ER</U>ASE]  [<U>TO</U>P]  [<U>BO</U>TTOM] [<U>BE</U>LL] [<U>BO</U>LD] [<U>BL</U>INK] [<U>RE</U>VERSE] [<U>UN</U>DERLINE]
+          [<U>WI</U>DE]  [<U>BA</U>CKGROUND|<U>FO</U>EGROUND  [   [<U>WH</U>ITE|<U>RE</U>D|<U>GR</U>EEN|<U>BL</U>UE|<U>YE</U>LLOW|
+          <U>MA</U>GENTA|<U>CY</U>AN]] [nn] ["string"]
+The  string is typed on your terminal.  This is useful for typing messages
+on the users terminal while plots are being produced from an input file.
+     1.  ERASE - This erases the screen (ANSI terminal).  This erases text
+         from a VT-1xx/2xx  compatible  terminal.   This  does  not  erase
+         TEKTRONIX graphics, but REGIS graphics will be erased.  This must
+         be precede the string.
+     2.  TOP - The string is at the top of the screen (ANSI terminal).
+     3.  BOTTOM  -  The  string  is  at  the  bottom  of  the screen (ANSI
+         terminal).
+     4.  BELL - This rings the bell.
+     5.  BOLD,BLINK,REVERSE,UNDERLINE,WIDE  - Sets the video attributes of
+         the line.  These must be after the ERASE,TOP options  and  before
+         the  string.   Several of these may be used together.  These only
+         work for a VT-100 or compatible ANSI terminal.
+     6.  BACKGROUND|FOREGROUND  control  the  color.  (ANSI terminal) Once
+         the color has been set it remains set until another type  command
+         sets new colors.
+     7.  nn - This inserts a control character (0-255) into the string.
+nn  and  string may be repeated to generate control characters.  See also:
+SET PROMPT.
+
+
+</PRE>
+</BODY>

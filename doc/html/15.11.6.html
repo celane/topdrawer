@@ -1,0 +1,32 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.11.6</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.11.6  FROM...</H4></B>  
+
+[[<U>X</U>|<U>Y</U>] [<U>FR</U>OM=n] [<U>TO</U>=n] [<U>BY</U>|<U>WI</U>DTH|<U>ST</U>EP=n] [<U>BINS</U>|<U>N</U>=n]]
+Specifies  the range of the histogram.  If FROM,TO and NBINS are specified
+BY may not be specified.  FROM is the lowes bin edge.  TO is  the  highest
+bin edge.  BY is the bin width, And N is the number of bins.
+
+If  VALUES  is  specified then the FROM and TO are the center of the first
+bin and the center of the last bin.
+
+If  these  are  omitted then the data is scanned and the bins are arranged
+according to the current scale values.  (See:SET SCALE) If the data to bin
+is  arranged as a set of matching histograms, the final data set will have
+the same x values as the initial.  A histogram has equally spaced x values
+with identical DX.  Data sets match if the initial X and DX values are the
+same.
+
+The following are equivalent commands:
+     TD:<U>BIN</U> <U>FROM</U> <U>0</U> <U>TO</U> <U>10</U> <U>BY</U> <U>1</U>
+     TD:<U>BIN</U> <U>FROM</U> <U>0</U> <U>TO</U> <U>10</U> <U>N=10</U>
+     TD:<U>BIN</U> <U>FROM</U> <U>0</U> <U>BY</U> <U>1</U> <U>N=10</U>
+     TD:<U>BIN</U> <U>VALUES</U> <U>FROM</U> <U>.5</U> <U>TO</U> <U>9.5</U> <U>BY</U> <U>1</U>
+
+
+</PRE>
+</BODY>

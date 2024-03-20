@@ -1,0 +1,51 @@
+%
+% $Id: titlepag.tex%v 3.38.2.153 1993/07/08 03:43:32 woo Exp woo $
+%
+%\ifx\undefined\selectfont % DSL 26 May 93
+%\documentstyle[toc_entr]{article}
+%\else
+%\documentstyle[toc_entr,helv]{article}
+%\fi
+%\setlength{\textwidth}{6.25in}
+%\setlength{\oddsidemargin}{0.5cm}
+%\setlength{\topmargin}{-0.5in}
+%\setlength{\textheight}{9in}
+%\setlength{\parskip}{1ex}
+%\setlength{\parindent}{0pt}
+%\adjustarticle
+%\setlength{\threenum}{4.0em} % DSL 26 May 93
+\documentstyle[a4j,twoside]{article}
+\addtolength{\textheight}{3cm}
+\begin{document}
+
+\pagestyle{empty}
+   \rule{0in}{3in}
+   \begin{center}
+   {\huge\bf TOPDRAWER}\\
+   \vspace{3ex}
+   {\Large An Interactive Plotting Program}\\
+   \vspace{4ex}
+   \large
+   Version 5.12 ( Rice Bonner Lab )\\
+   July 1993\\
+   \vspace{5ex}
+   Fermilab Document {\tt PP0005.1}\\
+   Author: John Clement\\
+   Support level: 5 (full)\\
+
+   \vfill
+   {\small This manual is for TOPDRAWER version 5.12\\
+%   \begin{verbatim}
+% $Id: titlepag.tex%v 3.38.2.153 1993/07/08 03:43:32 woo Exp woo $
+%   \end{verbatim}
+   }
+
+   \end{center}
+\newpage
+
+\tableofcontents
+\newpage
+
+\setcounter{page}{1}
+\pagestyle{myheadings}
+\markboth{TOPDRAWER 5.12}{TOPDRAWER 5.12}

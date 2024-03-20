@@ -1,0 +1,38 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.45</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.45  PROMPT</H4></B> 
+
+<U>SE</U>T    <U>PR</U>OMPT    [<U>MA</U>IN|<U>PA</U>USE]   [<U>ER</U>ASE]   [<U>TO</U>P]   [<U>BO</U>TTOM]   [<U>BE</U>LL]   [nn]
+          ["prompt_string"]
+
+This sets the current prompt string with a maximum of 80 characters.  If a
+null or blank string is used, then there is no prompt.  If  a  prompt  has
+imbedded  blanks it must be enclosed in quotes.  The prompt string remains
+the same until a new one is selected.
+     1.  MAIN - Is the main prompt string.
+         (Default:"TD:")
+     2.  PAUSE - Is the prompt string used when a NEW PLOT is started.
+         (Default:"PAUSE:")
+     3.  ERASE  -  The  prompt  erases  the  screen (ANSI terminal).  This
+         erases text from a VT-1xx/2xx compatible terminal.  This does not
+         erase  TEKTRONIX  graphics,  but  REGIS  graphics will be erased.
+         This must be precede the string.
+     4.  TOP - The prompt is at the top of the screen (ANSI terminal).
+     5.  BOTTOM  -  The  prompt  is  at  the  bottom  of  the screen (ANSI
+         terminal).
+     6.  BELL - This rings the bell for each prompt.
+     7.  nn - This inserts a control character (0-255) into the string.
+     8.
+
+This  command  is useful for controlling the prompt for different types of
+terminals.  On some terminals you can control the position of the  prompt,
+so  that it will not interfere with the plot, while on others, you may not
+want any prompts.
+
+
+</PRE>
+</BODY>

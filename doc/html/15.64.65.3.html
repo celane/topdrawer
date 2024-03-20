@@ -1,0 +1,30 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.65.3</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.65.3  RELATIVE</H4></B>   - If n2 is omitted then the last n2 for the current
+plot is assumed.  Both n1 and n2 must be larger than 0.8 and n1 may not be
+larger  than 1.2*n2.  If both n1 and n2 are positive the window is reduced
+in size to allow for labels and titles.  If negative the  window  occupies
+the  entire  space.   If  you  do not specify a fixed symbol, grid, label,
+title, or tick size then they are adjusted to  be  in  proportion  to  the
+window  size.  Absolute windows do not adjust the sizes.  If n2 is omitted
+then the current n2 is assumed.
+
+For  windows  which do not occupy the entire space, the actual size of the
+window depends on the location and position of  labels  and  titles.   The
+size  is  set  to  allow a 5% border with room for titles and labels.  The
+default is a window with approximately 8.5% left on the right and top  for
+titles,  and  13%  on  the bottom and left for labels and titles.  For 3-d
+plots it is assumed that no labels will be produced.  To change  the  size
+available for titles and labels use the SET TITLE and SET LABELS commands.
+
+Non  integral  n1  or  n2  may  be  used  for fine adjustment.  If you use
+negative  windows  you  may  also  need  to  turn   off   INSIDE   labels.
+See:Command SET LABELS INSIDE
+
+
+</PRE>
+</BODY>

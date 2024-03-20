@@ -1,0 +1,20 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 18.36</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>18.36  T2CURS</H4></B> 
+
+     CALL T2CURS(I,XYZ,XYZ1,XYZ2,LF1,LF2);
+This subroutine returns both text and data coordinates from the Cursor:
+     1.  I = Character typed ICHAR(character) (If 0 no input)
+     2.  XYZ(2) = Physical device coordinates.
+     3.  XYZ1(2) = Text coordinates.
+     4.  XYZ2(3) = Data coordinates.  If the plot is 2-d XYZ2(3)=0
+     5.  LF1 = .true.  if text coor.  returned
+     6.  LF2 = .true.  if data coor.  returned
+
+
+</PRE>
+</BODY>

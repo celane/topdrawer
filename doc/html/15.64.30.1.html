@@ -1,0 +1,41 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.30.1</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.30.1  Options</H4></B>  - 
+
+     1.  ON - Draws horizontal, vertical, and Z lines.
+     2.  OFF - No grid is drawn.  (Default)
+     3.  Y|HORIZONTAL - Draws horizontal lines at Y major tics.
+     4.  X|VERTICAL - Draws vertical lines at X major tics.
+     5.  Z - Draws line perpendicular to Z at Z major tics.
+     6.  :XY - Draws lines in XY plane.
+     7.  YZ - Draws lines in YZ plane when THREE=ON.
+     8.  ZX - Draws lines in ZX plane when THREE=ON.
+         If XY,YZ,ZX are not specified, then all 3 are assumed to be on.
+     9.  CYCLE  -  Draws  the grid lines corresponding to Z major ticks in
+         different  colors,  textures...   according  to  the  SET   CYCLE
+         command.  (Default:OFF)
+    10.  OUTLINE - Draws outline around 3-d grid.  (Default:OFF)
+    11.  INTENSITY  -  Sets  line  intensity  or  width (0-5).  0 gets the
+         intensity from the SET INTENSITY or SET AXES command.
+    12.  WHITE...  - Sets the line color.  (Default:Same as axes)
+    13.  SOLID...   -  Sets  the  line  texture.   (Default:Same  as axes)
+         See:Command SET TEXTURE.
+    14.  SYMBOL  -  Draws  a symbol [sym] to be plotted at intersection of
+         vertical and horizontal lines.  (Default:sym=0O)
+    15.  SIZE  -  sets the size of the grid symbols If the size is not set
+         then it is adjusted automatically by the window size.
+    16.  THETA,PHI - specify the normal to the grid symbol for 3-d plots.
+    17.  ANGLE - rotates the symbol around the normal for 3-d plots.
+    18.  PERMANENT - Sets the current grid options permanently for all NEW
+         plots.
+If  no  options  are  specified, then all grid parameters are reset to the
+original defaults.
+(Default:OFF SYM='0O' INTEN=0 NOCOLOR NOTEXTURE THETA=0 PHI=0 ANGLE=0)
+
+
+</PRE>
+</BODY>

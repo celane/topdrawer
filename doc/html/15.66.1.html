@@ -1,0 +1,51 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.66.1</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.66.1  Options</H4></B> 
+
+     1.  APPEND   -   Puts   the  smoothed  data  into  a  new  data  set.
+         (Default:OFF)
+     2.  AVERAGE  -  Modifies  FLAT.  When average=off each channel is the
+         sum of n adjacent channels.
+         (Default:ON)
+     3.  CHECK - Checks the data to see if it is a proper histogram with X
+         or X/Y for mesh equally spaced.  IF it is not an error message is
+         issued,and no smoothing is done.
+         (Default:ON)
+     4.  ERROR  -  Modifies  the  errors  on the data assuming statistical
+         errors.  If OFF the errors are  not  modified.   Essentially  the
+         smoothing algorithm is used on the square of the errors.
+         (Default:ERROR=ON for REVISION&gt;4.99)
+     5.  FLAT  - Smooths the data by adding together and averaging every n
+         points.  The  result  has  every  n  points  identical.   LEVEL=n
+         selects  the  number  of points.  For example SMOOTH FLAT LEVEL=2
+         averages points 1+2, 3+4, 5+6...
+         (Default:OFF)
+     6.  LEVEL=n  -  Selects  approximately the number of points on either
+         side of the bin that are used in determining the value  for  that
+         bin.   The  range  of  levels  is  1  to 5.  1 Will smooth over 3
+         points, while 5 will smooth over 11 points.
+         (Default:3)
+     7.  LINES/ROWS - Selects which rows of a mesh are smoothed.
+     8.  LIMITED - Selects the range of X,Y,Z values to smooth.
+     9.  LOG - Logs or types the results on your terminal.
+    10.  MONITOR - Histograms the original data and joins the result.
+         See:  SET MODE MONITOR
+         The  result  is joined using the SECONDARY attributes.  to change
+         them use the SET SECONDARY command.
+
+<A NAME="202">    11.  NAME - Selects the name of the appended data set </A>
+    12.  POINTS/COLUMNS  -  Selects which data points or columns of a mesh
+         are smoothed.  If omitted all are smoothed.
+    13.  SELECT - Selects the data set by name
+    14.  SETS - Selects which data sets to use.
+    15.  X,Y,Z...   selects  whether  X, Y, or Z values are replaced.  For
+         MESH data it selects the axis to smooth along.  (Default:Y)
+
+
+
+</PRE>
+</BODY>

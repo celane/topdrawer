@@ -1,0 +1,40 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.45.3</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.45.3  HISTOGRAMS</H4></B> 
+
+
+<U>LI</U>ST <U>HI</U>STOGRAMS
+     [<U>AP</U>PEND[=<U>ON</U>|<U>OF</U>F]]
+     [<U>FI</U>LE|<U>OU</U>TPUT=filename]
+     [<U>ID</U>ENT=[<U>FR</U>OM] n1 [<U>TO</U>] [n2]]
+     [<U>SEL</U>ECT|<U>NA</U>ME='hist_name']
+     [<U>EX</U>ACT[=<U>ON</U>|<U>OF</U>F]]
+     [<U>ARE</U>A|<U>DI</U>RECTORY="dir/subdir..."]
+     [<U>TReE[=ON</U>|<U>OF</U>F]]
+     [<U>EN</U>TRIES[=<U>ON</U>|<U>OF</U>F]]
+     [<U>HI</U>STOGRAM[=<U>ON</U>|<U>OF</U>F]]
+     [<U>ME</U>SH[=<U>ON</U>|<U>OF</U>F]]
+     [<U>AR</U>RAY[=<U>ON</U>|<U>OF</U>F]]
+     [<U>NT</U>UPLES[=<U>ON</U>|<U>OF</U>F]]
+     [<U>INdEX[=ON</U>|<U>OF</U>F]]
+     [<U>LO</U>G[=<U>ON</U>|<U>OF</U>F]]
+<A NAME="95">This produces a line printer listing of the current histogram data.  The </A>
+options ENTRIES,MESH,NTUPLES,EXACT,NAME, and IDENT select which histograms
+are printed.  TREE lists all histograms in the directory tree.  You may
+specify the output file name FILE=name.  The option LOG types the file
+name of the histogram listing on your terminal.  The histogram data is
+listed in a form suitable to be printed.  Some histogram packages allow
+you to specify the format of the output.  For more information see
+command:  SET HISTOGRAM.
+
+An index precedes all of the histograms.  If you specify INDEX=OFF then no
+index is listed.
+(Default:FILE=histo.lis,TREE=OFF,INDEX=ON,APPEND=OFF)
+
+
+</PRE>
+</BODY>

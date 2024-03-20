@@ -1,0 +1,27 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.20.2.4</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.20.2.4  AREA|DIRECTORY</H4></B>  - 
+     TD:<U>DEFINE</U> <U>HISTOGRAM</U> <U>AREA=directory/subdir...</U>
+For  HBOOK4  this  creates  the  specified directory, and sets it.  If the
+specified area does not begin with "/" it is assumed to be a  subdirectory
+of  the  current  directory.   If it begins with "/" it is assumed to be a
+subdirectory of the current root.
+                                  example
+Assume you have no subdirectories.
+     TD:DEFINE HIST AREA SUBA
+creates directory //PAWC/SUBA
+     TD:DEFINE HIST AREA Q
+<A NAME="57">then creates directory //PAWC/SUBA/Q </A>
+     TD:DEFINE HIST AREA /SUBB/X/Y
+creates subdirectories:
+          "//PAWC/SUBB"
+          "//PAWC/SUBB/X"
+          "//PAWC/SUBB/X/Y"
+
+
+</PRE>
+</BODY>

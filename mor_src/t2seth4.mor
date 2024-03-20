@@ -1,0 +1,3302 @@
+%N
+%U+ TDMACROS.MOR
+%L
+"
+	This package handles 'foreign' histogram routines
+	Currently only HANDYPAK, RICE, and HBOOK are included.
+	The 'old' HBOOK routines are used!!!
+
+"
+<TOKEN USING INFOIN,CARDIN>
+%'$T2HIST'='"
+	INTEGER   MAXTUPL , MAX_STATS ;
+	PARAMETER (MAXTUPL=128);
+	PARAMETER (MAX_STATS=12);
+	CHARACTER*4 CETYPE(4);
+	CHARACTER*8 CTUPL(MAXTUPL);
+	CHARACTER*80        HNAME, TNAME, HTITL;
+	INTEGER            NHNAME,NTNAME,NHTITL;
+	INTEGER T2BTRIM;
+	CHARACTER*6 CDIR(4);
+	CHARACTER*128 CURDIR,SAVDIR,TSTDIR,TSTDIR2;
+	INTEGER SECT_OFFSET;
+	INTEGER IDVEC("$MAXCOR");
+	INTEGER IHTYPE,ID,IDENT,ILOCS,NOPER;
+	INTEGER IDMIN,IDMAX,IVERSION,IOFSET,NTSTDIR,NTSTDIR2;
+	INTEGER IAD,IX,IY,IJUMP,NTUPL,ENTRYS,IETYPE,LHFILE;
+	INTEGER NTUPL1,NTUPL2;
+	LOGICAL MATCHC;
+	"$BOOLEAN" LEXIST,LHINIT,LEXACT,LTREE
+		  ,LENTRY,LSENT,LALL,LHIST,LMESH,LNTUPL,LARRAY
+		  ,LTITLE,LILTUPL,LINDEX
+		  ,LAREA,LCHECK_MEM,LHWILD,LHTEST,LSTAT;
+	CHARACTER*80 SMON_OPTIONS(2);
+	INTEGER NMON_OPTIONS(2),IMON_OPTIONS(2);
+	REAL STATS(MAX_STATS);
+	REAL XMIN,YMIN,ZMIN,XMAX,YMAX,ZMAX,XS,YS,VMIN,VMAX,HVERSION;
+	REAL         VTUPL(MAXTUPL,2),LIMTUPL(MAXTUPL,2);
+	INTEGER      NLIMTUPL,ILIMTUPL(MAXTUPL);
+	COMMON /T2HISTS/ HNAME, TNAME, HTITL, CETYPE, CTUPL;
+	COMMON /T2HISTC/
+	     IHTYPE,ID,IDENT,ILOCS
+	    ,IDMIN,IDMAX,IVERSION,IOFSET
+	    ,IAD,IX,IY,IJUMP,IETYPE
+	    ,ENTRYS,XMIN,YMIN,XMAX,YMAX,XS,YS,ZMIN,ZMAX,VMIN,VMAX
+	    ,STATS,HVERSION
+	    ,IDVEC,SECT_OFFSET,NOPER
+	    ,NTUPL,NTUPL1,NTUPL2,VTUPL,NLIMTUPL,ILIMTUPL,LIMTUPL
+	    ,LEXIST,LHINIT,LHFILE,LEXACT,LTREE
+	    ,LENTRY,LSENT,LALL,LHIST,LMESH,LNTUPL,LARRAY,LTITLE
+	    ,LILTUPL,LINDEX,LAREA,LCHECK_MEM,LHWILD,LHTEST,LSTAT
+	    ,NMON_OPTIONS,IMON_OPTIONS
+	    ,NHNAME,NTNAME
+	    ,CURDIR,SAVDIR,NTSTDIR,TSTDIR,NTSTDIR2,TSTDIR2,CDIR
+	    ,SMON_OPTIONS;"
+	$SELECTSPEC;'
+"
+
+	IHTYPE		= Hist type (1,2,3)
+	ID		= Current hist ID
+	IDMIN,IDMAX	= Min/Max id's to search through
+	NHNAME,HNAME	= Size, string with current hist name
+	NTNAME,TNAME	= Temporary name string
+	ENTRYS		= Number of entries in hist.
+	XMIN...YS	= Hist limits
+	IX,IY		= Hist size (number of chan)
+	CURDIR,SAVDIR	= Current and saved directories
+	HB_SEARCH_ID	= Available IDs
+	LAREA		= .true. If current area printed
+	LCHECK_MEM	= .true. If check for memory resident only
+	LEXIST		= .true. If hist exists
+	LLOG		= .true. If log desired
+	LCONF		= .true. If confirmation desired
+	LHINIT		= .true. If Hists initialized
+	LHFILE		= Non zero If mapped to RZ File (1,2,3)Read/new/update
+	LHWILD		= .true. If wild search of area
+	LILTUPL		= .true. If NTUPL are illegal
+	LEXACT		= .true. If name string is not converter to upper case
+	LTREE		= .true. If search dir tree
+	LENTRY		= .true. If only hists with entries selected
+	LSENT		= .true. If only hists without entries selected
+	LNTUPL		= .true. If NTUPLS selected
+	LMESH		= .true. If Mesh selected
+	LHIST		= .true. If Histograms selected
+	LALL		= .true. If all selected
+	MAXTUPL		= Maximum number of NTUPLS
+	VTUPL		= Min/Max values of NTUPLS
+	CTUPL		= name of NTUPL
+	NTUPL		= Number of NTUPLS
+	SECT_OFFSET		= Location of Global section relative to MEMORY
+
+"
+
+%';SUBROUTINE'=';<RESET> <SET> ;"SUBROUTINE"'
+<SET>;					"Ready for reset"
+
+%E  BLOCK DATA T2_HIST_DATA  --- Initialize Hist data
+BLOCK DATA T2_HIST_DATA;
+   IMPLICIT NONE;
+   $T2HIST;
+   $MAINSPEC;
+   DATA LHTEST/.FALSE./;
+   DATA CDIR/'//PAWC','//FILE','//SECT','//'/;
+   DATA IDVEC(N_SYMBOL)/0/;
+   DATA IDVEC(N_XDATA)/1/;
+   DATA IDVEC(N_DXDATA)/100/;
+   DATA IDVEC(N_NDXDATA)/100/;
+   DATA IDVEC(N_YDATA)/2/;
+   DATA IDVEC(N_DYDATA)/100/;
+   DATA IDVEC(N_NDYDATA)/100/;
+   DATA IDVEC(N_ZDATA)/3/;
+   DATA IDVEC(N_DZDATA)/100/;
+   DATA IDVEC(N_NDZDATA)/100/;
+   DATA IDVEC(N_UDATA)/4/;
+   DATA IDVEC(N_DUDATA)/100/;
+   DATA IDVEC(N_NDUDATA)/100/;
+   DATA IDVEC(N_VDATA)/5/;
+   DATA IDVEC(N_DVDATA)/100/;
+   DATA IDVEC(N_NDVDATA)/100/;
+   DATA IDVEC(N_WDATA)/6/;
+   DATA IDVEC(N_DWDATA)/100/;
+   DATA IDVEC(N_NDWDATA)/100/;
+   DATA LIMTUPL/MAXTUPL*-$LARGE REAL,MAXTUPL*$LARGE REAL/;
+   DATA NTUPL1/1/,NTUPL2/$LARGE INTEGER/;
+   DATA LILTUPL/.false./;
+   DATA NLIMTUPL/0/;
+   DATA IETYPE/4/;
+   DATA CETYPE/' (1)',' (2)',' (N)',' (A)'/;
+   DATA HNAME/' '/, TNAME/' '/;
+   DATA NHNAME/1/;
+   DATA CURDIR/' '/; DATA SAVDIR/' '/;
+   DATA ILOCS/0/,ID/0/,IDENT/0/;
+   DATA LHINIT/.false./;
+   DATA LHFILE/0/;
+   DATA LHWILD/.true./;
+   DATA SECT_OFFSET/0/;
+   DATA IHTYPE/2/;
+   DATA IMON_OPTIONS/1,2/;
+   DATA NMON_OPTIONS/1,16/;
+   DATA SMON_OPTIONS/' ','NORAN VAR SYM=10'/;
+END;
+%E  LOGICAL FUNCTION T2_SET_HIST_DIR --- Set hist directory
+LOGICAL FUNCTION T2_SET_HIST_DIR(CHDIR,CHOPT);
+"
+	Set the selected HBOOK directory
+"
+   IMPLICIT NONE;
+   $T2HIST;
+   CHARACTER*(*) CHDIR,CHOPT;
+   INTEGER IQUEST;
+   COMMON /QUEST/IQUEST;
+"	IQUEST		= 0 if CALL to HCDIR is successful"
+   IF (HVERSION .lt. 4.099) THEN;
+	CALL HB_HCDIR(CHDIR,CHOPT);
+   ELSE;
+	CALL HCDIR(CHDIR,CHOPT);
+   ENDIF;
+   T2_SET_HIST_DIR=IQUEST.eq.0 .or. CHOPT .ne. ' ';
+   END;
+
+%E  INTEGER FUNCTION T2_HIST_ID ( ) --- Get current ID
+INTEGER FUNCTION T2_HIST_ID ( );
+"
+	Give current ID value, called by TOKEN/TDGETV
+"
+$T2HIST ; T2_HIST_ID = ID ; RETURN ; END ;
+
+%E  SUBROUTINE T2_HIST_PARSE_TYPE --- Setup to select hist type
+SUBROUTINE T2_HIST_PARSE_TYPE;
+"
+	Setup to select type of histogram (MESH/NTUPL....)
+"
+   IMPLICIT NONE;
+   $T2HIST;
+   $SPECIFICATION;
+   IF (LALL) THEN;
+      LALL=.false.;
+      LHIST=.false.;
+      LMESH=.false.;
+      LNTUPL=.false.;
+      LARRAY=.false.;
+   ENDIF;
+   GOTO (:HIST:,:MESH:,:NTUPL:,:ARRAY:) INTEG;
+   RETURN;
+:HIST:    LHIST=LTOKEN;   RETURN;
+:MESH:    LMESH=LTOKEN;   IF (.not.LTOKEN) LHIST=.true.; RETURN;
+:NTUPL:   LNTUPL=LTOKEN;  RETURN;
+:ARRAY:   LARRAY=LTOKEN;  RETURN;
+END;
+%E  SUBROUTINE T2_SET_MONITOR --- Set up monitor options
+SUBROUTINE T2_SET_MONITOR($INFO,$CARD);
+"
+	Set options for regular data and mesh data for the monitor command
+	You may either BIN,HISTOGRAM,JOIN, or Contour data
+		example
+	SET MONITOR DATA HIST 'options'
+	SET MONITOR ALL  HIST 'options'
+"
+   IMPLICIT NONE;
+   INTEGER $INFO(10);
+   CHARACTER*(*) $CARD;
+   $SPECIFICATION;
+   $T2HIST;
+   $SPECIFYP;
+   INTEGER I,ITYPE;
+   ITYPE=0;
+   <TOKEN KEY LOOP> <
+       ALL:201,BOTH:201,MESH:202,DATA:101 <ITYPE=INTEG;
+	  <TOKEN KEY> <
+	     HISTOGRAM:1:S,PLOT:2:S,JOIN:3:S,CONTOUR:4:S,BIN:5:S <
+		 <I=MOD(ITYPE,100),(ITYPE/100);
+		    IMON_OPTIONS(I)=INTEG;
+		    NMON_OPTIONS(I)=MAX(1,NSTRNG);
+		    SMON_OPTIONS(I)=STRNG(:(MAX(1,NSTRNG)));
+		 >
+	     >
+	  >
+       >
+   >
+   IF ($ERROR) RETURN;
+   IF (ITYPE .eq. 0) THEN;
+      SMON_OPTIONS(1)=' ';
+      SMON_OPTIONS(2)='NORAN VAR SYM=10';
+      <I=1,2; NMON_OPTIONS(I)=T2BTRIM(SMON_OPTIONS(I)); IMON_OPTIONS(I)=I; >
+   ENDIF;
+END;
+%E  SUBROUTINE T2_SHOW_MONITOR --- Set up monitor options
+SUBROUTINE T2_SHOW_MONITOR;
+"
+	Show the monitor options
+	Type them on screen
+"
+   IMPLICIT NONE;
+   $SPECIFICATION;
+   $T2HIST;
+   $SPECIFYP;
+   CHARACTER*10  STYPE(2) /'DATA','MESH'/;
+   CHARACTER*10 SOPTIONS(5) /'HISTOGRAM','PLOT','JOIN','CONTOUR','BIN'/;
+   INTEGER I,J;
+   WRITE($TERMINAL OUT,*)'  Monitor   Type of plot';
+   <I=1,2;
+      J=IMON_OPTIONS(I);
+      WRITE($TERMINAL OUT,*) '   ',STYPE(I),'  ',SOPTIONS(J);
+      J=T2BTRIM(SMON_options(I));
+      IF (SMON_OPTIONS(I).ne.' ') WRITE($TERMINAL OUT,*)
+	  '     "'//SMON_OPTIONS(I)(:J)//'"';
+   >
+END;
+%E  SUBROUTINE T2_MONITOR_HIST --- Set up to monitor hists
+SUBROUTINE T2_MONITOR_HIST($INFO,$CARD);
+"
+	PARSE and execute MONITOR HISTOGRAM command
+
+"
+   IMPLICIT NONE;
+   INTEGER $INFO(10);
+   CHARACTER*(*) $CARD;
+   $SPECIFICATION;
+   $T2HIST;
+   $SPECIFYP;
+   EXTERNAL RZFDIR;
+   EXTERNAL T2_HIST_DATA;
+   INTEGER INFO1(10);
+   CHARACTER*128 SAVDIR2;
+   CHARACTER*20 CIDENT;
+   CHARACTER*20 OPTH; INTEGER NOPTH;
+   $BOOLEAN LRESCALE,LFIRST,LEXPAND,LRESET,LOVER,LTREE2;
+   $BOOLEAN LSCAN,LIDENT,LTIME,LPAUSE,LTEMP;
+
+   INTEGER    DEF_WINDOWS , MAX_WINDOWS ;
+   PARAMETER (DEF_WINDOWS=20);			"Default number of wondows"
+   PARAMETER (MAX_WINDOWS=40);			"Maximim windows"
+
+   REAL WTIME,VLIM(2),T,VAL1,VAL2,VAL3;
+   REAL HFAC(MAX_WINDOWS);
+   REAL HLIM(3,2,MAX_WINDOWS),XFAC,YFAC,ZFAC;
+   $BOOLEAN LLIM(2,MAX_WINDOWS),LVAL,LCOUNTS,LLOG2;
+   INTEGER IHISID(MAX_WINDOWS),IHISDIR(MAX_WINDOWS),IMAXWIN,IDIR,LEVEL,LEVEL0;
+   INTEGER ISCANWIN,ISKIP,JSKIP,IVAL,ICOUNTS;
+   INTEGER IHISXYZ(MAX_WINDOWS);
+   INTEGER IHISENT(MAX_WINDOWS);
+   INTEGER ILOOP1,ILOOP2,LOOPS1,LOOPS2,I,J,K,IXYZ,IWINDOW,NWINDOWS,IDINDEX;
+   INTEGER IDMIN2,IDMAX2,IOPER;
+   INTEGER IRDOPT/4/;
+   INTEGER HB_SEARCH_ID;
+   LOGICAL HB_HEXIST,ISHD,T2_SET_HIST_DIR,INTRAC;
+   REAL XYMM(2,2); EQUIVALENCE (XMIN,XYMM);
+   REAL HMIN,HMAX;
+   CHARACTER*4 COPT(2)/'PMIN','PMAX'/;
+   CHARACTER CXYZ*3 /'XYZ'/;
+   INTEGER N_SELECT2;
+   CHARACTER*2 CWIN(MAX_WINDOWS)/MAX_WINDOWS*'  '/;
+   IF ( CWIN(1) .eq. '  ')THEN;
+	<I=1,MAX_WINDOWS;
+	    WRITE(CWIN(I),'(I2)') I;		"Setup window number array"
+	>
+   ENDIF;
+   NWINDOWS=DEF_WINDOWS;			"Maximum number of windows"
+   WTIME=10.0;					"Interval time"
+   ISKIP=0;					"Numver of hists to skip"
+   LOOPS2=9999;					"Default Number of repeats"
+   LOOPS1=1;
+   IF (.not. INTRAC(I)) THEN;			"Not interactive ?"
+      LOOPS2=1;					"No repeats"
+      WTIME=0;					"Do not wait"
+   ENDIF;
+   LRESCALE=.true.;				"Reset hists when needed"
+   LEXACT=.false.;
+   LEXPAND=.false.;				"expand scale"
+   LALL=.true.;
+   LHIST=.true.;				"Monitor regular hist"
+   LMESH=.true.;				"Monitor mesh hist"
+   LARRAY=.false.;
+   LNTUPL=.false.;				"Do not Monitor Ntupl"
+   LENTRY=.true.;
+   LSENT=.false.;				"Do not check entries"
+   LSTAT=.false.;				"Monitor statistics"
+   LOVER=.true.;				"Monitor overflows"
+   LTREE=$MODE TREE;				"Do Tree scan ?"
+   NTSTDIR=0;
+   LSCAN=.false.;				"Scan mode off"
+   LIDENT=.true.;				"Plot ident"
+   LTIME=.true.;				"Plot time"
+   LHTEST=.false.;
+   LLOG=.false.;
+   LAREA=.false.;
+   LPAUSE=.false.;				"Do not pause"
+   IDMIN2=ID; IDMAX2=ID;
+   IVERSION=0;
+   N_SELECT=0;
+   N_SELECT2=0;
+   OPTH=' '; NOPTH=1;
+   IF (IRDOPT.eq.4 .and. SECT_OFFSET.eq.0) IRDOPT=3;
+   IF (IRDOPT.eq.3 .and. LHFILE .eq.0) IRDOPT=0;
+   IOPER=0;
+   <TOKEN KEY LOOP> <
+      COUNTS:1::99	< ICOUNTS=INTEG; >
+      ENTRIES:Y		< LENTRY=LTOKEN ; LSENT=.true.; >
+      EXACT:Y		< LEXACT=LTOKEN; >
+      EXPAND:Y	< LEXPAND=LTOKEN; >
+      AVAILABLE:0,FILE:3:F,SECTION:4:T   <
+	 IRDOPT=INTEG;
+	 IF (NSTRNG.gt.0) THEN;
+	   IF (IRDOPT .eq. 3)
+		C_FILE=STRNG; N_FILE=NSTRNG;
+		CALL T2_SET_DEFAULT_FILE(c_file,N_file,'hbook.bin');
+		CALL T2_READ_HIST(c_File(:N_FILE),0,$INFO,$CARD,-IRDOPT,'S');
+	 ENDIF;
+      >
+      IDENT <
+	 VAL1=1; VAL2=0.95*$LARGE INTEGER;
+	 CALL T2FRTO($INFO,$CARD,VAL1,VAL2,VAL3);
+	 IDMIN2=NINT(VAL1); IDMAX2=NINT(VAL2);
+	 VAL3=0;
+      >
+      INTERVAL:0:3600:10 < WTIME=FLOTNG; >
+      HISTOGRAM:1:Y,MESH:2:Y
+	 < CALL T2_HIST_PARSE_TYPE; >
+      LOG:Y		< LLOG=LTOKEN; >
+      SELECT:S,NAME:S    < CALL T2_HIST_PARSE_NAME; N_SELECT2=N_SELECT; >
+      STATISTICS:Y	< LSTAT=LTOKEN; >
+      OVERFLOWS:Y	< LOVER=LTOKEN; >
+      PAUSE:Y		< LPAUSE=LTOKEN; >
+      REPEAT:1::9999     < LOOPS2=INTEG; >
+      RESCALE:Y	< LRESCALE=LTOKEN; >
+      SCAN:Y		< LSCAN=LTOKEN; >
+      SHOW:Y		< LIDENT=LTOKEN; >
+      SKIP:0::1	< ISKIP=INTEG; >
+      TIME:Y		< LTIME=LTOKEN; >
+      TREE:Y		< LTREE=LTOKEN; >
+      WINDOWS:1:40:20    < NWINDOWS=MIN(INTEG,MAX_WINDOWS); >
+   >
+   IF ($ERROR) RETURN;
+   LLOG2=LLOG;
+   LCOUNTS=ICOUNTS.ne.0;
+   LTREE2=LTREE;
+   ISHD = T2_SET_HIST_DIR(SAVDIR2,'R');
+   CURDIR=SAVDIR2;
+   IF (LTREE2) CURDIR=' ';
+   IF (LOVER) THEN;
+      OPTH=OPTH(:NOPTH)//'OVERFLOW'; NOPTH=T2BTRIM(OPTH);
+   ENDIF;
+   IOFSET=0; IVERSION=0;
+   IF (LSCAN) THEN;
+      LOOPS1=LOOPS2; LOOPS2=1;
+   ENDIF;
+   <ILOOP1=1,LOOPS1;				"Loop for scans"
+    ISCANWIN=0;
+    JSKIP=0;
+    IF (LTREE2) ISHD = T2_SET_HIST_DIR(SAVDIR2,' ');
+    IDIR=0;
+    IMAXWIN=0;
+:SEARCH:
+    IF (LTREE2) THEN;
+      CALL HB_SEARCH_DIR(CURDIR,LEVEL,LEVEL0);
+      IF (CURDIR(1:1).eq.' ') THEN;
+	 GOTO :SEARCH END:;
+      ELSEIF (NTSTDIR.ne.0) THEN;
+	 IF (.not.MATCHC(CURDIR(:T2BTRIM(CURDIR)),TSTDIR(:NTSTDIR)))
+		GOTO :SEARCH:;
+      ENDIF;
+      ISHD = T2_SET_HIST_DIR(CURDIR,' ');
+      IDIR=IDIR+1;
+    ENDIF;
+    IDINDEX=1;
+:SEARCH SCAN:
+    IDMIN=IDMIN2; IDMAX=IDMAX2;
+    CALL T2_READ_HIST(' ',0,$INFO,$CARD,IRDOPT,'S');
+    IF ($ERROR) GOTO :END:;
+"
+		Here we search for the selected hists.
+		If they exist, save the ID's, Subdir number
+		and the scales
+
+"
+    <IWINDOW=IDINDEX,HB_SEARCH_ID(0);
+      IF ($TRAP) goto :END:;				"Done ?"
+      ID=HB_SEARCH_ID(IWINDOW);				"Get ID"
+      IF (IDMIN2.ne.0 .and.
+	  (ID.lt.IDMIN2 .or. ID.gt.IDMAX2)) <NEXT>;	"Not ID ?"
+      CALL T2_HIST_TEST_STATUS($INFO,$CARD,ID);	"Get hist status"
+      IF (.not. LEXACT) CALL T2UPCS(HNAME(:NHNAME));
+      IF (LEXIST) THEN;
+	 JSKIP=JSKIP+1;				"Number of windows to use"
+	 IF (JSKIP .le. ISKIP) <NEXT>		"SKip this one ?"
+	 ISCANWIN=ISCANWIN+1;			"Number of windows to use"
+	 IMAXWIN=IMAXWIN+1;			"Number of windows to use"
+	 HFAC(IMAXWIN)=2;			"Scale factors"
+	 IHISID(IMAXWIN)=ID;			"Save it"
+	 IHISDIR(IMAXWIN)=IDIR;			"Save directory level"
+	 IF (LOVER) THEN;
+	    XMIN=XMIN-XS; XMAX=XMAX+XS;
+	    YMIN=YMIN-YS; YMAX=YMAX+YS;
+	 ENDIF;
+	 XMIN=XMIN-XS; XMAX=XMAX+XS;
+	 YMIN=YMIN-YS; YMAX=YMAX+YS;		"Modify them"
+	 IXYZ=2; IF (IETYPE.eq.2) IXYZ=3;	"2 or 3-d ?"
+	 IHISXYZ(IMAXWIN)=IXYZ;			"Save hist type"
+	 <J=1,2;				"Upper/lower limits"
+	    K=2*IXYZ+J+62;			"Location of flags"
+	    LLIM(J,IMAXWIN)=FLAGS(K);		"Save old limit flags"
+	    <I=1,3;
+	       K=2*I+J+62;			"Location of limit flags"
+		IF (I.gt.IXYZ) THEN;		"Irrelevant limits?"
+		  HLIM(I,J,IMAXWIN)=0;
+		ELSEIF (I.eq.IXYZ .or. FLAGS(K)) THEN;	"Old limits ?"
+		  HLIM(I,J,IMAXWIN)=XYZLIM(I,J);	"And the limit set flags"
+		ELSE;				"New limits"
+		  HLIM(I,J,IMAXWIN)=XYMM(I,J);
+		ENDIF;
+	    >
+	 >
+	 IF (IMAXWIN.ge.NWINDOWS) GOTO :SEARCH END:;
+      ENDIF;
+   >
+   IF (LTREE2) GOTO :SEARCH:;
+:SEARCH END:
+   IDINDEX=IWINDOW+1;
+   IF (IMAXWIN .eq. 0) THEN;
+      IF (LSCAN .and.ISCANWIN.gt.0) <NEXT>;	"Continue scan ?"
+      ERROR OUT;('*** ERROR *** Hist does not exist');
+      GOTO :END:;
+   ENDIF;
+   <I=IMAXWIN,2,-1; IHISDIR(I)=IHISDIR(I)-IHISDIR(I-1); >
+   LFIRST=.true.;				"First time through loop"
+   LRESET=.false.;				"Not reset next time"
+   LTREE=$MODE TREE;				"Do Tree scan ?"
+   <ILOOP2=1,LOOPS2;				"For selected loops"
+      IF ($TRAP) GOTO :END:;			"Done ?"
+      IF (LLOG2) THEN;
+	 CALL DATE(CIDENT);
+	 CALL TDTIME(CIDENT(11:20));
+	 WRITE($TERMINAL OUT,*)' LOOP',ILOOP2,' ',CIDENT;
+      ENDIF;
+      IF (LCOUNTS) IOPER=5;
+      IF (LTREE2) THEN;				"Up dir tree ?"
+	 ISHD = T2_SET_HIST_DIR(SAVDIR2,' ');	"Setup dir"
+	 CURDIR=' ';
+      ENDIF;
+      IF (LFIRST) THEN;
+	 IOPER=0;
+	 CALL TDNEW(' ');			"Rescale hists ?"
+"
+	 IF (NDIMNS(1) .eq.0 )NDIMNS(1)=2;
+"
+      ENDIF;
+      IF (IMAXWIN.gt.1) CALL TDSETS('WINDOW 1 OF '//CWIN(IMAXWIN));
+      N_SELECT=0;
+      <IWINDOW=1,IMAXWIN;			"Hist all windows"
+	 IF ($TRAP) GOTO :END:;			"Done ?"
+	 LLOG=LLOG2;
+	 ID=IHISID(IWINDOW);
+	    <I=1,IHISDIR(IWINDOW);
+	    CALL HB_SEARCH_DIR(CURDIR,LEVEL,LEVEL0);	"Set correct dir"
+	    ISHD = T2_SET_HIST_DIR(CURDIR,' '); >
+	 IDMIN=ID;				"Min/max data to get"
+	 IDMAX=ID;
+	 IF (IRDOPT .ne. 0 .and. HB_HEXIST(ID)) CALL HDELET(ID);
+	 CALL T2_READ_HIST(' ',IOPER,$INFO,$CARD,IRDOPT,'S');	"Get the hist"
+	 LEXIST=HB_HEXIST(ID);			"Does it exist?"
+	 IF (.not.LEXIST) <NEXT>;		"If not skip it"
+	 IXYZ=IHISXYZ(IWINDOW);			"2 or 3-d ?"
+	 CALL HB_HNOENT(ID,I);			"Entries"
+	 IF (LFIRST .or. I.ne.IHISENT(IWINDOW)) THEN;	"New data ?"
+	    IF (LSTAT .and. TITLIN(4).lt.2) TITLIN(4)=2;
+	    IF (LIDENT.and. TITLIN(2).lt.2) TITLIN(2)=2;
+	    IF (LCOUNTS.and.IXYZ.eq.3) THEN;
+		IF (.not.LFIRST) THEN;
+		  CALL HOPERA(ID,'-',ID+1000000,ID,1.0,1.0);
+		  CALL HOPERA(ID,'+',ID+1000000,ID+1000000,1.0,1.0);
+		ELSE;
+		  CALL HOPERA(ID,'+',ID,ID+1000000,1.0,0.0);
+		ENDIF;
+	    ENDIF;
+	    CALL TDSETS('HIST CURRENT '//OPTH(:NOPTH));	"Get it"
+	    IF (LRESCALE.or.LFIRST) THEN;	"Auto rescale ?"
+			"Check if VALUE has been spec"
+		IF (IXYZ.eq.3 .and. LCOUNTS) THEN;
+		  VLIM(1)=0;
+		  VLIM(2)=ICOUNTS;
+		ELSE;
+		  CALL HB_GET_OPT(ID,COPT(1),OUTSTR(:1),VLIM(1),IVAL,LVAL);
+		  IF (.not. LVAL) VLIM(1)=HMIN(ID);	"Value min,max"
+		  CALL HB_GET_OPT(ID,COPT(2),OUTSTR(:1),VLIM(2),IVAL,LVAL);
+		  IF (.not. LVAL) VLIM(2)=HMAX(ID);	"Value min,max"
+		ENDIF;
+		IF (LEXPAND.and.VLIM(1).eq.0.and.VLIM(2).gt. .9 .and.
+		   IXYZ.ne.3) THEN;
+		  T=$LARGE REAL; <K=1,2; T=-T; <J=1,3; TLIM(J,K)=T; > >
+		  TLIM(IETYPE+1,1)=0.001;
+			"Find the max/lim value in X/Y/Z"
+		  CALL T2DTLM(TLIM,1,99999,1,99999,1,1,XFAC,YFAC,ZFAC
+		    ,HLIM(1,1,IWINDOW),2,'*');
+		  HLIM(1,1,IWINDOW)=HLIM(1,1,IWINDOW)-XS/2;
+		  HLIM(2,1,IWINDOW)=HLIM(2,1,IWINDOW)+XS/2;
+		  HLIM(1,2,IWINDOW)=HLIM(1,2,IWINDOW)-YS/2;
+		  HLIM(2,2,IWINDOW)=HLIM(2,2,IWINDOW)+YS/2;
+		  VLIM(1)=HLIM(IETYPE+1,1,IWINDOW);
+		  VLIM(2)=HLIM(IETYPE+1,2,IWINDOW);
+		ENDIF;
+		IF (.not. LEXPAND.or.IETYPE.eq.2) VLIM(1)=MIN(VLIM(1),0.0);
+		IF (VLIM(1).eq.VLIM(2)) THEN;
+		  VLIM(1)=VLIM(1)-.5; VLIM(2)=VLIM(2)+.5;
+		  T=1.0;
+		ELSE;
+			"Ratio of OLD/Current difference"
+			"When this gets big, hist is smaller than last time"
+		  T=(HLIM(IXYZ,2,IWINDOW)-HLIM(IXYZ,1,IWINDOW))/
+				 (VLIM(2)-VLIM(1));
+		ENDIF;
+		IF (.not. LFIRST) THEN;
+		 LRESET= LRESET .or.
+		    I.lt.IHISENT(IWINDOW) .or.	"Hist zeroed ?"
+		    (.not. LLIM(1,IWINDOW) .and.	"Too low ?"
+			HLIM(IXYZ,1,IWINDOW) .gt. VLIM(1)) .or.
+		    (.not. LLIM(1,IWINDOW) .and.	"Too high ?"
+			HLIM(IXYZ,2,IWINDOW) .lt. VLIM(2)) .or.
+		    T .gt. 2;			"Ratio too big ?"
+		  IF (LRESET) <EXIT>;
+		ELSE;
+		  T=VLIM(2)-VLIM(1);		"Spread"
+		  VLIM(2)=VLIM(2)+T;		"Value min,max"
+		  IF (VLIM(1).lt.0) THEN;
+		      VLIM(1)=VLIM(1)-.5*T;	"Center hist ?"
+		  ELSEIF (VLIM(1).gt.0) THEN;
+		      VLIM(1)=MAX(0.0,VLIM(1)-.2*T);
+		  ENDIF;
+		ENDIF;
+	    ENDIF;
+	    IHISENT(IWINDOW)=I;			"Save number of entries"
+	    IF (LFIRST.or.IMAXWIN.gt.1) THEN;
+		IF (IMAXWIN.gt.1) CALL TDSETS('WINDOW '//CWIN(IWINDOW));
+		<J=1,2;
+		  IF (LFIRST .and. .not. LLIM(J,IWINDOW))
+		     HLIM(IXYZ,J,IWINDOW)=VLIM(J);	"Set it from VLIM"
+		     <I=1,3;
+		     XYZLIM(I,J)=HLIM(I,J,IWINDOW);	"Restore old limits"
+		     K=2*I+J+2;
+		     FLAGS(K)=.true.;
+		  >
+		>
+	    ENDIF;
+	    <I=3,10; INFO1(I)=0;>;
+	    INFO1(2)=-3;
+	    IF (IXYZ.EQ.2 .OR. .not. LCOUNTS) THEN;
+		INFO1(1)=NMON_OPTIONS(IXYZ-1);
+		INTEG=0;
+		I=ABS(IMON_OPTIONS(IXYZ-1));
+		<CASE> I <OF> :HIST:,:PLOT:,:JOIN:,:CONTOUR:,:BIN: <
+		  :HIST:    < CALL T2_HISTOGRAM(INFO1,SMON_OPTIONS(IXYZ-1)); >
+		  :PLOT:    < CALL T2_PLOT(INFO1,SMON_OPTIONS(IXYZ-1)); >
+		  :JOIN:    < CALL T2_JOIN(INFO1,SMON_OPTIONS(IXYZ-1)); >
+		  :CONTOUR: < CALL T2CNTR(INFO1,SMON_OPTIONS(IXYZ-1)); >
+		  :BIN:     < INTEG=1;
+			      CALL T2_HISTOGRAM(INFO1,SMON_OPTIONS(IXYZ-1)); >
+		>
+	    ELSE;
+		INFO1(1)=6;
+		CALL T2_PLOT(INFO1,'COUNTS');
+	    ENDIF;
+	    IF (LFIRST) CALL T2_HIST_TITLE;
+	    IF (LFIRST) THEN;
+		IF (LIDENT) THEN;
+		  WRITE(CIDENT,'(I10)',ERR=:ERR1:)ID;
+:ERR1:
+		  CALL T2SQEZ(CIDENT(:10),I);
+		  CALL TDTEXT('BOTTOM RJUST LINES=0'
+		     ,CURDIR(:T2BTRIM(CURDIR))//': '//CIDENT(:I),' ');
+		ENDIF;
+		IF (LSTAT .and. ENTRYS.gt.0) THEN;
+		  IF (.not.LLOG) CALL T2_HIST_GET_STATISTICS(ID);
+		  NTNAME=0;
+		  IF (IETYPE.eq.1) THEN;
+		     CALL T2_HIST_LABEL('Under ',STATS(4)
+			,OUTSTR,TNAME,NTNAME);
+		     CALL T2_HIST_LABEL(' Sum ',STATS(5)
+			,OUTSTR,TNAME,NTNAME);
+		     CALL T2_HIST_LABEL(' Over ',STATS(6)
+			,OUTSTR,TNAME,NTNAME);
+		  ELSE;
+		     T=0;
+		     <J=1,9; IF (J.ne.5) T=T+STATS(J); >
+		     CALL T2_HIST_LABEL('Under/over ',T
+			,OUTSTR,TNAME,NTNAME);
+		     CALL T2_HIST_LABEL(' Sum ',STATS(5)
+			,OUTSTR,TNAME,NTNAME);
+		  ENDIF;
+		  IF (NTNAME.gt.0)
+		     CALL TDTEXT('TOP LINES=0'
+		     ,OUTSTR(:NTNAME),TNAME(:NTNAME));
+		ENDIF;
+		IF (IWINDOW .eq. 1 .and. LTIME) THEN;
+		  CALL DATE(CIDENT);
+		  CALL TDTIME(CIDENT(11:20));
+		  CALL T2SQEZ(CIDENT(1:20),I);
+		  T=0.1*ABS(TITSIZ);
+		  CALL TDTEXT(' ',CIDENT(:I),' ',T,T);
+			"Date time at bottom"
+		ENDIF;
+	    ENDIF;
+	 ENDIF;
+      >
+      LFIRST=LRESET; LRESET=.false.;
+      CALL TDFLSH;
+      IF (LPAUSE) THEN;		"Wait for user"
+	 CALL T2WAIT(PRMP2(1:NPRMP2),LTEMP);
+	 IF (.NOT. LTEMP) goto :END:;
+      ELSE;
+	 CALL T2_WAIT(WTIME);		"Wait for time"
+      ENDIF;
+   >
+    IF ($TRAP) goto :END:;	"Done ?"
+    IF (LSCAN.and.CURDIR(1:1).ne.' ') THEN;
+      IMAXWIN=0;
+      N_SELECT=N_SELECT2;
+      GOTO :SEARCH SCAN:;
+    ENDIF;
+    IF (ISCANWIN.eq.0) <EXIT>;
+   >
+:END:
+   ISHD = T2_SET_HIST_DIR(SAVDIR2,' ');
+END;
+SUBROUTINE T2_HIST_LABEL(STR,VAL,TEXT,CASE,N);
+   IMPLICIT NONE;
+   CHARACTER*(*) STR,TEXT,CASE;
+   INTEGER NTEXT,NCASE,NFIRST,I,N,IDIGIT;
+   REAL VAL,PARM(10)/10.,9*0.0/;
+   $SPECIFICATION;
+   I=LEN(STR);
+   TEXT(N+1:N+I)=str;
+   CASE(N+1:N+I)=' '; N=N+I;
+   IDIGIT=6;
+   IF (ISIGFG.gt.0) IDIGIT=ISIGFG;
+   CALL T2TLAB(9,VAL,PARM,IDIGIT,1
+      ,TEXT(N+1:),NTEXT,CASE(N+1:),NCASE,NFIRST);
+   N=N+NTEXT;
+END;
+%E  SUBROUTINE T2_HIST_INIT --- Set up hists
+SUBROUTINE T2_HIST_INIT;
+"
+	If histogram are is not initialized do it
+"
+   IMPLICIT NONE;
+   EXTERNAL T2_HIST_DATA;
+   $T2HIST;
+   INTEGER MEMORY($MEMSIZ);
+   COMMON /PAWC/MEMORY;
+   IF (MEMORY(1).eq.0) THEN;
+      CALL HLIMIT($MEMSIZ);
+      CALL HERMES($TERMINAL OUT);
+   ENDIF;
+   LHINIT=.true.;
+   CALL HB_GET_OPT(0,'VERSION',TNAME,HVERSION,IX,LEXIST);
+END;
+%E  SUBROUTINE T2_HIST_GET_STATISTICS --- Get hist statistics
+SUBROUTINE T2_HIST_GET_STATISTICS(IDH);
+"
+	Get histogram statistics
+"
+   IMPLICIT NONE;
+   $SPECIFICATION;
+   $SPECIFYNONE;
+   INTEGER IDH,I,J,K;
+   REAL HMIN,HMAX,HSUM,HI,HIJ,HSTATI;
+   LOGICAL LTEST;
+   EXTERNAL T2_HIST_DATA;
+   $T2HIST;
+   <I=1,MAX_STATS; STATS(I)=0; >
+   VMIN=HNONE; VMAX=HNONE;
+   CALL HB_HNOENT(IDH,ENTRYS);		"Entries"
+   CALL HB_GET_OPT(IDH,'RANG',OUTSTR,ZMAX,I,LTEST);
+   IF (LTEST) THEN;
+      ZMIN=-ZMAX;
+      IF (I.lt.32.and.I.gt.0) ZMIN=0;
+   ELSE;
+      ZMIN=HNONE; ZMAX=HNONE;
+   ENDIF;
+   IF ((CURDIR(:6) .ne. CDIR(2) .and. CURDIR(:6) .ne. CDIR(3)) .and.
+	   ENTRYS.ne.0 .and. IETYPE.le.2) THEN;
+      STATS(10)=ENTRYS;
+      STATS(5)=HSUM(IDH);		"Sum"
+      VMIN=HMIN(IDH); VMAX=HMAX(IDH);	"Value min,max"
+      IF (IETYPE.eq.2) THEN;
+		"Get over/underflows for mesh data"
+	 <J=1,IX; STATS(2)=STATS(2)+HIJ(IDH,J,0);
+		  STATS(8)=STATS(8)+HIJ(IDH,J,IY+1);
+		  IF ($TRAP) RETURN; >
+	 <J=1,IY; STATS(4)=STATS(4)+HIJ(IDH,0,J);
+		  STATS(6)=STATS(6)+HIJ(IDH,IX+1,J);
+		  IF ($TRAP) RETURN; >
+		  STATS(1)=HIJ(IDH,0,0);
+		  STATS(3)=HIJ(IDH,IX+1,0);
+		  STATS(7)=HIJ(IDH,0,IY+1);
+		  STATS(9)=HIJ(IDH,IX+1,IY+1);
+      ELSE;
+	 STATS(4)=HI(IDH,0);			"Underflows"
+	 STATS(6)=HI(IDH,IX+1);			"Overflows"
+	 IF ($TRAP) RETURN;
+	 STATS(11)=HSTATI(IDH,1,'HIST',0);	"Mean"
+	 IF ($TRAP) RETURN;
+	 STATS(12)=HSTATI(IDH,2,'HIST',0);	"Std"
+      ENDIF;
+   ENDIF;
+END;
+%E  SUBROUTINE T2_HIST_PARSE_NAME  --- Parse hist name
+SUBROUTINE T2_HIST_PARSE_NAME;
+"
+	Parse input histogram name
+	If not exact make all names uppercase
+"
+   IMPLICIT NONE;
+   INTEGER I,J,K;
+   $SPECIFICATION;
+   $T2HIST;
+   N_SELECT=MIN(NSTRNG,LEN(C_SELECT));
+   IF (NSTRNG.gt.0) THEN;
+	IF (.not. LEXACT) CALL T2UPCS(STRNG(:N_SELECT));
+	C_SELECT=STRNG(:N_SELECT)//'*';
+	IF (C_SELECT(N_SELECT:N_SELECT).ne.'*')
+		N_SELECT=MIN(N_SELECT+1,LEN(C_SELECT));
+   ENDIF;
+END;
+%E  SUBROUTINE T2_HIST_PARSE_AREA  --- Parse and set directory specs.
+SUBROUTINE T2_HIST_PARSE_AREA($INFO,$CARD,LSET,LTRE);
+"
+	Parse and set an HBOOK directory
+"
+   IMPLICIT NONE;
+   INTEGER $INFO(10);
+   CHARACTER*(*) $CARD;
+   LOGICAL LSET,ISHD,T2_SET_HIST_DIR,LTRE;
+   INTEGER I,J,K;
+   $SPECIFICATION;
+   EXTERNAL T2_HIST_DATA;
+   $T2HIST;
+   ISHD = T2_SET_HIST_DIR(CURDIR,'R');
+   J=T2BTRIM(CURDIR);
+   IF (NSTRNG.le.0) THEN;
+      STRNG(:6)=CDIR(1); NSTRNG=6;
+   ELSEIF (STRNG(1:1) .eq. '/') THEN;
+      IF (NSTRNG.eq.1.or.STRNG(:NSTRNG).eq.'//') THEN;
+	 STRNG(:6)=CDIR(1); NSTRNG=6;
+      ELSEIF (STRNG(2:2).ne. '/') THEN;
+	 STRNG=CDIR(1)//STRNG; NSTRNG=NSTRNG+6;
+      ENDIF;
+   ELSEIF (STRNG(1:1).eq.'\') THEN;
+      <K=1,NSTRNG;
+	If (STRNG(K:K) .ne. '\') <EXIT>;
+	IF ( J .le. 2) THEN;
+	   ERROR OUT;'*** ERROR *** Too many "\" for current directory';
+	   RETURN;
+	ENDIF;
+	<I=J-1,1,-1; IF (CURDIR(I:I).eq.'/') <EXIT>; > J=I;
+      >
+      IF (STRNG(K:K) .eq. '/') K=K+1;
+      STRNG=CURDIR(:J)//STRNG(K:); NSTRNG=J+NSTRNG-K+1;
+   ELSE;
+      STRNG=CURDIR(:J)//'/'//STRNG(:NSTRNG);
+      NSTRNG=NSTRNG+J+1;
+   ENDIF;
+   IF (NSTRNG.gt.LEN(CURDIR)) THEN;
+      ERROR OUT;'*** ERROR *** Area too long';
+      RETURN;
+   ELSEIF (LCHECK_MEM .and. STRNG(:6).ne.CDIR(1)) THEN;
+      ERROR OUT;'*** ERROR *** Illegal root:"'//STRNG(:NSTRNG)//'"';
+      RETURN;
+   ENDIF;
+   IF (STRNG(NSTRNG:NSTRNG) .eq. '/') NSTRNG=NSTRNG-1;
+   J=2;			"First char in string"
+   K=0;
+   NTSTDIR=0;
+   IF (NSTRNG.lt.LEN(STRNG)) THEN;
+      NSTRNG=NSTRNG+1;
+      STRNG(NSTRNG:NSTRNG)='/';
+   ENDIF;
+   <I=3,NSTRNG;
+      IF (STRNG(I:I).ne.' '.and.STRNG(I:I).ne.'        ') THEN;
+	 K=K+1; J=J+1; STRNG(J:J)=STRNG(I:I);
+	 IF (STRNG(J:J) .eq. '/') THEN;
+	    IF (K.eq.0 ) THEN;
+		ERROR OUT;'*** ERROR *** Null subdir "'//
+		  STRNG(I:NSTRNG)//'"';
+		RETURN;
+	    ENDIF;
+	    IF (LHWILD .and. NTSTDIR.eq.0 .and.
+			     INDEX(STRNG(J-K:J),'*') +
+			     INDEX(STRNG(J-K:J),'%').ne.0) THEN;
+		NTSTDIR=MAX(2,J-K-1);
+		IF (.not. (LTREE.or.LTRE)) THEN;
+		  ERROR OUT;
+		  '*** ERROR *** Wild character illegal "'
+		      //STRNG(J-K+1:J)//'"';
+		  RETURN;
+		ENDIF;
+		LTREE=.true.;
+	    ENDIF;
+	    K=0;
+	 ELSEIF ( K.gt.16 .or. J.gt.LEN(CURDIR)) THEN;
+	    ERROR OUT;'*** ERROR *** Name exceeds max length "'//
+		STRNG(J-K+1:J)//'"';
+	    RETURN;
+	 ENDIF;
+      ENDIF;
+   >
+   J=J-1;
+   NSTRNG=J;
+
+   IF (NTSTDIR.gt.0) THEN;
+      TSTDIR=STRNG(:NSTRNG);
+      NSTRNG=NTSTDIR;
+      NTSTDIR=J;
+   ENDIF;
+   IF (LSET) THEN;
+      IF (.NOT. T2_SET_HIST_DIR(STRNG(:NSTRNG),' ')) THEN;	"Set new directory"
+	 ERROR OUT;'*** ERROR *** Area does not exist "'//
+	   STRNG(1:NSTRNG)//'"';
+      ENDIF;
+      ISHD = T2_SET_HIST_DIR(CURDIR,'R');
+   ELSE;
+      CURDIR=STRNG(:NSTRNG);
+   ENDIF;
+END;
+%E  SUBROUTINE T2_SHOW_HIST --- Show available histograms
+SUBROUTINE T2_SHOW_HIST($INFO,$CARD);
+"
+	Show a list of histograms
+"
+   IMPLICIT NONE;
+   INTEGER $INFO(10);
+   CHARACTER*(*) $CARD;
+   $SPECIFICATION;
+   $SPECIFYNONE;
+   EXTERNAL T2_HIST_DATA;
+   $T2HIST;
+   INTEGER	MEMORY($MEMSIZ);
+   REAL		FMEMORY($MEMSIZ);
+   COMMON	/PAWC/MEMORY;
+   EQUIVALENCE	(MEMORY,FMEMORY);
+   $BOOLEAN LOPTN,LSEARCH,LTITL,LCONT,LVAL;
+   LOGICAL ISHD,T2_SET_HIST_DIR,T2_GET_TUPL;
+   INTEGER IVECT(20),NVECT,IWIDE,IHIGH,IDIGIT,IW,IR;
+   INTEGER I,J,K,L,INDX,IDH;
+   REAL T,X0,X1,Y0,Y1;
+   INTEGER MAXH(2),MAXN,LEVEL,LEVEL0,IVAL;
+   INTEGER HB_SEARCH_ID;
+   if (.not.LHINIT) CALL T2_HIST_INIT;	"Initialize hist area"
+$VAX;
+	"Figure out floating point format"
+   CALL T2_TTSTAT(IWIDE,IHIGH);		"Get terminal width/height"
+   IWIDE=MIN(IWIDE,$TTRECL);
+   IDIGIT=ISIGFG;			"Number of significant figures"
+   IF (IDIGIT.le.0) IDIGIT=3;		"Default is 3"
+   %'$IF'=':';
+   %'$IR'='"<IR>"'
+   %'$ID'='"<IDIGIT>"';
+   %'$IW'='"<IW>"';
+$ELSE;
+   IWIDE=80;			"Fixed size output"
+   IDIGIT=6;
+   %'$IF'='';
+   %'$IR'='5';
+   %'$ID'='6';
+   %'$IW'='14';
+$END;
+   MAXH(1)=0; MAXH(2)=$LARGE INTEGER;
+   LCONT=.false.;		".true. list contents"
+   LSTAT=.false.;		".true. lists hist statistics"
+   LOPTN=.false.;		".true. lists hist options"
+   LALL=.true.;
+   LHIST=.true.;		".true. lists hists according to type"
+   LMESH=.true.;		".true. only lists mesh hists"
+   LARRAY=.true.;
+   LNTUPL=.true.;		".true. If NTUPL desired"
+   LENTRY=.true.;		".true. only lists hists with entries"
+   LSENT=.false.;		".true. lists hists according to entries"
+   LSEARCH=.false.;		".true. omits area if hist not found"
+   LTREE=$MODE TREE;				"Do Tree scan ?"
+   NTSTDIR=0;
+   LEXACT=.false.;		".true. makes names case sensative."
+   LTITL=.false.;
+   LHTEST=.false.;
+   LLOG=.true.;
+   LAREA=.false.;
+   N_SELECT=0;
+   ISHD = T2_SET_HIST_DIR(SAVDIR,'R');			"Save current dir"
+   NVECT=0;
+   INDX=0;
+   <TOKEN LOOP> <
+      KEY:: <
+	 AREA:T,DIRECTORY:T <
+	    LCHECK_MEM=.false.;
+	    CALL T2_HIST_PARSE_AREA($INFO,$CARD,.true.,.true.); >
+	 EXACT:Y  < LEXACT=LTOKEN; >
+	 TREE:Y   < LTREE=LTOKEN; >
+	 SEARCH:Y < LSEARCH=LTOKEN; >
+	 CURRENT  < INDX=2; MAXH(1)=ID; MAXH(2)=ID; >
+	 IDENT    < INDX=0;>
+	 FROM     < INDX=1;>
+	 TO       < INDX=2;>
+	 ALL:Y,FULL:Y,BRIEF:N < LLOG=LTOKEN;  LSTAT=LTOKEN; LOPTN=LTOKEN; >
+	 OPTIONS:Y  < LOPTN=LTOKEN; >
+	 STATISTICS:Y < LSTAT=LTOKEN; >
+	 CONTENTS:Y < LCONT=LTOKEN; >
+	 ENTRIES:Y  < LENTRY=LTOKEN; LSENT=.true.; >
+	 HISTOGRAM:1:Y,MESH:2:Y,NTUPL:3:Y,ARRAY:4:Y
+	    < CALL T2_HIST_PARSE_TYPE; >
+	 SELECT:S,NAME:S < CALL T2_HIST_PARSE_NAME; >
+	 LINES,ROWS     < CALL T2ROWS($INFO,$CARD,N3,N4); >
+	 POINTS,COLUMNS < CALL T2PNTS($INFO,$CARD,N1,N2);>
+	 SELECTIONS <
+	    WRITE ($TERMINAL OUT,*)'    Events=',NTUPL1,' to',NTUPL2;
+	    <I=1,NLIMTUPL; J=ILIMTUPL(I);
+		IF ($TRAP) RETURN;
+		WRITE ($TERMINAL OUT,*)'    SELECT=',J
+		   ,LIMTUPL(J,1),' ',LIMTUPL(J,2);
+	    >
+	 >
+      >
+      NUMBER:: <
+	 IF (INDX.eq.0) THEN;
+	    MAXH(1)=INTEG;
+	    MAXH(2)=INTEG;
+	    INDX=2;
+	 ELSEIF (INDX.le.2) THEN;
+	    MAXH(INDX)=INTEG;
+	    INDX=INDX+1;
+	 ELSE;
+	    ERROR OUT;('*** ERROR *** Extraneous number');
+	 ENDIF;
+      >
+      ELSE:: <
+	 READ SAME TOKEN; <EXIT>;
+      >
+   >
+   IF ($ERROR) GOTO :END:;
+   LLOG=LLOG.or.LSTAT.or.LOPTN.or.LCONT;
+   IF (LLOG) THEN;
+      CALL HB_GET_OPT(0,'TITL',TNAME,T,I,LTITL);
+      IF (LTITL) WRITE ($TERMINAL OUT,*)' Title:'
+	 ,TNAME(:T2BTRIM(TNAME));
+      IF (LOPTN) CALL T2_HIDOPT(0,'SHOW');
+$VAX;
+      IW=IDIGIT+8;		"Field width for format"
+      I=MAX(0,MOD(IWIDE-12,IW));	"Leftover characters"
+      IR=MAX(1,(IWIDE-12)/IW);	"Number of fileds (min=1)"
+      IDIGIT=IDIGIT+MIN(8,I/IR);	"Add to width (MAX=8)"
+      IW=IDIGIT+8;		"Field width for format"
+      IR=MAX(1,(IWIDE-12)/IW);	"Number of fileds (min=1)"
+   ELSE;
+      IDIGIT=IDIGIT+3;		"Add more for integer fields"
+$END;
+   ENDIF;
+   CURDIR=' ';
+:SEARCH:
+   LAREA=.false.;
+   IF ($TRAP) goto :END:;
+   CALL HB_SEARCH_DIR(CURDIR,LEVEL,LEVEL0);	"Search dir tree"
+   IF (CURDIR(1:1).eq.' ') GOTO :END:;	"Done ?"
+   IF (NTSTDIR.ne.0) THEN;
+	 IF (.not.MATCHC(CURDIR(:T2BTRIM(CURDIR)),TSTDIR(:NTSTDIR)))
+		GOTO :SEARCH:;
+   ENDIF;
+   IF (CURDIR(:6) .eq. CDIR(2)) THEN;	"File ?"
+	 CALL HLDIR2;				"Get dir"
+	 IF (LTREE) GOTO :SEARCH:;
+	 GOTO :END:;
+   ENDIF;
+   MAXN=HB_SEARCH_ID(0);
+	"Now put MAX/MIN in correct order"
+   IDMIN=MIN(MAXH(1),MAXH(2)); IDMAX=MAX(MAXH(1),MAXH(2));
+   IF (.not.LSEARCH) THEN;
+	WRITE($TERMINAL OUT,*)' Area:',CURDIR(:T2BTRIM(CURDIR));
+	WRITE($TERMINAL OUT,'(A,F6.2,3(A,I8))',ERR=:ERR1:)'    Hbook Version ',
+	    HVERSION,' histograms available=',MAXN,' Memory=',MEMORY(1);
+:ERR1:
+	LAREA=.true.;
+   ENDIF;
+   <I=1,MAXN;
+      IF ($TRAP) goto :END:;
+      IDH=HB_SEARCH_ID(I);
+      IF (IDH.lt.IDMIN.or.IDH.gt.IDMAX) <NEXT>;
+      CALL T2_HIST_TEST_STATUS($INFO,$CARD,IDH);
+      IF (LEXIST) THEN;
+	 IF (LLOG) THEN;
+	    IF (.not. LAREA)	"Area not printed ?"
+		WRITE($TERMINAL OUT,*)' Area:'
+		     ,CURDIR(:T2BTRIM(CURDIR));
+	    LAREA=.true.;
+	    K=T2BTRIM(HNAME);
+	    IF (LOPTN .and.CURDIR(:6).eq.CDIR(1)) THEN;
+		CALL T2_HIDOPT(IDH,'SHOW');
+	    ENDIF;
+	    IF (LCONT.and.IETYPE.ge.3) THEN;
+		WRITE ($TERMINAL OUT,*)'     Contents:';
+		IF (IETYPE.eq.4.and.IAD.ne.0) THEN;
+		  <J=MAX(1,N1),MIN(ENTRYS,N2);
+		     IF ($TRAP) GOTO :END:;
+		     WRITE($TERMINAL OUT,'(1X,I12,I12,Z12.8,1P,G16.7)')
+			J,MEMORY(IAD+J+18)
+			,MEMORY(IAD+J+18),FMEMORY(IAD+J+18);
+		  >
+		ELSEIF (IETYPE.eq.3) THEN;
+		  IF ($TRAP) GOTO :END:;
+		  WRITE($TERMINAL OUT,:FORM2:)'N'
+		    ,(CTUPL(J),J=MAX(1,N1),MIN(NTUPL,N2));
+:FORM2:           FORMAT(1X,A12,$IRA$IW);
+:FORM3:           FORMAT(1X,I12,1P,$IRG$IW.$ID,($IF/13X,$IRG$IW.$ID));
+		  L=ID; ID=IDH;
+		  CALL HGNPAR(ID,' ');
+		  <J=MAX(NTUPL1,n3),MIN(NTUPL2,ENTRYS,N4);
+		     IF ($TRAP) THEN; ID=L; GOTO :END:; ENDIF;
+		     IF (T2_GET_TUPL(J))
+			WRITE($TERMINAL OUT,:FORM3:)
+			   J,(VTUPL(K,1),K=MAX(1,N1),MIN(NTUPL,N2))
+		  >
+"
+		ELSEIF (IETYPE.le.2) THEN;
+		  IF (IETYPE.eq.2) THEN;
+		     WRITE($TERMINAL OUT,'(4X,6A12)')'N1','N2','X','Y','Err';
+		  ELSE;
+		     WRITE($TERMINAL OUT,'(4X,6A12)')'N1','N2','X','Y','Z';
+		  ENDIF;
+		  <J=MAX(1,N3),MIN(MAX(1,IY),N4);
+		     IF (IETYPE.eq.2) THEN;
+			CALL HIJXY(IDH,0,J-1,X0,Y0);
+			CALL HIJXY(IDH,1,J,X1,Y1);
+			VTUPL(2,1)=(Y1+Y0)/2;
+		     ENDIF;
+		     <K=MAX(1N1),MIN(IX,N2);
+			IF ($TRAP) GOTO :END:;
+			IF (IETYPE.eq.2) THEN;
+			   VTUPL(1,3)=HIJ(IDH,K,I);
+			ELSE;
+			   VTUPL(1,2)=HI(IDH,K);
+			   VTUPL(1,3)=HIE(IDH,K);
+			ENDIF;
+			VTUPL(1,1)=(X1+X0)/2;
+			WRITE($TERMINAL OUT,*)K,J,(VTUPL(L),L=1,3);
+		  >  >
+"
+		ENDIF;
+	    ENDIF;
+	 ELSE;
+	    IF ((NVECT+1)*(IDIGIT+1)+3.ge.IWIDE.or.NVECT.ge.20) THEN;
+		WRITE($TERMINAL OUT,:FORM4:)(IVECT(J),J=1,NVECT);
+:FORM4:        FORMAT(4X,20(1X,I$ID));
+		NVECT=0;
+	    ENDIF;
+	    NVECT=NVECT+1; IVECT(NVECT)=IDH;
+	 ENDIF;
+	 IF ($TRAP) GOTO :END:;
+      ENDIF;
+   >
+
+   IF (NVECT.gt.0) THEN;
+      WRITE($TERMINAL OUT,:FORM4:)(IVECT(J),J=1,NVECT);
+      NVECT=0;
+   ENDIF;
+   IF (LTREE) GOTO :SEARCH:;
+:END:
+   WRITE ($TERMINAL OUT,*)' ';
+   ISHD = T2_SET_HIST_DIR(SAVDIR,' ');		"Restore dir"
+END;
+%E  SUBROUTINE T2_HIDOPT  --- Prints Hist options
+SUBROUTINE T2_HIDOPT(IDH);
+"
+	Print a list of hist options for the selected histogram (IDH)
+"
+   IMPLICIT NONE;
+   INTEGER IDH;
+   INTEGER I,J,K,L,IVAL;
+   LOGICAL LVAL;
+   REAL FVAL;
+   $SPECIFICATION;
+
+   INTEGER    NOPT, IFLTP, IINTP ;
+   PARAMETER (NOPT=28);
+   PARAMETER (IFLTP=24);
+   PARAMETER (IINTP=26);
+
+   CHARACTER*4 ONOFF(2)/'Off','On'/;
+   CHARACTER*12 HBOPT(NOPT)
+      /'STATISTICS','ERROR',     'BLACK',     'INTEGRAL',  'PCHANNELS'
+      ,'PCONTENTS', 'PERRROR',   'PFUNCTION', 'PLOW',      'PHISTOGRAM'
+      ,'ROTATE',    'STAR',      '2PAGE',     'LOGY',      'PSTATISTICS'
+      ,'TABLE',     'SCATTER',   'PROS',      'BINSZ',     'SQUEEZE'
+      ,'BINAUTO',   'BINVARIABL','PROFILE'
+      ,'PMININUM',  'PMAXIMUM'
+      ,'PAGSIZE',   'BIGBI',     'RECLENGTH'/;
+   <I=1,NOPT;
+       IF ($TRAP) RETURN;
+       CALL HB_GET_OPT(IDH,HBOPT(I)(:4),OUTSTR,FVAL,IVAL,LVAL);
+       IF (I.ge.IINTP) THEN;
+	  IF (LVAL) WRITE($TERMINAL OUT,*)'     ',HBOPT(I),'=',IVAL;
+       ELSEIF (I.ge.IFLTP) THEN;
+	  IF (LVAL) WRITE($TERMINAL OUT,*)'     ',HBOPT(I),'=',FVAL;
+       ELSE;
+	  IVAL=MIN(MAX(IVAL,0),1);
+	  IF (LVAL) WRITE($TERMINAL OUT,*)'     ',HBOPT(I),'=',ONOFF(IVAL+1);
+       ENDIF;
+   >
+END;
+%E  SUBROUTINE T2_DELETE_HIST --- Delete histograms
+SUBROUTINE T2_DELETE_HIST($INFO,$CARD);
+"
+	Delete selected histograms
+"
+   IMPLICIT NONE;
+   INTEGER $INFO(10);
+   EXTERNAL HDELET;
+   CHARACTER*(*) $CARD;
+   $SPECIFICATION;
+   $SPECIFYNONE;
+   EXTERNAL T2_HIST_DATA;
+   $T2HIST;
+   INTEGER I,J,K,INDX,IDH,IDEL;
+   INTEGER MAXN;
+   INTEGER HB_SEARCH_ID;
+   REAL VAL1,VAL2,VAL3;
+   if (.not.LHINIT) CALL T2_HIST_INIT;	"Initialize hist area"
+   LHTEST=.false.;
+   LALL=.true.;
+   LHIST=.true.;	".true. lists hists according to type"
+   LMESH=.true.;	".true. only lists mesh hists"
+   LARRAY=.true.;	".true. only list mesh hists"
+   LNTUPL=.true.;	".true. If NTUPL desired"
+   LENTRY=.true.;	".true. only lists hists with entries"
+   LSENT=.false.;	".true. lists hists according to entries"
+   LTREE=$MODE TREE;				"Do Tree scan ?"
+   NTSTDIR=0;
+   LEXACT=.false.;	".true. makes names case sensative."
+   N_SELECT=0;
+   IDMIN=1; IDMAX=-1;
+   IDEL=0;
+   <TOKEN KEY LOOP> <
+      AREA:T,DIRECTORY:T <
+	 LCHECK_MEM=.true.;
+	 CALL T2_HIST_PARSE_AREA($INFO,$CARD,.true.,.true.);>
+      CONFIRM:Y < LCONF =LTOKEN ;>
+      EXACT:Y   < LEXACT=LTOKEN; >
+      TREE:Y   < LTREE=LTOKEN; >
+      CURRENT  < IDMIN=ID; IDMAX=ID; >
+      ALL      < IDMIN=0; IDMAX=0; >
+      IDENT    <
+	 VAL1=1; VAL2=0.95*$LARGE INTEGER; VAL3=0;
+	 CALL T2FRTO($INFO,$CARD,VAL1,VAL2,VAL3);
+	 IDMIN=NINT(VAL1); IDMAX=NINT(VAL2);
+      >
+      LOG:Y      < LLOG  =LTOKEN ;>
+      ENTRIES:Y  < LENTRY=LTOKEN; LSENT=.true.; >
+      HISTOGRAM:1:Y,MESH:2:Y,NTUPL:3:Y,ARRAY:4:Y
+	 < CALL T2_HIST_PARSE_TYPE; >
+      SELECT:S,NAME:S < CALL T2_HIST_PARSE_NAME; >
+   >
+   IF ($ERROR) GOTO :END:;
+   LCHECK_MEM=.true.;
+   CALL T2_HIST_DO($INFO,$CARD,'DELETE',HDELET,' ',IDEL,.true.);
+"         CALL HDELET(IDH);"
+:END:
+END;
+%E  SUBROUTINE T2_HIST_DO --- Do a series of operations
+SUBROUTINE T2_HIST_DO($INFO,$CARD,QUERY,ROUTINE,OPER,IOPER,LOPER);
+"
+	Do an operation for the selected histograms.
+	QUERY	is the question to ask (string)
+	ROUTINE	is the routine to call
+	OPER	is a string to pass to the routine
+	IOPER	is an integer to pass to the routine
+	LOPER	true OPER /false IOPER
+"
+   IMPLICIT NONE;
+   INTEGER $INFO(10);
+   CHARACTER*(*) $CARD,OPER,QUERY;
+   EXTERNAL ROUTINE;
+   LOGICAL ISHD,T2_SET_HIST_DIR;
+
+   $SPECIFICATION;
+   $SPECIFYNONE;
+   $BOOLEAN LOPER,LCONF2;
+
+   LOGICAL HB_HEXIST;
+   EXTERNAL T2_HIST_DATA;
+
+   $T2HIST;
+   INTEGER I,J,K,IDH,IOPER,IDINDEX,LEVEL,LEVEL0;
+   INTEGER MAXN;
+   INTEGER HB_SEARCH_ID;
+   INTEGER T2_CONFIRM;
+   INTEGER NDIR1;
+
+   NOPER=0;
+   ISHD = T2_SET_HIST_DIR(CURDIR,'R');
+   NDIR1=T2BTRIM(CURDIR);
+   IF (LCHECK_MEM .and. CURDIR(:6).ne.CDIR(1)) THEN;
+      ERROR OUT;'*** ERROR *** Illegal to modify histogram in area:'
+	    ,CURDIR(:T2BTRIM(CURDIR));
+      RETURN;
+   ENDIF;
+   CURDIR=' ';
+   LCONF2=LCONF;
+   IF ((LSENT .or. .not.LALL .or.
+	   LCONF2 .or.
+	   N_SELECT.gt.0) .and. IDMIN.eq.0) THEN;
+       IDMIN=1; IDMAX=$LARGE INTEGER;
+   ENDIF;
+:SEARCH:
+   IF ($TRAP) goto :END:;		"User requested stop ?"
+   LAREA=.false.;			"New area"
+   CALL HB_SEARCH_DIR(CURDIR,LEVEL,LEVEL0);	"Search dir tree"
+   IF (CURDIR(1:1).eq.' ') GOTO :END:;	"Done ?"
+   IF (NTSTDIR.ne.0) THEN;
+	 IF (.not.MATCHC(CURDIR(:T2BTRIM(CURDIR)),TSTDIR(:NTSTDIR)))
+		GOTO :SEARCH:;
+   ENDIF;
+   MAXN=HB_SEARCH_ID(0);		"Number of histograms"
+   IF (IDMIN.eq.IDMAX) THEN;		"Only do 1 ?"
+      IDH=IDMIN;			"For IDH=IDMIN"
+      MAXN=MIN(1,MAXN);		"Do only once at most"
+   ENDIF;
+   IDINDEX=0;			"First index-1"
+   <I=1,MAXN;
+      IF ($TRAP) goto :END:;
+      IF (IDMIN.ne.IDMAX) THEN;
+	 IDINDEX=IDINDEX+1;
+	 IDH=HB_SEARCH_ID(IDINDEX);
+	 IF (IDH.lt.IDMIN.or.IDH.gt.IDMAX) <NEXT>;	"Out of range ?"
+      ENDIF;
+      IF (IDH.eq.0.or.HB_HEXIST(IDH)) THEN;
+	 CALL T2_HIST_TEST_STATUS($INFO,$CARD,IDH);
+		"CHeck if hist is requested"
+	 IF ($ERROR) GOTO :END:;	"Error ?"
+      ELSE;
+	 LEXIST=.false.;
+      ENDIF;
+      IF (LEXIST) THEN;		"Is it correct one ?"
+	 IF (LCONF2.and.QUERY(1:1).ne.' ')	"Confirm it ?"
+	     GOTO (:YES:,:NO:,:END:,:ALL:) T2_CONFIRM(QUERY);
+	 GOTO :YES:;
+:ALL:    LCONF2=.false.;		"Answer was ALL!"
+:YES:				"Answer was YES"
+	 IF ($TRAP) goto :END:;	"User requested END?"
+	 IF (IDMIN.gt.0) THEN; NOPER=NOPER+1;	"Count the number of func"
+			 ELSE; NOPER=NOPER+HB_SEARCH_ID(0); ENDIF;
+	 IF (LOPER) THEN;			"Do char string ?"
+	   CALL ROUTINE(IDH,OPER);	"Execute the routine"
+	   IF (OPER.eq.'1') <EXIT>;	"Only once ?"
+	 ELSE;				"Do numeric data ?"
+	   CALL ROUTINE(IDH,IOPER);
+	 ENDIF;
+	 IF (.not. HB_HEXIST(IDH)) IDINDEX=IDINDEX-1;	"Hist deleted ?"
+	 IF (LLOG.or.LCONF2) WRITE ($TERMINAL OUT,*)'   ',QUERY;	"Log it"
+:NO:					"Answer was NO"
+      ENDIF;
+   >
+
+   IF (LTREE) GOTO :SEARCH:;
+:END:
+   IF (CURDIR(1:1).ne.' ') ISHD = T2_SET_HIST_DIR(CURDIR(:NDIR1),' ');
+   IF (NOPER.eq.0 .or. LLOG) THEN;
+      WRITE($TERMINAL OUT,*)NOPER,' histograms ',Query;
+   ENDIF;
+END;
+%E  SUBROUTINE T2_HIST_TEST_STATUS --- Get status of 1 hist
+SUBROUTINE T2_HIST_TEST_STATUS($INFO,$CARD,IDH);
+"
+	Get and type status on histogram IDH
+"
+   IMPLICIT NONE;
+   INTEGER $INFO(10);
+   CHARACTER*(*) $CARD;
+   $SPECIFICATION;
+   $T2HIST;
+   $SPECIFYNONE;
+   CHARACTER*3 CCUR(2)/' ','==>'/;
+   INTEGER IDH;
+   INTEGER I,J,K,MAXC;
+   LOGICAL HB_HEXIST;
+   EXTERNAL T2_HIST_DATA;
+   INTEGER HB_SEARCH_ID;
+   REAL T;
+   IETYPE=4;
+   IX=0;
+   IX=0; IY=0; NTUPL=0; ENTRYS=0;
+   LEXIST=.false.;
+   IF (IDH.eq.0) THEN;
+      MAXC=HB_SEARCH_ID(0);
+      LEXIST=MAXC.gt.0;
+      IF (.not.LHTEST.and.(LLOG.or.LCONF).and.LEXIST) THEN;
+	 IF (.not. LAREA)	"Area not printed ?"
+	    WRITE($TERMINAL OUT,*)' Area:'
+		  ,CURDIR(:T2BTRIM(CURDIR));
+	 LAREA=.true.;
+	 IF (IVERSION.eq.0) THEN;
+	    WRITE($TERMINAL OUT,*)'   ALL histograms (',MAXC,')';
+	 ELSE;
+	    WRITE($TERMINAL OUT,*)'   ALL histograms (',MAXC,') Version='
+		,IVERSION;
+	 ENDIF;
+      ENDIF;
+   ELSEIF (LHTEST .or.IDMIN.eq.0 .or. (IDH.ge.IDMIN .and. IDH.le. IDMAX)) THEN;
+      LEXIST=HB_HEXIST(IDH);
+      IF (LEXIST) THEN;
+	 CALL HB_HNOENT(IDH,ENTRYS);
+	 MAXC=LEN(HNAME)/4-1;
+	 XMIN=0; XMAX=0;
+	 YMIN=0; YMAX=0;
+	 CALL HB_HGIVE(IDH,HNAME,IX,XMIN,XMAX,IY,YMIN,YMAX,MAXC,IAD);
+	 IF (IX .le. 0) THEN;
+	    NTUPL=MAXTUPL;
+	    CALL HB_HGIVEN(IDH,HNAME,NTUPL
+		  ,CTUPL,VTUPL(1,1),VTUPL(1,2));	"Tags,Rlos,Rhigh"
+	 ELSE;
+	    XS=(XMAX-XMIN)/IX;
+	    YS=0;
+	    IF (IY.ne.0)YS=(YMAX-YMIN)/IY;
+	 ENDIF;
+	 IF (4*MAXC.gt.LEN(HNAME)) THEN;
+	    ERROR OUT;('*** ERROR *** Title longer than maximum');
+	 ENDIF;
+	 IF     (NTUPL .gt. 0) THEN; IETYPE=3; LEXIST=LHTEST.or.LNTUPL;
+	     IF (LILTUPL) ERROR OUT; '*** ERROR *** Illegal for NTUPL';
+		IF (NTUPL.ge.MAXTUPL) THEN;
+		  ERROR OUT;'*** ERROR *** Too many NTUPLES';
+		  LEXIST=.false.;
+		  GOTO :END:;
+		ENDIF;
+	 ELSEIF (IY.gt.0)      THEN; IETYPE=2; LEXIST=LHTEST.or.LMESH;
+	 ELSEIF (IX.gt.0)      THEN; IETYPE=1; LEXIST=LHTEST.or.LHIST;
+	 ELSE;                       IETYPE=4; LEXIST=LHTEST.or.LARRAY;
+						HNAME='Array';
+	 ENDIF;
+	 IF (LHTEST) RETURN;
+	 IF (LSENT)
+	    LEXIST=LEXIST.and.(ENTRYS.ne.0.eqv.LENTRY);	"Check ENTRYS ?"
+	 NHNAME=T2BTRIM(HNAME);			"Length of name"
+	 IF (N_SELECT.gt.0.and.LEXIST) THEN;		"Check name ?"
+		TNAME=HNAME; NTNAME=NHNAME;
+		IF (.not. LEXACT) CALL T2UPCS(TNAME(:NTNAME));
+		LEXIST=MATCHC(TNAME(:NTNAME),C_SELECT(:N_SELECT));
+	 ENDIF;
+	 IF (LEXIST) THEN;
+$ASCII;
+	    <I=1,LEN(HNAME);
+	    IF (ICHAR(HNAME(I:I)) .lt. 32 .or. ICHAR(HNAME(I:I)) .gt. 127)
+		HNAME(I:I) = '?';
+	  >
+$END;
+	  IF ((LLOG.or.LCONF).and..not.LHTEST) THEN;
+	    IF (.not. LAREA)	"Area not printed ?"
+		WRITE($TERMINAL OUT,*)' Area:'
+		     ,CURDIR(:T2BTRIM(CURDIR));
+	    LAREA=.true.;
+	    IF (IVERSION.eq.0) THEN;
+		J=1; IF (ID.eq.IDH.and.SAVDIR.eq.CURDIR) J=2;
+		WRITE($TERMINAL OUT,*)CCUR(J)
+		  ,'ID=',IDH,CETYPE(IETYPE),' Name='
+		     ,'"'//HNAME(:NHNAME)//'"';
+	    ELSE;
+		WRITE($TERMINAL OUT,*)'   ID=',IDH,CETYPE(IETYPE),' Name='
+		     ,'"'//HNAME(:NHNAME)//'"',' Version=',IVERSION;
+	    ENDIF;
+:FORM1: FORMAT (6X,1P,6(A,G12.5));
+	    IF (LSTAT) THEN;
+		CALL T2_HIST_GET_STATISTICS(IDH);
+		T=ENTRYS;
+		WRITE($TERMINAL OUT,:FORM1:)'Entries=',T;
+		IF (IETYPE.le.2) THEN;
+		  IF ($TRAP) GOTO :END:;
+		  WRITE($TERMINAL OUT,:FORM1:)
+			'X=      ',XMIN,' to  ',XMAX,' by   ',XS
+			,' Bins=',FLOAT(IX);
+		  IF (IETYPE.eq.2) THEN;	"Mesh or profile ?"
+		     WRITE($TERMINAL OUT,:FORM1:)
+			'Y=      ',YMIN,' to  ',YMAX,' by   ',YS
+			,' Bins=',FLOAT(IY);
+		  ELSEIF(YMIN.ne.YMAX) THEN;
+		     WRITE($TERMINAL OUT,:FORM1:)
+			'Y=      ',YMIN,' to  ',YMAX;
+		  ENDIF;
+		  IF (ZMIN.ne.HNONE)
+		     WRITE($TERMINAL OUT,:FORM1:)
+			'Range=  ',ZMIN,' to  ',ZMAX;
+		  IF (VMIN.ne.HNONE)
+		     WRITE($TERMINAL OUT,:FORM1:)
+			'Value=  ',VMIN,' to  ',VMAX;
+		  IF ($TRAP) GOTO :END:;
+		  IF (STATS(10).ne.0) THEN;	"Entries?"
+		    IF (IETYPE.eq.2) THEN;		"Mesh ?"
+			WRITE($TERMINAL OUT,'(13X,A,3x,A,9X,A)')
+			   'X underflow','sum','overflow';
+			WRITE($TERMINAL OUT,'(6X,A,1P,3G12.5)')
+			   'Y over ',STATS(7),STATS(8),STATS(9);
+			WRITE($TERMINAL OUT,'(6X,A,1P,3G12.5)')
+			   '  sum  ',STATS(4),STATS(5),STATS(6);
+			WRITE($TERMINAL OUT,'(6X,A,1P,3G12.5)')
+			   '  under',STATS(1),STATS(2),STATS(3);
+		     ELSE;
+			WRITE($TERMINAL OUT,:FORM1:)
+			   'Under=  ',STATS(4)
+				,' Sum=',STATS(5),' Over=',STATS(6);
+			   IF (STATS(5).ne.0) THEN;
+			      IF (IETYPE.eq.1) THEN;
+				 WRITE($TERMINAL OUT,:FORM1:)
+				  'Mean=   ',STATS(11),' Std=',STATS(12);
+			      ENDIF;
+			   ENDIF;
+		     ENDIF;
+		  ENDIF;
+		ELSEIF (IETYPE.eq.3) THEN;
+		  T=NTUPL;
+		  WRITE($TERMINAL OUT,:FORM1:) 'Ntuple= ',T;
+		  WRITE($TERMINAL OUT,'(6X,A,2(10X,A))')'Tag','Min','Max';
+		  <J=1,MIN(NTUPL,MAXTUPL);
+		     IF ($TRAP) GOTO :END:;
+		     WRITE($TERMINAL OUT,:FORM1:)CTUPL(J)
+			,VTUPL(J,1),' ',VTUPL(J,2);
+		  >
+		ENDIF;
+	    ENDIF;
+	  ENDIF;
+	 ENDIF;
+      ELSEIF (.not.LHTEST) THEN;
+	 ERROR$MESSAGE
+	    '*** ERROR *** Hist does not exist ID=',IDH;
+      ENDIF;
+   ENDIF;
+:END:
+   LILTUPL=.false.;
+END;
+%E  INTEGER FUNCTION T2_HIST_TYPE  --- Gets the histogram type
+INTEGER FUNCTION T2_HIST_TYPE(IDH);
+"
+	Get histogram type
+	0	Unknown
+	1	1-d
+	2	2-d
+	3	Ntupl
+	4	Array
+"
+   IMPLICIT NONE;
+   LOGICAL HB_HEXIST;
+   INTEGER IX,IY,IAD,IDH,MAXC;
+   CHARACTER*10 HNAME;
+   REAL XMIN,XMAX,YMIN,YMAX;
+   T2_HIST_TYPE=0;
+   IF (HB_HEXIST(IDH)) THEN;
+      CALL HB_HGIVE(IDH,HNAME,IX,XMIN,XMAX,IY,YMIN,YMAX,MAXC,IAD);
+      IF (IX .le. 0) THEN;
+	 IX=1;
+	 CALL HB_HGIVEN(IDH,HNAME,IX,HNAME,XMIN,XMAX);	"Tags,Rlos,Rhigh"
+	 IF (IX.gt.0) T2_HIST_TYPE=3;
+      ELSE;
+	 IF (IY.gt.0) THEN; T2_HIST_TYPE=2;
+		      ELSE; T2_HIST_TYPE=1;
+		      ENDIF;
+      ENDIF;
+   ENDIF;
+END;
+%E  FUNCTION T2_HIST_ID_LOCATION --- Get location in list of ID
+INTEGER FUNCTION T2_HIST_ID_LOCATION(I);
+"
+	Search for ID correspoinding to location in list
+"
+   IMPLICIT NONE;
+   INTEGER I,J,HB_SEARCH_ID,MAXI,MINI,MAXID,MINID,ID;
+   T2_HIST_ID_LOCATION=0;
+   MINI=1; MINID=HB_SEARCH_ID(1);
+   IF (MINID .eq. I) THEN; T2_HIST_ID_LOCATION=MINI; RETURN; ENDIF;
+   MAXI=HB_SEARCH_ID(0); MAXID=HB_SEARCH_ID(MAXI);
+   IF (MAXID .eq. I) THEN; T2_HIST_ID_LOCATION=MAXI; RETURN; ENDIF;
+   <LOOP> <
+      IF (I.lt. MINID .or. I.gt.MAXID) RETURN;
+      J=(MINI+MAXI)/2;
+      ID=HB_SEARCH_ID(J);
+      IF (ID.eq.I) THEN; T2_HIST_ID_LOCATION=J; RETURN;
+      ELSEIF (ID .gt. I) THEN; MAXI=J-1; MAXID=HB_SEARCH_ID(MAXI);
+      ELSE; MINID=ID; MINI=J+1; MINID=HB_SEARCH_ID(MINI);
+      ENDIF;
+   >
+END;
+%E  SUBROUTINE T2_SET_HIST  --- Set data from a hist
+SUBROUTINE T2_SET_HIST($INFO,$CARD);
+"
+	Get data from hist to plot it
+	Parses a SET HISTOGRAM command
+"
+   IMPLICIT NONE;
+   INTEGER $INFO(10);
+   CHARACTER *(*) $CARD;
+   $SPECIFYNONE;
+   $MAINSPEC;
+   $SPECIFICATION;
+   $POINT ARRAYS($NPOINTS);
+   $BOOLEAN LFOUND,LERROR,LTITL,LWRAP;
+	"Determine where titles go"
+   LOGICAL INTRAC;
+   INTEGER II(7);
+   INTEGER I,J,K,L;
+   INTEGER*4 IDATA,PID;
+   LOGICAL ISHD,T2_SET_HIST_DIR,T2_GET_TUPL,HEXIST;
+   INTEGER T2_CONFIRM,T2_HIST_ID_LOCATION;
+   REAL VAL1,VAL2,VAL3,DVEC($MAXCOR);
+   DATA VAL1,VAL2,VAL3/3*0.0/;
+   EXTERNAL T2_HIST_DATA;
+   $T2HIST;
+   INTEGER INEXT,IDIR,ILOC,MAXN,IH,IDH,IMIN,IMAX,ISTAT,IOVER;
+   INTEGER IXMIN,IXMAX,IYMIN,IYMAX;
+   $BOOLEAN LOVER,LTREE2/.false./;
+   $BOOLEAN LBIN;
+   INTEGER ITUPL,IOPER,LEVEL,LEVEL0;
+   REAL HI,HIE,HIJ;
+   REAL X0,X1,Y0,Y1,Z,Z1,ERR;
+   REAL PARM(4,2);
+   INTEGER IRDOPT/0/,ISEARCH;
+   INTEGER HB_SEARCH_ID;
+$VAX;
+   INTEGER LIB$SET_SYMBOL;
+   INCLUDE '($LIBCLIDEF)';
+   INCLUDE '($SSDEF)';
+$END;
+$UNIX;
+   INTEGER PUTENV;
+$END;
+   if (.not.LHINIT) CALL T2_HIST_INIT;	"Initialize hist area"
+   N_SELECT=0;
+   IDENT=0;
+   LTREE=LTREE2;
+   NTSTDIR=0;
+   LEXACT=.false.;	"Exact search"
+   LERROR=REVLEV .ge. 4.305;	"Set default errors"
+   LHTEST=.false.;
+   LAREA=.false.;
+   LCHECK=.true.;	"Check when search for hist"
+   INEXT=0;
+   LTITLE=.false.;	".true. Puts title on plot"
+   LWRAP=INTRAC(I);	"Wrap if interactive"
+   IOPER=0;		"1,2 if hists are to be added"
+   LOVER=.false.;	"True if hist inclues under/over flows"
+   LALL=.true.;
+   LBIN=.true.;		"True if bin N_tupl"
+   LHIST=.true.;	"True if hists selected"
+   LMESH=.true.;	"Mesh selected"
+   LARRAY=.false.;
+   LNTUPL=.false.;	".true. If NTUPL desired"
+   LENTRY=.true.; LSENT=.false.;"True if select only hists with entries"
+   IDMIN=0; IDMAX=0;
+   IRDOPT=0;
+   ISEARCH=0;
+   ISHD = T2_SET_HIST_DIR(SAVDIR,'R');
+   CURDIR=SAVDIR;
+   ILOC=ILOCS;
+   <TOKEN KEY LOOP> <
+      X:0:128:1		< IDVEC(N_XDATA)=INTEG; >
+      DX:0:128:100	< IDVEC(N_DXDATA)=INTEG; >
+      NDX:0:128:100	< IDVEC(N_NDXDATA)=INTEG; >
+      Y:0:128:2		< IDVEC(N_YDATA)=INTEG; >
+      DY:0:128:100	< IDVEC(N_DYDATA)=INTEG; >
+      NDY:0:128:100	< IDVEC(N_NDYDATA)=INTEG; >
+      Z:0:128:3		< IDVEC(N_ZDATA)=INTEG; >
+      DZ:0:128:100	< IDVEC(N_DZDATA)=INTEG; >
+      NDZ:0:128:100	< IDVEC(N_NDZDATA)=INTEG; >
+      U:0:128:3		< IDVEC(N_UDATA)=INTEG; >
+      DU:0:128:100	< IDVEC(N_DUDATA)=INTEG; >
+      NDU:0:128:100	< IDVEC(N_NDUDATA)=INTEG; >
+      V:0:128:3		< IDVEC(N_VDATA)=INTEG; >
+      DV:0:128:100	< IDVEC(N_DVDATA)=INTEG; >
+      NDV:0:128:100	< IDVEC(N_NDVDATA)=INTEG; >
+      W:0:128:3		< IDVEC(N_WDATA)=INTEG; >
+      DW:0:128:100	< IDVEC(N_DWDATA)=INTEG; >
+      NDW:0:128:100	< IDVEC(N_NDWDATA)=INTEG; >
+"
+      BIN		< LBIN=.true.;		"Produced binned results"
+	 
+	 <I=1,3; PARM(I)=0; >; PARM(4)=100;
+	 CALL T2FTBY($INFO,$CARD,PARM(1,J),11+16);
+      >
+      VARIABLE:T	< SVAR=strng(1:nstrng); >
+"
+
+      SELECT:1:128:0     < IMIN=INTEG; IMAX=INTEG;
+	 IF (IMIN.eq.0) THEN; IMIN=1; IMAX=MAXTUPL; ENDIF;
+	 DVEC(1)=-$LARGE REAL; DVEC(2)=$LARGE REAL;
+	 DVEC(3)=HNONE;
+	 CALL T2FRTO($INFO,$CARD,DVEC(1),DVEC(2),DVEC(3));
+	 <J=1,2; IF (DVEC(J) .eq. HNONE) DVEC(J)=(2*J-3)*$LARGE REAL; >
+	 <I=IMIN,IMAX; <J=1,2; LIMTUPL(J,I)=DVEC(J); > >
+	 NLIMTUPL=0;
+	 <I=1,NTUPL;
+	    IF (LIMTUPL(I,1).gt.-$LARGE REAL*.9 .and.
+		LIMTUPL(I,1).lt. $LARGE REAL*.9 ) THEN;
+		NLIMTUPL=NLIMTUPL+1;
+		ILIMTUPL(J)=NLIMTUPL;
+	    ENDIF;
+	 >
+      >
+
+      EVENTS    < VAL1=1; VAL2=0.95*$LARGE INTEGER; VAL3=VAL2;
+	 CALL T2FRTO($INFO,$CARD,VAL1,VAL2,VAL3);
+	 NTUPL1=NINT(VAL1); NTUPL2=NINT(VAL2);
+      >
+
+      APPEND:Y	< LAPPEN=LTOKEN ;>
+
+      CONFIRM:Y	< LCONF =LTOKEN ;>
+
+      ENTRIES:Y	< LENTRY =LTOKEN ; LSENT=.true.; >
+
+      LOG:Y		< LLOG  =LTOKEN ;>
+
+      HISTOGRAM:1:Y,MESH:2:Y,NTUPL:3:Y
+	 < CALL T2_HIST_PARSE_TYPE; >
+
+      CHECK:Y	< LCHECK=LTOKEN; >
+
+      CURRENT	< IDENT=ID; LCHECK=.false.; >
+
+      ERRORS:Y	< LERROR=LTOKEN;>
+
+      EXACT:Y	< LEXACT=LTOKEN; >
+
+      SECTION:4:T,FILE:3:F  <
+	 IRDOPT=INTEG;
+	 IF (NSTRNG.gt.0) THEN;
+	    C_FILE=STRNG; N_FILE=NSTRNG;
+	    IF (IRDOPT .eq. 3)
+		CALL T2_SET_DEFAULT_FILE(c_file,N_file,'hbook.bin');
+	    CALL T2_READ_HIST(C_FILE(:N_FILE),IOPER,$INFO,$CARD,-IRDOPT,'S');
+	 ENDIF;
+      >
+
+      TREE:Y		< LTREE=LTOKEN; LTREE2=.false.; >
+
+      AREA:T,DIRECTORY:T <
+	 LTREE2=.false.;
+	 LCHECK_MEM=.true.;
+	 CALL T2_HIST_PARSE_AREA($INFO,$CARD,.true.,.false.);
+	 IF ($ERROR) RETURN;
+	 SAVDIR=CURDIR;
+	 ILOCS=0;
+	 IF (NTSTDIR.NE.0) TSTDIR2=TSTDIR;
+	 IF (LLOG) THEN;
+	    WRITE($TERMINAL OUT,*)'   Set Area:',CURDIR(:T2BTRIM(CURDIR));
+	 ENDIF;
+      >
+
+      IDENT:1::0	< IDENT=INTEG; >
+
+      SELECT:S,NAME:S   < CALL T2_HIST_PARSE_NAME; >
+
+      PREVIOUS:2,NEXT:0 < INEXT=1-INTEG; LCHECK=.false.; >
+
+      FIRST:0,LAST:2    < INEXT=1-INTEG; ILOCS=0; LCHECK=.false.; >
+
+      HBOOK:2	< IHTYPE=INTEG;>
+
+      TITLE:Y	< LTITLE=LTOKEN;>
+
+      OVERFLOWS:Y       < LOVER=LTOKEN;>
+
+      WILD:Y		< LHWILD=LTOKEN; >	"Wild search of area allowed"
+
+      WRAP:Y		< LWRAP =LTOKEN ;>
+
+   >
+
+   IF ($ERROR) RETURN;
+
+   IF (LLOG) ISHD = T2_SET_HIST_DIR(CURDIR,'R');
+
+   IDMIN=IDENT; IDMAX=IDENT;
+   IF (IRDOPT.ne.0 .and. IDENT.ne.0) THEN;
+	IOFSET=0;
+	IVERSION=0;
+	ISHD = T2_SET_HIST_DIR(CURDIR,'R');
+	CALL T2_READ_HIST(' ',IOPER,$INFO,$CARD,IRDOPT,'S');
+   ENDIF;
+						"hist requested ?"
+   NOPER=0;
+   IDIR=INEXT;
+   IF (N_SELECT.ne.0 .and. IDIR.eq.0) THEN;	"Just name ??"
+      IDIR=1; ILOCS=0;
+   ENDIF;
+   IF (IDENT.ne.0.or.IDIR.ne.0) THEN;
+      MAXN=1;
+      LFOUND=.false.;
+      ILOC=ILOCS;				"Next/Previous location"
+      IF (LTREE.and..not.LTREE2.and.INEXT.ge.0) THEN;
+	 NTSTDIR2=NTSTDIR;
+	 CURDIR(1:1)=' ';
+:SEARCH:
+	 CALL HB_SEARCH_DIR(CURDIR,LEVEL,LEVEL0);
+	 IF ($TRAP) GOTO :END:;
+	 IF (CURDIR(1:1).eq.' ') THEN;		"At end of tree ?"
+	    ISEARCH=ISEARCH+1;			"Number of times through tree"
+	    IF (LWRAP.and.ISEARCH.le.1) GOTO :SEARCH:;	"Try again ?"
+	    GOTO :SEARCH END:;			"Done !"
+	 ELSEIF (NTSTDIR2.ne.0) THEN;		"Wild search ?"
+	    IF (.not.MATCHC(CURDIR(:T2BTRIM(CURDIR)),TSTDIR2(:NTSTDIR2)))
+		  GOTO :SEARCH:;
+	 ENDIF;
+      ENDIF;
+      LAREA=.false.;
+      IF (IDIR.ne.0) MAXN=HB_SEARCH_ID(0);
+      <IH=1,MAXN;				"Search for proper hist"
+	 IF ($TRAP) GOTO :END:;
+	 IF (IDIR.ne.0) THEN;			"Search for ID"
+	    ILOC=ILOC+IDIR;
+	    IF (ILOC.gt.MAXN .or.ILOC.lt.1) THEN;
+		IF (LWRAP.and.(.not.LTREE.or.ILOC.le.0)) THEN;
+		  IF (ILOC.GT.MAXN) ILOC=1;
+		  IF (ILOC.LT.1) ILOC=MAXN;
+		ELSE;
+		  <EXIT>;
+		ENDIF;
+	    ENDIF;
+	    IDH=HB_SEARCH_ID(ILOC);
+	 ELSE;
+	    IDH=IDENT; IF (.not. HEXIST(IDH)) <EXIT>;
+	 ENDIF;
+	 CALL T2_HIST_TEST_STATUS($INFO,$CARD,IDH);
+	 IF (LEXIST) THEN;			"Hist exists ?"
+	    IF (LFOUND) THEN;
+		IF (SAVDIR.ne.CURDIR) THEN;
+		  ISHD = T2_SET_HIST_DIR(SAVDIR,' ');
+		ENDIF;
+		ERROR OUT;
+		  ('*** WARNING *** Non unique hist name/ID - first one used');
+		GOTO :FOUND:;
+	    ENDIF;
+	    IF (LLOG.or.LCONF) THEN;
+		IF (LCONF) THEN;
+		  GOTO (:YES:,:NO:,:END:,:YES:) T2_CONFIRM('Acceptable');
+		  :NO: <NEXT>;
+		  :YES:
+		ENDIF;
+	    ENDIF;
+
+$VAX;
+	    ISTAT=LIB$SET_SYMBOL('TD_S_HIST_NAME',HNAME(:NHNAME)
+				    ,LIB$K_CLI_LOCAL_SYM);
+	    IF (.not.ISTAT) CALL LIB$SIGNAL(%VAL(ISTAT));
+$END;
+$UNIX;
+            ISTAT = PUTENV ( 'TD_S_HIST_NAME='//HNAME(:NHNAME) ) ;
+            IF ( ISTAT.NE.0 ) THEN ;
+               WRITE (*,*) ' PUTENV failed, no space left ' ;
+               WRITE (*,*) '   TD_S_HIST_NAME='//HNAME(:NHNAME) ;
+               STOP ;
+            ENDIF ;
+$END;
+
+	    HTITL=HNAME; NHTITL=NHNAME;
+	    IF (IDIR.eq.0) ILOC=T2_HIST_ID_LOCATION(IDH);	"Get location ??"
+	    IF (LTREE) SAVDIR=CURDIR;		"Save tree ?"
+	    ID=IDH;				"Current Id number"
+	    ILOCS=ILOC;				"Save current location"
+	    IF (IETYPE.eq.3) THEN;
+	       <I=1,MAXTUPL; VTUPL(I,1)=0; >
+	       IX=0;
+		CALL HGNPAR(ID,' ');
+	       <I=NTUPL1,MIN(NTUPL2,ENTRYS); IF (T2_GET_TUPL(I))IX=IX+1;>
+	       ITUPL=NTUPL1;
+		IF (IX.le.0) THEN;
+		  ERROR OUT;'*** ERROR *** No NTUPLES selected';
+		  GOTO :END:;
+		ENDIF;
+	    ENDIF;
+	    LFOUND=.true.;			"Data present"
+	    IDATA=0;	"Set for 1 or 2 word"
+	    IF (.not. LAPPEN) CALL T2CLRS;	"Reset Buffer"
+	    J=1; IF (LERROR) J=2;		"Error desired"
+	    IOVER=0;
+	    IF (LOVER) IOVER=-1;
+"
+	Create the data set
+"
+	    IF (IETYPE.eq.2) THEN;		"Mesh data ?"
+		CALL T2NEWM(J,IX+1-2*IOVER,IY+1-2*IOVER,HTITL(:NHTITL));
+	    ELSE;				"Regular hist ?"
+		CALL T2NEWS(IX-2*IOVER,HTITL(:NHTITL));
+	    ENDIF;
+	    IF ($ERROR) GOTO :END:;
+	    CALL T2GDSET(NDSETS,1,$LARGE INTEGER,1
+		,$LARGE INTEGER,ISETD,HNONE,'*');
+	    IF (LLOG) WRITE($TERMINAL OUT,*)'   Set=',MAX(1,NDSETS);
+	    IXMIN=1; IXMAX=IX; IYMIN=1; IYMAX=IY;
+	    <I=1,8; <J=1,3; FMARKER(J,I)=$LARGE REAL; > >	"Reset markers"
+	    CALL T2_HIST_GET_STATISTICS(IDH,H2STAT);
+	    IXMIN=IXMIN+IOVER; IXMAX=IXMAX-IOVER;
+	    IYMIN=IYMIN+IOVER; IYMAX=IYMAX-IOVER;
+	    XMIN=XMIN+IOVER*XS; YMIN=YMIN+IOVER*YS;
+	    XMAX=XMAX-IOVER*XS; YMAX=YMAX-IOVER*YS;
+	    DATDAT(1,1)=HNONE;
+	    <J=1,$MAXCOR; DVEC(J)=0; >
+	    DVEC(N_SYMBOL)=SYMBOL;
+	    IF (IETYPE.ne.2) THEN;		"1-d ?"
+	     X1=XMIN;
+	     ERR=0.0;
+	     <I=IXMIN,IXMAX;
+	       X0=X1;
+		IF (IETYPE.eq.3) THEN;		"Ntuple ?"
+		  <J=ITUPL,MIN(NTUPL2,ENTRYS);
+		     IF (T2_GET_TUPL(J)) THEN;
+			ITUPL=J+1;
+			<K=2,$MAXCOR; DVEC(K)=VTUPL(IDVEC(K),1); >
+			<EXIT>;
+		     ENDIF;
+		  >
+		ELSE;
+		  IF (I.eq.IXMAX) X1=XMAX;
+		  CALL HIX(IDH,I+1,X1);
+		  Z=HI(IDH,I);
+		  IF (LERROR) ERR=HIE(IDH,I);
+		  DVEC(N_XDATA)=(X0+X1)/2;		"Indep variable"
+		  DVEC(N_DXDATA)=(X1-X0)/2;		"Width"
+		  DVEC(N_NDXDATA)=(X1-X0)/2;		"Width"
+		  DVEC(N_YDATA)=Z;			"Dependent var"
+		  DVEC(N_DYDATA)=ERR;			"Error ?"
+		  DVEC(N_NDYDATA)=ERR;			"Error ?"
+		  ENDIF;
+		  <J=1,NINCR; DATBUF(IM)=DVEC(IVARBL(J)); IM=IM+1; >
+	     >
+	    ELSE;				"2-d"
+		IM=IM+NINCR0;
+		NINCR1=IXMAX-IXMIN+2; NINCR2=1;
+		MESH1=1; MESH2=2; MESH3=3;
+		X1=XMIN; Y1=YMIN;
+		<J=IXMIN,IXMAX;
+		  X0=X1;
+		  CALL HIJXY(IDH,J+1,1,X1,Y0);
+		  IF (I.eq.IXMAX) X1=XMAX;
+		  DATBUF(IM)=(X0+X1)/2; IM=IM+1;
+		  IF (LERROR) THEN;
+		     DATBUF(IM)=(X1-X0)/2; IM=IM+1;
+		  ENDIF;
+		>
+		<J=IYMIN,IYMAX;
+		  Y0=Y1;
+		  CALL HIJXY(IDH,1,J+1,X1,Y1);
+		  IF (J.eq.IYMAX) Y1=YMAX;
+		  NINCR2=NINCR2+1;
+		  DATBUF(IM)=(Y0+Y1)/2; IM=IM+1;
+		  IF (LERROR) THEN;
+		     DATBUF(IM)=(Y1-Y0)/2; IM=IM+1;
+		  ENDIF;
+		  <I=IXMIN,IXMAX;
+		     Z=HIJ(IDH,I,J);
+		     DATBUF(IM)=Z     ; IM=IM+1;
+		     IF (LERROR) THEN;
+			DATBUF(IM)=SQRT(ABS(Z)); IM=IM+1;
+		     ENDIF;
+		  >
+		>
+		<I=1,NINCR0; DATBUF(IM)=XMIN ; IM=IM+1; >
+		<I=1,NINCR0; DATBUF(IM)=XMAX ; IM=IM+1; >
+		<I=1,NINCR0; DATBUF(IM)=YMIN ; IM=IM+1; >
+		<I=1,NINCR0; DATBUF(IM)=YMAX ; IM=IM+1; >
+					"Fill in extra values if errors"
+	    ENDIF;			"End 2-d/3-d"
+	    IF (LCONF.or..not.LCHECK) GOTO :FOUND:;
+	 ENDIF;				"End found hist"
+      >
+      IF (LTREE .and. INEXT.ge.0 .and.
+	(INEXT.gt.0.or.IDENT.eq.0.OR.LCHECK)) THEN;
+	 ILOC=0;
+	 GOTO :SEARCH:;
+      ENDIF;
+:SEARCH END:
+      IF (.not.LFOUND) THEN;
+	 ERROR OUT; ('*** ERROR *** Histogram NAME or ID not found');
+	 LTITLE=.false.;
+      ENDIF;
+   ENDIF;
+:FOUND:
+   IF (LTITLE.and.ID.ne.0) THEN;
+      HNAME=HTITL; NHNAME=NHTITL;
+      CALL T2_HIST_TITLE;
+   ENDIF;
+:END:
+   LTREE2=LTREE;
+END;
+%E  SUBROUTINE T2_HIST_TITLE --- plot current hist title
+SUBROUTINE T2_HIST_TITLE;
+"
+	Put hist title onto hist
+"
+   IMPLICIT NONE;
+   $T2HIST;
+   $SPECIFICATION;
+   INTEGER I,J,K;
+   INTEGER ITLAB(4)/4,2,1,3/;
+   CHARACTER*3 CTLAB(4)/'TOP','X','Y','Z'/;
+		"Now find substrings in title separated by semicolon ';'"
+   TNAME=' ';
+   J=1;						"Top title begins here"
+   <I=1,4;
+      IF (J.gt. NHNAME) <EXIT>;			"Done ?"
+      K=INDEX(HNAME(J:NHNAME),';')+J-2;		"Semicolon ?"
+      IF (K.lt.J) K=NHNAME;			"Not found semicolon?"
+      IF ($3D .or. TITLIN(ITLAB(I)).ge.1)
+	    CALL TDTEXT(CTLAB(I)//' CENTER',HNAME(J:K),TNAME);
+      J=K+2;
+   >
+END;
+%E  SUBROUTINE T2_GET_TUPL  --- Get NTUPL hist data
+LOGICAL FUNCTION T2_GET_TUPL(IDNEVT);
+"
+	Get selected ntuple data into an array
+"
+   IMPLICIT NONE;
+   INTEGER IDNEVT,IERROR,I,J;
+   REAL T;
+   $T2HIST;
+   T2_GET_TUPL=.false.;
+   CALL HGNF(ID,IDNEVT,VTUPL,IERROR);
+   IF (IERROR .ne. 0) RETURN;
+   <I=1,NLIMTUPL;
+      J=ILIMTUPL(I);
+      T=VTUPL(J,1);
+      IF (T.lt.LIMTUPL(J,1) .or. T.gt. LIMTUPL(J,2)) RETURN;
+   >
+   T2_GET_TUPL=.true.;
+END;
+%E  SUBROUTINE T2_PRINT_HIST  --- Print hists
+SUBROUTINE T2_PRINT_HIST($INFO,$CARD);
+"
+	Parse Print histogram command
+"
+   IMPLICIT NONE;
+   INTEGER $INFO(10);
+   CHARACTER*(*) $CARD;
+   $SPECIFICATION;
+   EXTERNAL T2_HIST_DATA;
+   EXTERNAL T2_HINDEX,T2_HPRINT;
+   $T2HIST;
+   INTEGER HB_SEARCH_ID;
+   INTEGER I,J,K,ISAVE;
+   REAL VAL1,VAL2,VAL3;
+   CHARACTER*8 CTYPE(3) /'Rice','Hbook','Handypak'/;
+   INTEGER ISTAT;
+	CHARACTER*10	C_ACCESS/'SEQUENTIAL'/;
+	CHARACTER*3	C_STATUS/'NEW'/;
+   if (.not.LHINIT) CALL T2_HIST_INIT;	"Initialize hist area"
+   LHTEST=.false.;
+   C_FILE='histo.lis';
+   N_FILE=9;
+   LINDEX=.true.;
+   NTSTDIR=0;
+   LALL=.true.;
+   LHIST=.true.;	".true. lists hists according to type"
+   LMESH=.true.;	".true. only lists mesh hists"
+   LARRAY=.true.;
+   LNTUPL=.true.;	".true. If NTUPL desired"
+   LENTRY=.true.;	".true. only lists hists with entries"
+   LSENT=.false.;	".true. lists hists according to entries"
+   LTREE=$MODE TREE;				"Do Tree scan ?"
+   LEXACT=.false.;	".true. makes names case sensative."
+   N_SELECT=0;
+   IDMIN=0; IDMAX=0;
+	C_STATUS='NEW';
+	C_ACCESS='SEQUENTIAL';
+   <TOKEN KEY LOOP> <
+      APPEND:Y  <
+		IF (LTOKEN)	THEN; C_ACCESS='APPEND'; C_STATUS='OLD';
+				ELSE; C_ACCESS='SEQUENTIAL'; C_STATUS='NEW';
+				ENDIF;
+		>
+      AREA:T,DIRECTORY:T <
+	 LCHECK_MEM=.true.;
+	 CALL T2_HIST_PARSE_AREA($INFO,$CARD,.true.,.true.);>
+      EXACT:Y  < LEXACT=LTOKEN; >
+      INDEX:Y  < LINDEX=LTOKEN; >
+      TREE:Y   < LTREE=LTOKEN; >
+      CURRENT  < IDMIN=ID; IDMAX=ID; >
+      ALL      < IDMIN=0; IDMAX=0; >
+      IDENT    <
+	 VAL1=1; VAL2=0.95*$LARGE INTEGER; VAL3=0;
+	 CALL T2FRTO($INFO,$CARD,VAL1,VAL2,VAL3);
+	 IDMIN=NINT(VAL1); IDMAX=NINT(VAL2);
+      >
+      LOG:Y      < LLOG  =LTOKEN ;>
+      ENTRIES:Y  < LENTRY=LTOKEN; LSENT=.true.; >
+      HISTOGRAM:1:Y,MESH:2:Y,NTUPL:3:Y,ARRAY:4:Y
+	 < CALL T2_HIST_PARSE_TYPE; >
+      SELECT:S,NAME:S < CALL T2_HIST_PARSE_NAME; >
+      FILE:F,OUTPUT:F <
+	 N_FILE=NSTRNG; C_FILE=STRNG;
+	 CALL T2_SET_DEFAULT_FILE(c_file,N_file,'histo.lis');
+      >
+   >
+   IF ($ERROR) GOTO :END:;
+   IF (N_FILE .gt. 0) THEN;
+$VAX;
+      %'$DEFAULT'='",CARRIAGECONTROL=''LIST''"';
+$ELSE;
+      %'$DEFAULT'='';
+$END;
+      OPEN(UNIT=$SCRATCH FILE
+	,FILE=C_FILE(:N_FILE)
+	$DEFAULT
+	$ACCESS
+	,STATUS=C_STATUS
+	,IOSTAT=ISTAT
+	,ERR=:OPERR:);
+   ENDIF;
+   CALL HOUTPU($SCRATCH FILE);
+   N_FILE=MAX(1,N_FILE);
+   ISAVE=IDMIN;
+   IDMIN=0;
+   IF ($TRAP) GOTO :CLOSE:;
+   LHTEST=.true.;
+   LCHECK_MEM=.true.;
+   IF (LINDEX)					"Print index ?"
+      CALL T2_HIST_DO($INFO,$CARD,' ',T2_HINDEX,'1',i,.true.);
+   IF ($ERROR) GOTO :CLOSE:;
+   IDMIN=ISAVE;
+   LHTEST=.false.;
+   IF ($TRAP) GOTO :CLOSE:;
+   CALL T2_HIST_DO($INFO,$CARD,'PRINT',T2_HPRINT,' ',i,.true.);
+:CLOSE:
+   if (LLOG) THEN;
+	N_FILE=0;
+	INQUIRE($SCRATCH FILE ,NAME=C_FILE);
+	CALL T2_CONCEAL_PASSWORD(C_FILE,N_FILE);
+	if (C_ACCESS(1:1) .eq. 'S') C_ACCESS='written';
+	WRITE($TERMINAL OUT,*)'    ',C_ACCESS,' To:',C_FILE(:N_FILE);
+   ENDIF;
+   CLOSE(unit=$SCRATCH FILE);
+   GOTO :END:;
+:OPERR:
+   CALL T2_CONCEAL_PASSWORD(C_FILE,N_FILE);
+   CALL T2_TYPE_ERROR($INFO,$CARD,C_FILE(:N_FILE),ISTAT);
+:END:
+END;
+%E  SUBROUTINE T2_HINDEX --- Print an index of histograms
+SUBROUTINE T2_HINDEX;
+"
+	Print histogram index for this area
+"
+   IMPLICIT NONE;
+   $T2HIST;
+   INTEGER IVAL;
+   LOGICAL LVAL;
+   REAL FVAL;
+   TNAME=' ';
+   CALL HB_GET_OPT(0,'TITL',TNAME,FVAL,IVAL,LVAL);	"Get Old title"
+   CALL HTITLE(CURDIR(:T2BTRIM(CURDIR))//': '// TNAME);	"New title with area"
+   CALL HINDEX;					"Print index"
+   CALL HTITLE(TNAME);				"Restore title"
+END;
+%E  SUBROUTINE T2_HPRINT --- Print the selected histogram
+SUBROUTINE T2_HPRINT(I);
+"
+	Print selected histograms
+	I=the histogram ID
+"
+   IMPLICIT NONE;
+   INTEGER I;
+   $T2HIST;
+   INTEGER IVAL;
+   LOGICAL LVAL;
+   REAL FVAL;
+   TNAME=' ';
+"
+	Add the directory to the front of the Page title
+"
+   CALL HB_GET_OPT(0,'TITL',TNAME,FVAL,IVAL,LVAL);	"save old title"
+   CALL HTITLE(CURDIR(:T2BTRIM(CURDIR))//': '//TNAME);	"New title"
+   CALL HPRINT(I);				"Print the hist"
+   CALL HTITLE(TNAME);				"restore old title"
+END;
+%E  SUBROUTINE T2_DEFINE_HIST  --- Define histograms
+SUBROUTINE T2_DEFINE_HIST($INFO,$CARD);
+"
+	Create and modify histograms
+"
+   IMPLICIT NONE;
+   INTEGER $INFO(10);
+   CHARACTER*(*) $CARD;
+   $SPECIFYNONE;
+   $MAINSPEC;
+   $POINT ARRAYS($NPOINTS);
+   $SPECIFICATION;
+   $T2HIST;
+   INTEGER	MEMORY($MEMSIZ);
+   COMMON	/PAWC/MEMORY;
+   EXTERNAL T2_HIST_DATA;
+   EXTERNAL HIDOPT,HSQUEZ,HRESET,HBIGBI,HMAXIM,HMINIM,HDELET;
+$VAX;
+   EXTERNAL HRESETG;
+$END;
+   INTEGER HB_SEARCH_ID;
+   INTEGER I,J,K,L,IOP,IDL,NX,NY,IOPER,JOPER,IBUFPTR/1/;
+   INTEGER NXY(2);
+   EQUIVALENCE (NX,NXY(1)),(NY,NXY(2));
+   INTEGER IDOP(2);
+   INTEGER II(7);
+   INTEGER*4 T2_HIST_ID_LOCATION,T2_HIST_TYPE;
+   CHARACTER*4 SOPER /'+-*/'/;
+   LOGICAL INTRAC,ISHD,T2_SET_HIST_DIR,T2_GET_TUPL,HEXIST;
+   $BOOLEAN LEXIST2,LCREATE,LMODIFY,LZERO,LSECT,LCYCLE,LTUPL2,LPROFIL,LHIS;
+   INTEGER    NOPT;
+   PARAMETER (NOPT=21);
+   EQUIVALENCE (PAR,XMIN);
+   REAL PARM(4,3),PAR(2,3);
+   REAL FACOP(2);
+   REAL FLOPT(NOPT),T,RANGE,VAL1,VAL2,VAL3,T0,T1;
+   REAL PRMIN,PRMAX,PRBIG;
+   INTEGER MASK_OPT, MASK_NOOPT;
+   CHARACTER*12 HBOPT(NOPT)
+      /'BLACK','STATISTICS','ERROR','INTEGRAL','PCHANNELS'
+       ,'PCONTENTS','PERROR','PFUNCTION','PLOW','PHISTOGRAM'
+       ,'ROTATE','STAR','1EVL','2PAGE','SETDEFAULT'
+       ,'LOGY','LINY','PSTATISTICS','TABLE','SCATTER'
+       ,'AUTOSCALE'/;
+   CHARACTER*20 CHOPT;
+   CHARACTER*8 CCHAR(3)/'BLACX','STAR*','FUNC-'/;
+   CHARACTER*4 NOYES(2)/'NO  ','YES '/;
+   if (.not.LHINIT) CALL T2_HIST_INIT;		"Initialize hist area"
+   LHTEST=.false.;
+   IDOP(1)=0; IDOP(2)=0;
+   N_SELECT=0;
+   C_SELECT='*';
+   MASK_OPT=0;					"Bit=1 if option requested"
+   MASK_NOOPT=0;				"Bit=1 if option negated"
+   N_NAME=0;					"Selected name of hist"
+   C_NAME=' ';
+   PRMIN=HNONE;
+   PRMAX=HNONE;
+   PRBIG=HNONE;
+   <J=1,2; <I=1,4; PARM(I,J)=0.0;> >
+   LTREE=$MODE TREE;				"Do Tree scan ?"
+   NTSTDIR=0;
+   LZERO=.false.;				"True if zero hist"
+   LEXIST2=.false.;				"True if IDENT exists"
+   LCREATE=.false.;				"True if hist to be created"
+   LMODIFY=.false.;				"True if hist to be modified"
+   LALL=.true.;
+   LHIST=.true.;				"Check all hists"
+   LMESH=.true.;
+   LARRAY=.true.;
+   LNTUPL=.true.;
+   LENTRY=.true.;
+   LSENT=.false.;
+   LSECT=.false.;
+   LCHECK_MEM=.true.;
+   LEXACT=.false.;
+   LCYCLE=.false.;
+   LTUPL2=.false.;
+   RANGE=0;					"Default range"
+   IDMIN=1; IDMAX=-1;
+   VAL1=1; VAL2=0.95*$LARGE INTEGER; VAL3=0;
+   NS1=0; NS2=0;
+   <TOKEN KEY LOOP> <
+      APPEND      < IDMIN=HB_SEARCH_ID(HB_SEARCH_ID(0))+1; GOTO :CHECKID:; >
+      CHECK:Y  < LCHECK=LTOKEN; >
+      IDENT    <
+	CALL T2FRTO($INFO,$CARD,VAL1,VAL2,VAL3);
+	IDMIN=NINT(VAL1); IDMAX=NINT(VAL2);
+	IF (IDMIN.eq.IDMAX .and. IDMIN.gt.0) THEN;
+	    IDENT=IDMIN; GOTO :CHECK:;
+	ENDIF;
+	LEXIST2=.false.;
+	GOTO :CHECKID:;
+      >
+      PREVIOUS:1,CURRENT:2,NEXT:3 < IDMIN=ID+INTEG-2; GOTO :CHECK:; >
+      ALL	< LEXIST2=.false.; IDMIN=0; IDMAX=0; GOTO :CHECKID:; >
+      FIRST       < IDMIN=HB_SEARCH_ID(1); GOTO :CHECK:; >
+      LAST	< IDMIN=HB_SEARCH_ID(HB_SEARCH_ID(0));
+:CHECK:
+	IF (IDMIN.le.0) GOTO :NOEXIST:;
+	IDMAX=IDMIN;
+	LEXIST2=HEXIST(IDENT);
+	IF (LEXIST2) THEN;			"Hist already exists ?"
+	    LHTEST=.true.;
+	    CALL T2_HIST_TEST_STATUS($INFO,$CARD,IDENT);	"Get params"
+	    IF (.not. LCREATE) THEN;
+		<I=1,2; <J=1,3; PARM(J,I)=PAR(I,J); > >
+		PARM(4,1)=IX; PARM(4,2)=IY;	"Save them"
+	    ENDIF;
+	ENDIF;
+:CHECKID:
+	IF (VAL1 .lt. 0) THEN;
+		ERROR OUT;'*** ERROR *** Conflicting options';
+		GOTO :END:;
+	ELSEIF (IDOP(1).gt.0) THEN;
+	    I=IDOP(1); J=IDOP(1);
+	    IF (IDOP(2).ne.0) THEN; I=MIN(I,IDOP(2)); J=MAX(J,IDOP(2)); ENDIF;
+	    IF (LCYCLE.and..not.LTUPL2) J=J+IDMAX-IDMIN;
+	    IF (I.le.IDMAX .and. J.ge.IDMIN) ERROR OUT;
+		'*** ERROR *** (ADD/SUB/MUL/DIV) ID numbers overlap';
+	ENDIF;
+	VAL1=-1;
+	GOTO :CHECKIT:;
+      >
+
+      AREA:T,DIRECTORY:T <
+	IF (NSTRNG.gt.0) THEN;
+	    LCHECK_MEM=.true.;
+	    CALL T2_HIST_PARSE_AREA($INFO,$CARD,.false.,.true.);
+	    IF ($ERROR) GOTO :END:;
+	    CALL T2_CREATE_HIST_DIR($INFO,$CARD,STRNG(:NSTRNG));
+	    IF ($ERROR) GOTO :END:;
+	    SAVDIR=CURDIR;
+	ENDIF;
+      >
+
+      SECTION:Y  <				"Modify global section"
+	LSECT=LTOKEN;
+	IF (SECT_OFFSET.eq.0) THEN;
+	    ERROR OUT;'*** ERROR *** Global section is not available';
+	ENDIF;
+	GOTO :CHECKIT:;
+      >
+
+      SETS  <
+	NS1=1; NS2=NDSETS;		"Default is all"
+	CALL T2NSET($INFO,$CARD,NS1,NS2);
+	LCREATE=.true.;
+	GOTO :CHECKIT:;
+      >
+
+      ADD:1,SUBTRACT:2,MULTIPLY:3,DIVIDE:4 <
+	LMODIFY=.true.;
+	IOP=INTEG;
+	FACOP(1)=1.0;  FACOP(2)=1.0;
+	IDL=1;
+	<TOKEN LOOP> <
+	    KEY::    <
+		FACTOR:11 < IDL=INTEG; >
+		CYCLE:Y   < LCYCLE=LTOKEN; >
+"
+		SET::     < ISET=INTEG;
+			  >
+"
+	    >
+	    NUMBER:: <
+		I=MOD(IDL,10);
+		IF (I .gt. 2) THEN;
+		  ERROR OUT;'*** ERROR *** Too many values';
+		ELSE;
+		  IF (IDL .gt. 10) THEN; FACOP(I)=FLOTNG;
+		  ELSE;
+		     IDOP(I)=INTEG;
+		     LILTUPL=I.gt.1;
+		     LHTEST=.true.;
+		     CALL T2_HIST_TEST_STATUS($INFO,$CARD,IDOP(I));
+							"Check if it exists"
+		     IF (.not.LEXIST) GOTO :NOEXIST:;
+		     IF (I.eq.1) LTUPL2=IETYPE.eq.3;	"True if N-TUPL"
+		  ENDIF;
+		  IOPER=MAX(IOPER,I);
+		  IDL=IDL+1;			"Next value"
+		ENDIF;
+	    >
+	    ELSE:: <READ SAME TOKEN; GOTO :CHECKID:; >
+	>
+	IF (IDL .eq. 1) THEN;
+	    ERROR OUT; '*** ERROR *** Missing IDENT or FACTOR';
+	ENDIF;
+	GOTO :CHECKIT:;
+      >
+
+      ZERO		< LZERO=.true.; GOTO :CHECKIT:; >
+      LOG:Y		< LLOG=LTOKEN;>
+      TREE:Y		< LTREE=LTOKEN; >
+      CONFIRM:Y	< LCONF =LTOKEN ;>
+
+      X:1,Y:2 <
+	J=INTEG;				"Specify BINS"
+	IF (PARM(4,J).eq.0) PARM(4,J)=100;
+	I=16+8+1+1;				"MIN/MAX already spec ?"
+	CALL T2FTBY($INFO,$CARD,PARM(1,J),11+16);
+	LCREATE=.true.;
+:CHECKIT:
+	I=0;
+	IF (NS1 .gt. 0) I=I+1;
+	IF (PARM(4,1)+PARM(4,2) .ne. 0) I=I+1;
+	IF (LZERO) I=I+1;
+	IF (	I .ge. 2 .or.
+		(LSECT .and. (LMODIFY .or. LCREATE .or. LTUPL2))) THEN;
+	    ERROR OUT;'*** ERROR *** Conflicting options';
+	ENDIF;
+      >
+
+      PROFILE:Y	< LPROFIL=LTOKEN; >
+      SELECT:S,NAME:S  < CALL T2_HIST_PARSE_NAME; >
+      ENTRIES:Y	< LENTRY=LTOKEN; LSENT=.true.; >
+      HISTOGRAM:1:Y,MESH:2:Y,NTUPL:3:Y,ARRAY:4:Y
+	 < CALL T2_HIST_PARSE_TYPE; >
+      EXACT:Y	< LEXACT=LTOKEN; >
+
+      DEFNAME:S  <
+	LMODIFY=.true.;
+	N_NAME=NSTRNG;
+	IF (NSTRNG.gt.0) THEN;
+	    C_NAME=STRNG(:N_NAME);
+	ENDIF;
+      >
+
+      RANGE:::0		< RANGE=FLOTNG;>
+
+      PRBLACK:1,
+      STATISTICS:2:Y,
+      ERRORS:3:Y,
+      PRINTEGRAL:4:Y,
+      PRCHANNELS:5:Y,
+      PRCONTENTS:6:Y,
+      PRERRORS:7:Y,
+      PRFUNCTION:8:Y,
+      PRLOW:9:Y,
+      PRHISTOGRAM:10:Y,
+      PRROTATE:11:Y,
+      PRSTAR:12,
+      PR1PAGE:113:Y,PR2PAGE:214:Y,
+      DEFAULT:15,
+      PRLOGARITHMIC:116:Y,PRLINEAR:217:Y,
+      PRSTATISTICS:18:Y,
+      PRTABLE:19,
+      PRSCATTER:20,
+      PRAUTOSCALE:21,   <
+	LMODIFY=.true.;
+	IF (INTEG/100 .gt.0) THEN;
+	    I=2**(MOD(INTEG,100)-1);
+	    MASK_OPT=IAND(MASK_OPT,NOT(I));
+	    IF (.not.LTOKEN) INTEG=INTEG+3-2*(INTEG/100);
+	    I=2**(MOD(INTEG,100)-1);
+	    MASK_OPT=IAND(MASK_OPT,NOT(I));
+	    LTOKEN=.true.;
+	ENDIF;
+	I=2**(MOD(INTEG,100)-1);
+	MASK_OPT=IOR(MASK_OPT,I);
+	IF (LTOKEN)	THEN;	MASK_NOOPT=IAND(MASK_NOOPT,NOT(I));
+			ELSE;	MASK_NOOPT=IOR(MASK_NOOPT,I);
+			ENDIF;
+	GOTO :CHECKIT:;
+      >
+      PRCHAR <
+	 <TOKEN KEY> <
+	    BLACK:1:T,STAR:2:T,FUNCTION:3:T <
+		I=INTEG;
+		IF (NSTRNG.eq.0) STRNG(1:1)=CCHAR(I)(5:5);
+		CALL HPCHAR(CCHAR(I)(:4),STRNG(1:1));
+	    >
+	 >
+      >
+      PRSQUEEZE:Y <
+	I=1; IF (LTOKEN) I=2;
+	CALL HSQUEZ(NOYES(I));
+      >
+
+      PRBIGBI:0:15:0 <	PRBIG=FLOTNG;
+			LMODIFY=.true.;
+			GOTO :CHECKIT:; >
+      PRMAXIMUM:::0  <	PRMAX=FLOTNG;
+			LMODIFY=.true.;
+			GOTO :CHECKIT:; >
+      PRMINIMUM:::0  <	PRMIN=FLOTNG;
+			LMODIFY=.true.;
+			GOTO :CHECKIT:; >
+      PRPAGE:0:1024:62    <
+	CALL HPAGSZ(INTEG);
+      >
+      BINSZ:Y <
+	I=1; IF (LTOKEN) I=2;
+	CALL HBINSZ(NOYES(I));
+      >
+      PRTITLE:S <
+	NSTRNG=MAX(1,NSTRNG);
+	CALL HTITLE(STRNG(:NSTRNG));
+      >
+   >
+
+   IF ($ERROR) GOTO :END:;
+
+   LHIS=.true.;
+   IF (LCREATE.or.LTUPL2) THEN;
+      IF (LTREE) THEN;
+	 ERROR OUT;'*** ERROR *** Wild histogram creation is illegal';
+	 GOTO :END:;
+      ENDIF;
+      ISHD = T2_SET_HIST_DIR(CURDIR,'R');	"Make current dir in memory"
+      IF (CURDIR(:6) .ne. CDIR(1)) THEN;
+	 ERROR OUT;'*** ERROR *** Illegal to create histogram in area:',
+	    CURDIR(:T2BTRIM(CURDIR));
+	 GOTO :END:;
+      ENDIF;
+      NX=NINT(PARM(4,1)); NY=NINT(PARM(4,2));
+      JOPER=0;
+	IBUFPTR=1;
+      IF (IDMAX .le. 0 .and. NS1 .gt. 0) IDMAX=IDMIN+NS2-NS1;
+      <ID=MAX(1,IDMIN),IDMAX;
+	IF (NS1 .gt. 0) THEN;			"Fill from TD data ?"
+:GETHIST:
+	    IF (NS1 .gt. NS2) <EXIT>;
+	    CALL T2GDSET(NS1,N1,N2,N3,N4,ISETD,HNONE
+		,C_SELECT(1:MAX(1,N_SELECT)));
+	    NS1=NS1+1;				"Next hist"
+	    IF (N1 .gt. NP) GOTO :GETHIST:;	"No points ?"
+	    IF (IBTYPE .eq. 1 .and. .not. LHIST) GOTO :GETHIST:; "Wrong type ?"
+	    IF (IBTYPE .eq. 2 .and. .not. LMESH) GOTO :GETHIST:;
+	    NINCR1=NINCR1*NINCR0;
+	    NINCR2=NINCR1*(NINCR2-(NP-N1+1));
+	    <I=1,IBTYPE;
+		J=MESHN(I);
+		NXY(I)=ISETD(NPDATA-1+I);
+		CALL T2FHIS(NS1-1,J,N1,N2,N3,N4,LHIS,K,PARM(1,I),PARM(3,I));
+		PARM(1,I)=PARM(1,I)-PARM(3,I)/2;
+		PARM(2,I)=PARM(1,I)+PARM(3,I)*NXY(I);
+		IF (.not.LHIS .and. I .gt. 1 .and. LCHECK) THEN;
+			ERROR$MESSAGE
+			'*** ERROR *** Not a histogram '
+			,' Set=',NS1-1;
+			GOTO :END:;
+		ENDIF;
+	    >
+	    IF (NP*NL .gt. $BUFSIZ) THEN;
+		CALL T2_GET_MEMORY(BUFFER,NP*NL,IBUFPTR);
+		IF (IBUFPTR .eq. 0) THEN;
+		    ERROR OUT;'*** Too many points'; GOTO :END:;
+		ENDIF;
+	    ENDIF;
+	    IF (.not. LHIS) THEN;		"Setup channels"
+		T0=DATBUF(I1);
+		IF (NX .gt. 0) T1=T0-(DATBUF(I1+NINCR0)-T0);
+		VAL1=T0-T1;
+		<I=IBUFPTR,IBUFPTR+NX-1;
+		    T0=T1;
+		    T1=DATBUF(I1); I1=I1+NINCR0;
+		    BUFFER(I)=(T1+T0)/2;
+		    IF (VAL1*(T1-T0) .le. 0 .and. LCHECK) THEN;
+			ERROR$MESSAGE '*** ERROR *** Data not strictly',
+			' Monotonic SET=',NS1-1;
+			GOTO :END:;
+		    ENDIF;
+		>
+		BUFFER(I)=BUFFER(I-1)+(T1-T0);
+	    ENDIF;
+	    IF (N_NAME .le. 0) THEN;
+		CALL T2_GET_SET_NAME(IBGDAT,C_NAME);
+		N_NAME=-ABS(T2BTRIM(C_NAME));
+	    ENDIF;
+	    IF (IBTYPE .eq. 1) NY=0;		"Only 1-dim hist"
+	ELSEIF (N_NAME.le.0) THEN;
+	    WRITE(C_NAME,*)'Hist Id=',ID;
+	    CALL T2SQEZ(C_NAME,N_NAME);
+	    N_NAME=-N_NAME;
+	ENDIF;
+	IF ($TRAP) GOTO :END:;
+	NHNAME=0;
+	IF (HEXIST(ID)) THEN;			"Output hist exists ?"
+	    IF (.not.LCREATE) <NEXT>;		"No create ??"
+	    I=IDMIN; J=IDMAX;
+	    IDMIN=ID; IDMAX=ID;			"Save IDMIN,MAX"
+	    CALL T2_HIST_DO($INFO,		"Delete the hist"
+			 $CARD,
+			 'DELETE',
+			 HDELET,
+			 ' ',
+			 FLOTNG,
+			 .false.);
+	    IF (NOPER.le.0) <NEXT>;		"No hists deleted?"
+	    IDMIN=I; IDMAX=J;			"Restore"
+	 ELSEIF (HEXIST(IDOP(1))) THEN;		"Do operations ?"
+	    LHTEST=.true.;
+	    CALL T2_HIST_TEST_STATUS($INFO,$CARD,IDOP(1));	"IN hist stat"
+	    IF (IETYPE.eq.3) THEN;		"N-tupl ?"
+		I=IDVEC(N_XDATA);			"X coordinate"
+		IF (LCYCLE) I=MOD(I+ID-IDMIN-1,NTUPL)+1;	"X if cycle !"
+		J=IDVEC(N_YDATA);			"Y coordinate"
+		NHNAME=T2BTRIM(HNAME);		"Length of name"
+			"Now trim name to accomodate value name"
+		IF (NY .le. 0) THEN;		"No 3-d ?"
+		  NHNAME=MIN(NHNAME,LEN(HNAME)-T2BTRIM(CTUPL(I))-1);
+		ELSE;
+		  NHNAME=MIN(NHNAME,LEN(HNAME)-T2BTRIM(CTUPL(I))-2-
+			T2BTRIM(CTUPL(J)));
+		ENDIF;
+		HNAME(NHNAME+1:)=';'//CTUPL(I);	"Add on X value name"
+		NHNAME=T2BTRIM(HNAME);		"Length of total name"
+		IF (NY .gt. 0) THEN;		"3-d ?"
+		  HNAME(NHNAME+1:)=';'//CTUPL(IDVEC(N_YDATA));	"Add Y name"
+		  NHNAME=T2BTRIM(HNAME);
+		ENDIF;
+	    ENDIF;
+	 ENDIF;
+	 IF (N_NAME.le.0.and.NHNAME.ne.0) THEN;
+	    C_NAME=HNAME; N_NAME=-T2BTRIM(C_NAME);
+	 ENDIF;
+	IF (.not. LHIS) THEN;
+	    CALL HBOOKB(ID,C_NAME(:ABS(N_NAME)),NX,BUFFER(IBUFPTR),RANGE);
+	ELSEIF (LPROFIL) THEN;			"Profile hist ?"
+	    CALL HBPROF(ID,C_NAME(:ABS(N_NAME)),
+		NX,PARM(1,1),PARM(2,1),PARM(1,2),PARM(2,2),' ');
+	ELSEIF (NY.le.0) THEN;			"1-d hist ?"
+	    CALL HBOOK1(ID,C_NAME(:ABS(N_NAME)),
+		NX,PARM(1,1),PARM(2,1),RANGE);
+	ELSE;
+	    CALL HBOOK2(ID,C_NAME(:ABS(N_NAME)),
+		NX,PARM(1,1),PARM(2,1),NY,PARM(1,2),PARM(2,2),RANGE);
+	ENDIF;
+	IF (NS1 .gt. 0) THEN;
+	  IF (IBTYPE .eq. 1) THEN;
+		I3=I2; I6=I5;
+	  ENDIF;
+	  <L=1,2;
+	    K=IBUFPTR;
+	    IF (DATBUF(I3) .eq. HNONE) <EXIT>;	"No data ?"
+	    <I=N3,NL;
+		<J=N1,NP;
+		    BUFFER(K)=DATBUF(I3); K=K+1; I3=I3+NINCR0;
+		>
+		I3=I3+NINCR0;
+	    >
+	    IF (L .eq. 1) THEN; CALL HPAK(ID,BUFFER(IBUFPTR));
+			  ELSE; CALL HPAKE(ID,BUFFER(IBUFPTR));
+			  ENDIF;
+	    I3=I6;
+	  >
+	  IF (IBUFPTR .ne. 1) THEN;
+		CALL T2_FREE_MEMORY(BUFFER,IBUFPTR,NP*NL);
+		IBUFPTR=1;
+	  ENDIF;
+	ENDIF;	
+	IF (HEXIST(ID)) JOPER=JOPER+1;
+	LHTEST=.false.;
+	IF (LLOG) THEN;
+	    WRITE($TERMINAL OUT,*)'==>Created';
+	    CALL T2_HIST_TEST_STATUS($INFO,$CARD,ID);
+	ENDIF;
+      >
+      IF (NS1 .gt. 0) THEN;
+	IDMAX=ID-1; N_SELECT=N_NAME; C_SELECT=C_NAME;
+      ENDIF;
+      IF ((LLOG.or.JOPER.eq.0).and.LCREATE)	"LLOG, or no hists created"
+	 WRITE($TERMINAL OUT,*)'   ',JOPER,' Histograms created';
+   ELSEIF (LZERO)  THEN;
+      IF (LSECT) THEN;
+$VAX;
+	 IF (N_NAME.le.0) C_NAME=' ';
+	 ISHD = T2_SET_HIST_DIR(CURDIR,'R');
+	 IF (T2_SET_HIST_DIR(CDIR(3)//CURDIR(7:),' ')) THEN;
+	    LCHECK_MEM=.false.;
+	    CALL T2_HIST_DO($INFO,
+			    $CARD,
+			    'ZERO',
+			    HRESETG,
+			    ' ',
+			    MEMORY(SECT_OFFSET),
+			    .false.);
+	    CURDIR(:6)=CDIR(1);
+	    ISHD = T2_SET_HIST_DIR(CURDIR,' ');
+	    LCHECK_MEM=.true.;
+	 ELSE;
+	    ERROR OUT;'*** ERROR *** Section directory does not exist';
+	    GOTO :END:;
+	 ENDIF;
+$END;
+      ELSE;
+	 CALL T2_HIST_DO($INFO,
+			 $CARD,
+			 'ZERO',
+			 HRESET,
+			 C_NAME(:MAX(1,N_NAME)),
+			 I,
+			 .true.);
+      ENDIF;
+   ENDIF;
+   IF (PRMIN .ne. HNONE) THEN;			"PRMIN specified ?"
+	 WRITE(CHOPT,'(A,1P,G10.3)') 'PRMIN=',PRMIN;
+	 CALL T2_HIST_DO($INFO,
+			 $CARD,
+			 CHOPT,
+			 HMINIM,
+			 CHOPT,
+			 PRMIN,
+			 .false.);
+"         CALL HMINIM(IDENT,FLOTNG);"
+   ENDIF;
+   IF (PRMAX .ne. HNONE) THEN;				"PRMAX specified ?"
+	 WRITE(CHOPT,'(A,1P,G10.3)') 'PRMAX=',PRMAX;	"The query"
+	 CALL T2_HIST_DO($INFO,
+			 $CARD,
+			 CHOPT,
+			 HMAXIM,
+			 CHOPT,
+			 PRMAX,
+			 .false.);
+"         CALL HMAXIM(IDENT,FLOTNG);"
+   ENDIF;
+   IF (PRBIG .ne. HNONE) THEN;			"PRBIG specified ?"
+	 INTEG=NINT(PRBIG);
+	 WRITE(CHOPT,'(A,I2)') 'PRBIG=',INTEG;	"Setup the query"
+	 CALL T2_HIST_DO($INFO,
+			 $CARD,
+			 CHOPT,
+			 HBIGBI,
+			 CHOPT,
+			 INTEG,
+			 .false.);
+"         CALL HBIGBI(IDENT,I);"
+   ENDIF;
+   IF (MASK_OPT .ne. 0) THEN;		"Options Specified"
+      <INTEG=1,31;
+	IF (IAND(MASK_OPT,2**(INTEG-1)) .ne. 0) THEN;	"This option ?"
+	    CHOPT=HBOPT(INTEG);				"Option name"
+							"Negated ?"
+	    IF (IAND(MASK_NOOPT,2**INTEG-1) .ne. 0) CHOPT='N'//HBOPT(INTEG);
+	    CALL T2_HIST_DO($INFO,			"Set the options"
+			 $CARD,
+			 CHOPT,
+			 HIDOPT,
+			 CHOPT,
+			 I,
+			 .true.);
+	ENDIF;
+      >
+   ENDIF;
+   IF (IDOP(1).ne.0) THEN;			"Operation ADD,SUB...?"
+      NOPER=0;
+      LHTEST=.true.;
+      CALL T2_HIST_TEST_STATUS($INFO,$CARD,IDOP(1));	"Check"
+      IF (.not.LEXIST) GOTO :NOEXIST:;
+      IF (IETYPE.le.2) THEN;
+	 <IDENT=MAX(1,IDMIN),MIN(IDMAX,HB_SEARCH_ID(HB_SEARCH_ID(0)));
+	  IF (IDOP(2).le.0) IDOP(2)=-IDENT;
+	  IF ($TRAP) GOTO :END:;
+	  I=T2_HIST_TYPE(IDENT);
+	  J=T2_HIST_TYPE(ABS(IDOP(1)));
+	  K=T2_HIST_TYPE(ABS(IDOP(2)));
+	  IF ((I.eq.0 .or. I.eq.J).and.
+	      J.eq.K.and.
+	      (J.ne.0)) THEN;
+	    NOPER=NOPER+1;
+	    LEXIST=.true.;
+	    LHTEST=.false.;
+	    IF (I.ne.0) THEN;
+		CALL T2_HIST_TEST_STATUS($INFO,$CARD,IDENT);
+	    ELSE;
+		CALL T2_HIST_TEST_STATUS($INFO,$CARD,ABS(IDOP(2)));
+	    ENDIF;
+	    IF (LEXIST) THEN;
+		CALL HOPERA(ABS(IDOP(2)),
+			   SOPER(IOP:IOP),
+			   ABS(IDOP(1)),
+			   IDENT,
+			   FACOP(2),
+			   FACOP(1));
+		IF (LLOG) THEN;
+		  WRITE(OUTSTR,*)'   Hist ID(',IDENT,') = ID(',
+		     ABS(IDOP(1)),') *',FACOP(1),' ',SOPER(IOP:IOP),
+		     ' ID(',ABS(IDOP(2)),') *',FACOP(2);
+		  CALL T2WRSQ(OUTSTR,.true.,$TERMINAL OUT,3);
+		ENDIF;
+	    ENDIF;
+	  ENDIF;
+	  IF (LCYCLE) THEN; IDOP(1)=IDOP(1)+1; IDOP(2)=IDOP(2)+1; ENDIF;
+	 >
+	 IF (NOPER.eq.0 .or. LLOG) WRITE($TERMINAL OUT,*)'  ',NOPER,
+	    ' Histograms ',SOPER(IOP:IOP);
+      ELSEIF (IETYPE.eq.3) THEN;
+	 VTUPL(IDVEC(N_DYDATA),1)=1.0;
+	 IF (IOP.eq.2) FACOP(1)=-FACOP(1);
+	 ID=IDOP(1);
+	 CALL HGNPAR(ID,' ');
+	 <J=NTUPL1,MIN(NTUPL2,ENTRYS);
+	    IF (T2_GET_TUPL(J)) THEN;
+		I=IDVEC(N_XDATA);
+		<IDENT=MAX(1,IDMIN),MIN(IDMAX,HB_SEARCH_ID(HB_SEARCH_ID(0)));
+		  IF ($TRAP) THEN; ID=IDENT; GOTO :END:; ENDIF;
+		  CALL HFILL(IDENT,VTUPL(I,       1),
+				   VTUPL(IDVEC(N_YDATA),1),
+				   FACOP(1)*VTUPL(IDVEC(N_DYDATA),1));
+		  IF (LCYCLE) I=MOD(I,NTUPL)+1;
+		>
+	    ENDIF;
+	 >
+	 IF (LLOG) THEN;
+	    WRITE(OUTSTR,*)'   Hist ID(',IDMIN,':',IDMAX,') filled by ID(',
+		     IDOP(1),') *',FACOP(1);
+		CALL T2WRSQ(OUTSTR,.true.,$TERMINAL OUT,3);
+	 ENDIF;
+      ENDIF;
+   ENDIF;
+   LEXIST=.false.;
+   ILOCS=T2_HIST_ID_LOCATION(IDMIN);
+   ID=IDMIN;
+:END:
+   IF (IBUFPTR .ne. 1) THEN;
+	CALL T2_FREE_MEMORY(BUFFER,IBUFPTR,NP*NL);
+   ENDIF;
+   RETURN;
+:NOEXIST: ERROR OUT;('*** ERROR *** Hist not selected');
+END;
+%E  SUBROUTINE T2_CREATE_HIST_DIR  --- Create a dir tree
+SUBROUTINE T2_CREATE_HIST_DIR($INFO,$CARD,CHDIR);
+"
+	This subroutine create a dir tree CHDIR
+	The subdirectories are only created if they do not exist
+
+"
+   IMPLICIT NONE;
+   INTEGER $INFO(10);
+   CHARACTER*(*) $CARD;
+   CHARACTER*(*) CHDIR;
+   CHARACTER*256 CHDIRX;
+   INTEGER I,J,K,NCHDIR;
+   LOGICAL ISHD,T2_SET_HIST_DIR;
+   $SPECIFICATION;
+   $T2HIST;
+   NCHDIR=T2BTRIM(CHDIR);
+   IF (CHDIR(:2).eq.'//') THEN;
+      J=INDEX(CHDIR(3:),'/')+1; IF (J.le.1)J=NCHDIR;
+      IF (.NOT. T2_SET_HIST_DIR(CHDIR(:J),' ')) THEN;
+         CHDIRX = '*** ERROR *** Bad root "'//CHDIR(:J)//'"';
+	 ERROR OUT;CHDIRX(:J+25); RETURN;
+      ENDIF;
+      J=J+1;
+   ENDIF;
+   IF (CHDIR(:1).eq.'\') THEN; ISHD = T2_SET_HIST_DIR('\') ;J=2; ENDIF;
+   <LOOP> <
+      IF (J.GT.NCHDIR) <EXIT>
+      K=INDEX(CHDIR(J:NCHDIR),'/')-2;
+      IF (K.lt.-1) K=NCHDIR-J;
+      IF (K.ge.0) THEN;
+	 IF (.NOT. T2_SET_HIST_DIR(CHDIR(J:J+K),' ')) THEN;	"Not already def ?"
+	    CALL HMDIR(CHDIR(J:J+K),' ');
+	    IF (.not. T2_SET_HIST_DIR(CHDIR(J:J+K),' ')) THEN;
+                CHDIRX = '*** ERROR *** Failure to create subdir:"'//
+		  CHDIR(J:J+K)//'"';
+		ERROR OUT;CHDIRX(:K+42);
+		GOTO :END:;
+	    ELSEIF (LLOG) THEN;
+		ISHD = T2_SET_HIST_DIR(TNAME,'R');
+		WRITE ($TERMINAL OUT,*)'   Created area:',
+			TNAME(:T2BTRIM(TNAME));
+	    ENDIF;
+	 ENDIF;
+      ENDIF;
+      J=J+K+2;
+   >
+:END:
+END;
+%E  SUBROUTINE T2_SAVE_HIST  --- Save/restore histograms on disk
+SUBROUTINE T2_SAVE_HIST($INFO,$CARD,LSAVE);
+"
+	Save/restore histograms
+	INput:
+		INFO,CARD
+		LSAVE=.true. for save .false. for restore
+"
+   IMPLICIT NONE;
+   INTEGER $INFO(10);
+   CHARACTER*(*) $CARD;
+   CHARACTER*4 STYP/'NS'/;
+   EXTERNAL T2_HIST_DATA;
+   $T2HIST;
+   INTEGER HB_SEARCH_ID;
+   $SPECIFICATION;
+   INTEGER ISTAT;
+   INTEGER IWROPT,I,J,IOPER,MAXN,IDH,LEVEL,LEVEL0,NDIR1,NDIR2,JOPER,MAXC;
+   INTEGER IRECL/1024/;
+   REAL VAL1,VAL2,VAL3;
+   $BOOLEAN LSAVE;
+   $BOOLEAN LUPDAT;
+   LOGICAL HB_HEXIST,ISHD,T2_SET_HIST_DIR;
+$VAX;
+   CHARACTER*12 C_DIRECT,C_CC;
+$END;
+   if (.not.LHINIT) CALL T2_HIST_INIT;	"Initialize hist area"
+   ISTAT=0;
+   STYP(2:2)='S';
+   LUPDAT=.false.;
+   LHTEST=.false.;
+   IF (IWROPT.eq.0) IWROPT=3;		"Default to file"
+   IF (IWROPT.eq.3 .and. LHFILE .eq. 0) IWROPT=4;	"If no file section ?"
+   IF (IWROPT.eq.4 .and. SECT_OFFSET.eq.0) IWROPT=3;"If no sect file ?"
+   IF (LSAVE) IWROPT=3;		"Default is save in file"
+   IRECL=1024;			"Default record length"
+   NOPER=0;			"Nunber of operations"
+   N_SELECT=0;			"No name selected"
+   N_FILE=0;			"No file selected"
+   IDMIN=0;			"No IDs selected"
+   IDMAX=$LARGE INTEGER;	"Default max ID"
+   IVERSION=0;			"No version selected"
+   IOFSET=0;			"No offset"
+   LALL=.true.;			"All types selected"
+   LHIST=.true.;		".true. lists hists according to type"
+   LMESH=.true.;		".true. only lists mesh hists"
+   LARRAY=.true.;
+   LNTUPL=.true.;		".true. If NTUPL desired"
+   LENTRY=.true.;		".true. only lists hists with entries"
+   LSENT=.false.;		".true. lists hists according to entries"
+   LTREE=$MODE TREE;		"Do Tree scan ?"
+   NTSTDIR=0;			"Do not Test dir tree ?"
+   LEXACT=.false.;		".true. makes names case sensative."
+   IOPER=0;			"No operatiions requested"
+   ISHD = T2_SET_HIST_DIR(SAVDIR,'R');		"Save current directory"
+   NDIR1=T2BTRIM(SAVDIR);			"And size"
+   CURDIR=SAVDIR;				"And set it as current"
+   IF (SAVDIR(:6).ne.CDIR(1)) THEN;
+      ERROR OUT;'*** ERROR *** Illegal area:',SAVDIR(:NDIR1);
+      RETURN;
+   ENDIF;
+   LEXIST=.false.;
+   <TOKEN KEY LOOP> <
+      ADD:1,SUBTRACT:2,MULTIPLY:3,DIVIDE:4,KEEP:5
+				 < IOPER=INTEG; >	"Oper"
+      ENTRIES:Y		<
+		LENTRY=LTOKEN ;
+		IDMIN=MAX(IDMIN,1);
+      >
+      VERSION:::0		< IVERSION=INTEG; >	"Select version"
+      RECLENGTH:0:32000:1024     < IRECL=INTEG; >
+      RELATIVE:Y		< STYP(3:3)=' '; IF (LTOKEN) STYP(3:3)='L';>
+      SHARED:Y		< STYP(2:2)=' '; IF (LTOKEN) STYP(2:2)='S';>
+      UPDATE:Y		<
+	LUPDAT=LTOKEN;
+	STYP(1:1)='N';
+	IF (LUPDAT) THEN;
+		STYP(1:1)='U';
+	ENDIF;
+      >
+      FETCH:1,READ:2,INPUT:3,OUTPUT:3,
+      FILE:0:F,SECTION:4:T <
+	 IF (INTEG.gt.0) IWROPT=INTEG;
+	 IF (INTEG.eq.0 .or. INTEG.eq.4) THEN;	"String specified ?"
+	    N_FILE=NSTRNG; C_FILE=STRNG(:N_FILE);
+	    IF (IWROPT .eq. 2) THEN;
+	      CALL T2_SET_DEFAULT_FILE(C_FILE,N_FILE,'hbook.dat');
+	    ELSEIF (IWROPT .le. 3) THEN;
+	      CALL T2_SET_DEFAULT_FILE(C_FILE,N_FILE,'hbook.bin');
+	    ENDIF;
+$VAX;
+	    IF ( .not. LSAVE .and. IWROPT.ne.4) THEN;   "Restore file ?"
+	       INQUIRE(FILE=C_FILE(:N_FILE),
+		       DIRECT=C_DIRECT,
+		       CARRIAGECONTROL=C_CC);
+	       IF (C_CC .eq. 'FORTRAN') THEN;     IWROPT=2;  "Read input"
+	       ELSEIF (C_DIRECT .eq. 'NO') THEN;  IWROPT=1;  "Fetch input"
+	       ELSEIF (C_DIRECT .eq. 'YES') THEN; IWROPT=3;  "INput input"
+	       ENDIF;
+	    ENDIF;
+$END;
+	 ENDIF;
+	 IF (LSAVE .and. IWROPT .ne. 3)
+	    ERROR OUT;'*** ERROR *** Illegal option for SAVE';
+      >
+      HISTOGRAM:1:Y,MESH:2:Y <
+		CALL T2_HIST_PARSE_TYPE;	"Select hist or mesh"
+		IDMIN=MAX(IDMIN,1);
+      >
+      IDENT <
+		VAL1=1; VAL2=0.95*$LARGE INTEGER;
+		CALL T2FRTO($INFO,$CARD,VAL1,VAL2,VAL3);
+		IDMIN=NINT(VAL1); IDMAX=NINT(VAL2);
+		VAL3=IDMAX;
+      >
+      SELECT:S,NAME:S		<
+		CALL T2_HIST_PARSE_NAME;
+		IDMIN=MAX(IDMIN,1);
+      >
+      IOFFSET:::0		< IOFSET=INTEG; >
+      LOG:Y			< LLOG  =LTOKEN;>
+      APPEND			< IOFSET=HB_SEARCH_ID(HB_SEARCH_ID(0)); >
+      AREA:T,DIRECTORY:T <
+		LCHECK_MEM=.true.;
+		CALL T2_HIST_PARSE_AREA($INFO,$CARD,.false.,.true.);
+      >
+      TREE:Y			< LTREE=LTOKEN; >
+   >
+   IF ($ERROR) RETURN;
+   IF ( (LHFILE.eq.1 .and. LSAVE) .or.		"Open for read ?"
+	(LUPDAT .and. LHFILE .ne. 3) .or.	"Wrong type ?"
+	(LHFILE .gt. 1 .and. N_FILE .gt. 0)) THEN;	"New file ?"
+	CALL HREND(CDIR(2)(3:));		"End it"
+	CLOSE($HIST FILE);			"And close it"
+	LHFILE=0;
+   ENDIF;
+   IF (.not.LSAVE) THEN;
+	IF (N_FILE.eq.0) THEN; C_FILE(1:1)=' '; N_FILE=1; ENDIF;
+	CALL T2_READ_HIST(C_FILE(:N_FILE),IOPER,$INFO,$CARD,IWROPT,STYP(2:));
+	RETURN;
+   ENDIF;
+   CURDIR(:6)=CDIR(2);
+   NDIR2=T2BTRIM(CURDIR);
+   IF (LHFILE .eq. 0) THEN;			"File not already open ?"
+	IF (N_FILE .EQ. 0) THEN;
+		C_FILE='hbook.bin'; N_FILE=T2BTRIM(C_FILE);
+	ENDIF;
+"
+	IF (LUPDAT) THEN;
+		STYP='OLD';
+	ELSE;
+		STYP='NEW';
+	ENDIF;
+	OPEN(UNIT=$HIST FILE,
+		FILE=C_FILE(:N_FILE),
+		STATUS=STYP,
+		FORM='UNFORMATTED',
+		RECL=1024,
+		ACCESS='DIRECT',
+		IOSTAT=ISTAT,
+		ERR=:OPERR:);
+"
+	IF (LUPDAT .and. HVERSION .gt. 4.099) IRECL=0;
+	CALL RZOPEN($HIST FILE,CDIR(2)(3:),C_FILE(:N_FILE),STYP,IRECL,ISTAT);
+	IF (ISTAT .ne. 0) GOTO :OPERR:;
+	LHFILE=2;
+	IF (LUPDAT) LHFILE=3;
+	CALL HRFILE($HIST FILE,CDIR(2)(3:),STYP(1:1));	"Mount the file"
+   ENDIF;
+   IF (LHFILE.le.1) GOTO :OPERR:;		"Not open for write"
+   ISHD = T2_SET_HIST_DIR(SAVDIR,' ');		"Reset current directory"
+   IF (LTREE) THEN;				"Scan dir tree ?"
+      SAVDIR=' ';				"And start scan"
+      LEVEL=0;
+   ENDIF;
+:SEARCH:
+   IF ($TRAP) GOTO :END:;
+   LAREA=.false.;
+   IF (LTREE) THEN;
+      IF (SAVDIR(1:1).ne.' ') ISHD = T2_SET_HIST_DIR(SAVDIR,' ');
+      CALL HB_SEARCH_DIR(SAVDIR,LEVEL,LEVEL0);
+      IF (SAVDIR(1:1).eq.' ') GOTO :END:;
+      IF (NTSTDIR.ne.0) THEN;
+	 IF (.not.MATCHC(CURDIR(:T2BTRIM(CURDIR)),TSTDIR(:NTSTDIR)))
+	    GOTO :SEARCH:;
+      ENDIF;
+      CURDIR(NDIR2+1:)=SAVDIR(NDIR1+1:);
+   ENDIF;
+   MAXN=HB_SEARCH_ID(0);			"Get number of ID's"
+   IF (MAXN.le.0) GOTO :NEXT:;
+   CALL T2_CREATE_HIST_DIR($INFO,$CARD,CURDIR);
+   IF ($ERROR) GOTO :END:;
+   IF (IDMIN .eq. 0) THEN;			"All hists ?"
+      CALL HROUT(0,IVERSION,STYP(1:1));		"Save all"
+      JOPER=MAXN;
+      IF (LLOG) THEN;				"Log ?"
+	 IF (LTREE) THEN; ISHD = T2_SET_HIST_DIR(SAVDIR,' ');
+		    ENDIF;
+	 CALL T2_HIST_TEST_STATUS($INFO,$CARD,0);
+      ENDIF;
+   ELSE;
+						"Set memory dir"
+      IF (LTREE) THEN; ISHD = T2_SET_HIST_DIR(SAVDIR,' ');
+		 ENDIF;
+      JOPER=0;
+      MAXN=HB_SEARCH_ID(0);			"Get number of ID's"
+      <I=1,HB_SEARCH_ID(0);
+	 IF ($TRAP) <EXIT>;
+	 IDH=HB_SEARCH_ID(I);
+	 IF (IDH.lt.IDMIN) <NEXT>;
+	 IF (IDH.gt.IDMAX) <EXIT>;
+	 CALL T2_HIST_TEST_STATUS($INFO,$CARD,IDH);
+	 IF (LEXIST) THEN;
+	    JOPER=JOPER+1;			"Number of writes"
+	    ISHD = T2_SET_HIST_DIR(CURDIR,' ');	"File dir"
+	    CALL HROUT(IDH,IVERSION,STYP(1:1));	"Save the ID"
+	    IF (LTREE) THEN; ISHD = T2_SET_HIST_DIR(SAVDIR,' ');
+			ENDIF;
+	 ENDIF;
+      >
+   ENDIF;
+   IF (LLOG.and.JOPER.gt.0) THEN;		"Write area ?"
+	WRITE($TERMINAL OUT,*)'   From Area:',SAVDIR(:T2BTRIM(SAVDIR));
+	IF (SAVDIR(7:) .ne. CURDIR(7:))
+	    WRITE($TERMINAL OUT,*)'     To Area:',CURDIR(:T2BTRIM(CURDIR));
+   ENDIF;
+   NOPER=NOPER+JOPER;
+:NEXT:
+   IF (LTREE) GOTO :SEARCH:;
+   GOTO :END:;
+:OPERR:
+   IF (N_FILE.le.0) THEN;
+	C_FILE='?'; N_FILE=1;
+   ENDIF;
+   CALL T2_CONCEAL_PASSWORD(C_FILE,N_FILE);
+   CALL T2_TYPE_ERROR($INFO,$CARD,C_FILE(:N_FILE),ISTAT);
+   LLOG=.false.;
+$END;
+   GOTO :END:;
+:NODIR:
+   ERROR OUT; '*** ERROR *** Area does not exist:'//CURDIR(:T2BTRIM(CURDIR));
+:END:
+   IF (SAVDIR(1:1).ne.' ') ISHD = T2_SET_HIST_DIR(SAVDIR(:NDIR1),' ');
+   ISHD = T2_SET_HIST_DIR(SAVDIR,'R');		"Get current dir"
+   IVERSION=0;
+   IF (NOPER.eq.0.or.LLOG) THEN;
+	OUTSTR=' ';
+	INQUIRE($HIST FILE ,NAME=OUTSTR);
+	I=0;
+	CALL T2_CONCEAL_PASSWORD(OUTSTR,I);
+	WRITE($TERMINAL OUT,*)NOPER,' Histograms written to:',
+		OUTSTR(:I);
+   ENDIF;
+   IF (LHFILE .gt. 1) THEN;
+	CALL HREND(CDIR(2)(3:));		"End it"
+	LHFILE=0;
+	CLOSE($HIST FILE);			"Flush file"
+	STYP(1:1)='U';
+	IF (HVERSION .gt. 4.099) IRECL=0;
+	CALL RZOPEN($HIST FILE,CDIR(2)(3:),C_FILE(:N_FILE),STYP,IRECL,ISTAT);
+	LHFILE=3;
+	CALL HRFILE($HIST FILE,CDIR(2)(3:),' ');	"Mount file"
+	ISHD = T2_SET_HIST_DIR(SAVDIR,' ');	"Reset current directory"
+   ENDIF;
+   RETURN;
+END;
+%E  SUBROUTINE T2_READ_HIST  --- Reads histograms from disk/global sections
+SUBROUTINE T2_READ_HIST(FILNAM,IOPER,$INFO,$CARD,IRDOPT,STYP);
+"
+	Get histograms from file/global section
+"
+   IMPLICIT NONE;
+   INTEGER HALL,ISTAT;
+   DATA HALL/4HALL /;
+   INTEGER $INFO(10);
+   CHARACTER*(*) $CARD,STYP;
+   CHARACTER*4 SOPER /'+-*/'/;
+   INTEGER IOPER,IOP;
+   CHARACTER*(*) FILNAM;
+   CHARACTER*16 C_FILTYPE(4)
+      /' (HBOOK3-Binary)',' (HBOOK3-ASCII)',' (HBOOK4-RZ)',' (Global Sect)'/;
+   EXTERNAL T2_HIST_DATA;
+   $T2HIST;
+   $SPECIFICATION;
+   $SPECIFYNONE;
+   INTEGER	HB_SEARCH_ID;
+   LOGICAL	ISHD,T2_SET_HIST_DIR,HEXIST;
+   INTEGER	MEMORY($MEMSIZ);
+   COMMON	/PAWC/MEMORY;
+   INTEGER HMAPG;
+   INTEGER T2_HIST_TYPE;
+   INTEGER I,J,K,L,IRDOPT,MAXN,IDH,LEVEL,LEVEL0,IV,NDIR1,NDIR2;
+   INTEGER IRECL/1024/;
+
+   IF (IRDOPT.eq.0) RETURN;
+   IV=IVERSION;
+   NOPER=0;					"No operations yet"
+   ISTAT=0;
+   IF (IV.le.0) IV=$LARGE INTEGER;
+   ISHD = T2_SET_HIST_DIR(SAVDIR,'R');
+   NDIR1=T2BTRIM(SAVDIR);
+   IF (SAVDIR(:6).ne.CDIR(1)) THEN;
+      ERROR OUT;'*** ERROR *** Illegal area:',SAVDIR(:NDIR1);
+      RETURN;
+   ENDIF;
+   IF (CURDIR(1:1).eq.' ') CURDIR=SAVDIR;
+   NDIR2=T2BTRIM(CURDIR);
+   IF (FILNAM .ne. 'NONE') THEN;
+$VAX;
+   %'$OPEN'='"SHARED,READONLY,"';
+$ELSE;
+   %'$OPEN'=' ';
+$END;
+      IF (IRDOPT.eq.1) THEN;
+	 OPEN(UNIT=$SCRATCH FILE,
+	   FILE=FILNAM,
+	   STATUS='OLD',
+	   FORM='UNFORMATTED',
+	   $OPEN
+	   IOSTAT=ISTAT,
+	   ERR=:OPERR:);
+      ELSEif (IRDOPT.eq.2) THEN;
+	 OPEN(UNIT=$SCRATCH FILE,
+	   FILE=FILNAM,
+	   STATUS='OLD',
+	   $OPEN
+	   IOSTAT=ISTAT,
+	   ERR=:OPERR:);
+      ELSEIF (ABS(IRDOPT).eq.3.and.FILNAM.ne.' ') THEN;
+	 IF (LHFILE.ne.0) THEN;
+	    CALL HREND(CDIR(2)(3:));
+	    CLOSE($HIST FILE);
+	    LHFILE=0;
+	 ENDIF;
+"
+	 OPEN(UNIT=$HIST FILE,
+	   FILE=FILNAM,
+	   STATUS='OLD',
+	   FORM='UNFORMATTED',
+	   RECL=1024,
+	   ACCESS='DIRECT',
+	   $OPEN
+	   IOSTAT=ISTAT,
+	   ERR=:OPERR:);
+"
+	  IRECL=1024;
+	  IF (HVERSION .gt. 4.099) IRECL=0;
+	  CALL RZOPEN($HIST FILE,CDIR(2)(3:),FILNAM,STYP,IRECL,ISTAT);
+	  IF (ISTAT .ne. 0) GOTO :OPERR:;
+	  LHFILE=1;
+	  CALL HRFILE($HIST FILE,CDIR(2)(3:),' ');	"Mount the file"
+$VAX;
+      ELSEIF (ABS(IRDOPT).eq.4.and.FILNAM.ne.' ') THEN;
+	 IF (SECT_OFFSET.ne.0) CALL HREND(CDIR(3)(3:));
+	 SECT_OFFSET=0;
+	 ISTAT=HMAPG(FILNAM,MEMORY,SECT_OFFSET);
+	 IF (ISTAT.le.0) THEN;
+	    SECT_OFFSET=0;
+	    ISTAT=-ISTAT;
+	    GOTO :OPERR:;
+	 ENDIF;
+	 CALL T2_HIST_GET_SECT(MEMORY,SECT_OFFSET);
+$END;
+      ENDIF;
+   ENDIF;
+   IF (IRDOPT.LT.3.OR.IRDOPT.GT.4) LTREE=.FALSE.;
+   IF (IRDOPT.eq. 3) THEN;
+      IF (LHFILE.EQ.0) GOTO :OPERR:;
+      CURDIR(:6)=CDIR(2);
+   ELSEIF (IRDOPT.eq. 4) THEN;
+      IF (SECT_OFFSET.eq.0) GOTO :OPERR:;
+      CURDIR(:6)=CDIR(3);
+   ENDIF;
+   IF (.NOT.T2_SET_HIST_DIR(CURDIR,' ')) GOTO :NODIR:;
+   IF (LTREE) THEN;
+      CURDIR=' ';
+   ENDIF;
+   IF ($ERROR) GOTO :END:;
+:SEARCH:
+   IF ($TRAP) GOTO :END:;
+   LAREA=.false.;
+   IF (LTREE) THEN;
+      CALL HB_SEARCH_DIR(CURDIR,LEVEL,LEVEL0);"Find next dir"
+      IF (CURDIR(1:1).eq.' ') GOTO :END:;		"Done ?"
+      IF (NTSTDIR.ne.0) THEN;
+	 IF (.not.MATCHC(CURDIR(:T2BTRIM(CURDIR)),TSTDIR(:NTSTDIR)))
+		GOTO :SEARCH:;
+      ENDIF;
+      SAVDIR(NDIR1+1:)=CURDIR(NDIR2+1:);		"Create image of it"
+      CALL T2_CREATE_HIST_DIR($INFO,$CARD,SAVDIR);
+      ISHD = T2_SET_HIST_DIR(CURDIR,' ');			"Go back to file"
+   ENDIF;
+   IF ($ERROR) GOTO :END:;
+   K=0;							"Perform operation ?"
+   IOP=ABS(IOPER);
+   IF (IOPER.eq.0) THEN;
+      CALL HDELET(0);					"Delete all current files ?"
+   ELSEIF (IRDOPT.ge.3..and.IOPER.le.4) THEN;		"No current hists ?"
+      K=1 000 000 000/2;				"Set extra offset"
+   ENDIF;
+   IF (IRDOPT.eq.1) THEN;
+      CALL HFETCH(IDMIN,$SCRATCH FILE);			"Get all hists"
+      IF (LLOG.and.HEXIST(IDMIN).or.IDMIN.eq.0)
+	 CALL T2_HIST_TEST_STATUS($INFO,$CARD,IDMIN);
+      NOPER=HB_SEARCH_ID(0);
+   ELSEIF (IRDOPT.eq.2) THEN;
+      <I=IDMIN,IDMAX;
+	 IF ($TRAP) <EXIT>;
+	 CALL HREAD(I,$SCRATCH FILE,0,0,-1,J);
+	 NOPER=HB_SEARCH_ID(0);
+	 IF (LLOG.and.J.ne.0.or.IDMIN.eq.0)
+	    CALL T2_HIST_TEST_STATUS($INFO,$CARD,J);
+	 IF (J.eq.0.or.J.ge.IDMAX) <EXIT>;
+      >
+   ELSEIF (IRDOPT.eq. 3 .or.
+	  IRDOPT.eq.  4) THEN;
+      LEXIST=.false.;
+      IF (IDMIN .eq. 0) THEN;				"Read all ?"
+	 CALL HRIN(0,IV,K+IOFSET);			"Get all hists this area"
+	    ISHD = T2_SET_HIST_DIR(SAVDIR,' ');		"Goto memory"
+	 IF (LLOG) THEN;
+	    CALL T2_HIST_TEST_STATUS($INFO,$CARD,0);	"Write the stats"
+	 ENDIF;
+	    NOPER=NOPER+HB_SEARCH_ID(0);
+	    ISHD = T2_SET_HIST_DIR(CURDIR,' ');		"Back to file"
+	 IF (K.gt.0) THEN;				"Operations ?"
+	    ISHD = T2_SET_HIST_DIR(SAVDIR,' ');		"Go to memory"
+	    <I=HB_SEARCH_ID(0),1,-1;			"Search through the ID's"
+		IF ($TRAP) <EXIT>;
+		J=HB_SEARCH_ID(I);			"Get ID"
+		IF (J.lt.K+IOFSET+1) <EXIT>;		"One to do ?"
+		L=J; IF (HEXIST(J-K)) L=J-K;
+		CALL HOPERA(L,
+			   SOPER(IOP:IOP),
+			   J,
+			   J-K,
+			   1.0,
+			   1.0);"do it"
+		CALL HDELET(J);				"Delete it"
+	    >
+	    IF (LLOG.and.LEXIST) THEN;
+		WRITE($TERMINAL OUT,*)'   To Area:',SAVDIR(:T2BTRIM(SAVDIR));
+	    ENDIF;
+	    ISHD = T2_SET_HIST_DIR(CURDIR,' ');		"Back to file"
+	 ENDIF;
+	 IF (LLOG.and.LEXIST) THEN;			"Write area ?"
+	    WRITE($TERMINAL OUT,*)'   To Area:',SAVDIR(:T2BTRIM(SAVDIR));
+	 ENDIF;
+      ELSE;
+"
+	 MAXN=HB_SEARCH_ID(0);
+	 <I=1,HB_SEARCH_ID(0);
+	    IDH=HB_SEARCH_ID(I);
+	    IF (IDH.lt.IDMIN) <NEXT>;
+	    IF (IDH.gt.IDMAX) <EXIT>;
+"
+	 MAXN=0;
+	 <IDH=IDMIN,IDMAX;
+	    IF ($TRAP) <EXIT>;
+	    MAXN=MAXN+1; IF (MAXN .gt. 999) <EXIT>;
+	    CALL HRIN(IDH,IV,K+IOFSET);			"Get 1 hist"
+	    J=IDH+K+IOFSET;				"ID of hist"
+	    IF (HEXIST(J)) THEN;			"Got it ?"
+		NOPER=NOPER+1;
+		MAXN=0;
+		IF (K.gt.0) THEN;			"Operations ?"
+		  L=J; IF (HEXIST(J-K)) L=J-K;
+		  CALL HOPERA(L,
+			      SOPER(IOP:IOP),
+			      J,
+			      J-K,
+			      1.0,
+			      1.0);"do it"
+		  CALL HDELET(J);			"Delete it"
+		ENDIF;
+		IF (LLOG) THEN;
+		  ISHD = T2_SET_HIST_DIR(SAVDIR,' ');	"Go to memory"
+		  CALL T2_HIST_TEST_STATUS($INFO,$CARD,IDH+IOFSET);
+							"Write stats"
+		  ISHD = T2_SET_HIST_DIR(CURDIR,' ');	"Back to file"
+		ENDIF;
+	    ENDIF;
+	 >
+      ENDIF;
+   ENDIF;
+   IF (LTREE) GOTO :SEARCH:;
+   GOTO :END:;
+:OPERR:
+   CALL T2_TYPE_ERROR($INFO,$CARD,FILNAM,ISTAT);
+$END;
+   GOTO :END:;
+:NODIR:
+   ERROR OUT; '*** ERROR *** Area does not exist:'//CURDIR(:T2BTRIM(CURDIR));
+:END:
+   IF (LLOG .or. NOPER.eq.0) THEN;
+	OUTSTR='File:';
+	IF     (IRDOPT.le.2) THEN; INQUIRE($SCRATCH FILE,NAME=OUTSTR(6:));
+	ELSEIF (IRDOPT.eq.3) THEN; INQUIRE($HIST    FILE,NAME=OUTSTR(6:));
+			   ELSE; OUTSTR=FILNAM;
+			   ENDIF;
+	J=0;
+	CALL T2_CONCEAL_PASSWORD(OUTSTR,J);
+	I=T2BTRIM(C_FILTYPE(IRDOPT));
+	WRITE($TERMINAL OUT,*)NOPER,' Histograms read from:',
+		OUTSTR(:J),C_FILTYPE(IRDOPT)(:I);
+   ENDIF;
+   IF (SAVDIR(1:1).ne.' ') ISHD = T2_SET_HIST_DIR(SAVDIR(:NDIR1),' ');
+   IVERSION=0;
+   IF (ABS(IRDOPT).le.2) CLOSE(UNIT=$SCRATCH FILE);
+END;
+%E  SUBROUTINE T2_HIST_GET_SECT  --- Sets up Global section
+SUBROUTINE T2_HIST_GET_SECT(PAWC,I);
+"
+	Setup a global section
+"
+   IMPLICIT NONE;
+   $T2HIST;
+   INTEGER PAWC(*),I;
+   CALL HRFILE(PAWC(I),CDIR(3)(3:),'G');
+END;

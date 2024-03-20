@@ -1,0 +1,48 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.18.9</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.18.9  HPGL</H4></B>   - This  is  for a generic Hewlett Packard plotter.  The
+plotter pauses in between each plot to wait for a new sheet of paper.  The
+colors you select are mapped to pen numbers as:
+     1.  WHITE
+     2.  Red
+     3.  Green
+     4.  Blue
+     5.  Yellow
+     6.  Magenta
+     7.  Cyan
+Options are:
+
+<A NAME="133">     1.  WIDTH=n.n - Paper width in cm (Default:26.0) </A>
+     2.  HEIGHT=n.n - Paper height in cm (Default:20.0)
+     3.  XSCREEN=n.n - X Offset of plot in cm (Default:0.0)
+     4.  YSCREEN=n.n - Y Offset of plot in cm (Default:0.0)
+     5.  UNITS=nn.n - Number of pixels/cm (Default:400)
+     6.  MAXCOLOR=n  -  Maximum number of pens (Default:7) This may be set
+         within the range of 1 to 7.  All pens requested larger than  this
+         value will revert to to the maximum.
+     7.  PENLIST=n1n2n3n4n5  -  maps  penwidths to .01 cm.  from 01 to 99.
+         (Default:PENLIST=0103050709) 01 is the minimum pen width.
+     8.  GENIL simulate intensity levels by doing multiple passes with the
+         pen.  If not specified then the PENLIST is ignored.
+     9.  PENWIDTH=n.n - The width of the pen points in cm (Default:0.03)
+If you wish to default to HP plotter output:
+     $ DEFINE PLOT_TERM "UGHPGLD[,options]"
+
+These  options may work differently depending on the plotter.  Most of the
+big plotters have the origin at the center of tha page,  while  the  small
+ones   use   an   origin   at   a   corner.   By  suitably  adjusting  the
+WIDTH,HEIGHT,XSCREEN,YSCREEN any coordinate system or  page  size  may  be
+accomadated.  MAXCOLOR=1 is useful when you wish to reduce a color plot to
+a single color.
+
+                                  example
+     TD:SET DEVICE HPGL "PENLIST=0309152430"
+Sets up to draw with much wider lines.
+
+
+</PRE>
+</BODY>

@@ -1,0 +1,36 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.51</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.51  SHIELD</H4></B> 
+
+Sets  an area to be shielded.  Nothing may be drawn inside this area while
+shielded.
+<U>SE</U>T <U>SH</U>IELD [=n] [<U>OF</U>F] [<U>DAtA|TExT]</U> <U>[FR</U>OM]|<U>TO</U> [[<U>X</U>=]nx,[<U>Y</U>=]ny,[<U>Z</U>=]nz]]
+          [<U>CU</U>RSOR]
+
+     1.  n - The shield number between 1 and 4.  If unspecified the next
+         available shield is used.
+
+     2.  OFF - Turns the n'th shield off.  If n is not specied all
+         shielded areas are turned off.
+
+     3.  FROM|TO - Allows you to specify the limit of the shielded area.
+         If no limits are specified the current window is shielded.
+
+     4.  DATA - Specifies the limit in data coordinates.
+
+     5.  TEXT - Specifies the limit in text coordinates.
+
+     6.  CURSOR - You use the cursor to specify the limits.
+
+                                  example
+     TD:SET SHIELD FROM 1,2 to 3,5
+Sets a shielded area in text coordinates.
+     TD:SET SHIELD DATA FROM Y=5
+Shield all data from Y=5 for all X values.
+
+</PRE>
+</BODY>

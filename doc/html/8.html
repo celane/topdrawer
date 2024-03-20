@@ -1,0 +1,55 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual Chapter 8</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>Chapter 8  OUTPUT</H4></B>
+<A NAME="11"> </A>
+TD produces the following output:
+     1.  Plot  - This may be on your terminal, LPA0:, another terminal, or
+         a file on disk.  The plot data format and file is modified by the
+         command:
+              TD:<U>SET</U> <U>DEVICE</U>
+         Plot output for a device other than your terminal is a file whose
+         name matches the input file name,  and  whose  type  is  assigned
+         according  to  the  device.   If there is no input file name, the
+         output file name  is  UGDEVICE.   You  can  define  logical  name
+         TOPDRAWER_OUTPUT to specify a name of your choice.
+
+         File types are:
+             CAL  - Calcomp Microfiche
+             HPGL - HPGL
+             IMG  - Imagen
+             PS   - Postscript
+             PTX  - Printronix
+             Q    - QMS
+             REG  - Regis, Gigi, etc.
+             SIX  - Sixels
+             TEK  - Tektronix
+             VEP  - Versatek
+             XCL  - Talarix EXCL
+
+     2.  Listing - This lists all TD commands you used in a session.  This
+         is normally TD.LIS, but the name may be changed by the command:
+              TD:<U>SET</U> <U>FILE</U> <U>OUTPUT</U> <U>'newfilename'</U>
+         If you do not want a list file:
+              TD:<U>SET</U> <U>MODE</U> <U>LIST</U> <U>OFF</U>
+                   or...
+              TD:<U>SET</U> <U>FILE</U> <U>OUTPUT</U> <U>NL:</U>
+     3.  Journal  - This file contains all commands entered interactively.
+         It is normally file TD.TDJ, but the name may be  changed  by  the
+         command:
+              TD:<U>SET</U> <U>FILE</U> <U>JOURNAL</U> <U>'newfilename'</U>
+         You may temporarily turn off journaling by:
+              TD:<U>SET</U> <U>MODE</U> <U>JOURNAL</U> <U>OFF</U>
+<A NAME="12">     4.  Errors  -  A  temporary file TOPDRAWER_ERRORS.DAT is used to save </A>
+         the error messages for the  current  plot.   This  file  is  only
+         opened for interactive sessions.
+     5.  Data  - You may use the LIST command to output data sets suitable
+         for input to TOPDRAWER.  If you do not specify the output file it
+         goes to the Listing (TD.LIS).
+
+
+</PRE>
+</BODY>

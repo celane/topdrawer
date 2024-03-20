@@ -1,0 +1,86 @@
+%N
+%U+ TDMACROS.MOR
+%L
+%E  SUBROUTINE T2NTIM --- Convert TIME in SEC to YEARS/MONTHS....SEC
+SUBROUTINE T2NTIM(TIM,YEAR,FMON,DAY,HOUR,FMIN,SEC);
+   $SPECIFICATION;
+   DOUBLE PRECISION TIM,T,T1,T2TIMF;
+   $LONG INTEGER ID;
+   INTEGER IDAYS(13);
+          "   Mar,Apr,May,Jun,Jul,Aug,Sep,Oct,Nov,Dec,Jan,Feb,Mar"
+   DATA IDAYS/  0, 31, 61, 92,122,153,184,214,245,275,306,337,367/;
+   T=TIM;
+   T1=MOD(T,60.0D0);
+   IF (T1.lt.0) T1=60.D0+T1;
+   T=T-T1;
+   SEC=T1;
+   T1=MOD(T,3600.D0);
+   IF (T1.lt.0) T1=3600.D0+T1;
+   T=T-T1;
+   FMIN=NINT(T1/60.);
+   T1=MOD(T,86400.D0);
+   IF (T1.lt.0) T1=86400.D0+T1;
+   T=T-T1;
+   HOUR=NINT(T1/3600.D0);
+   T=(T-T2TIMF(0.,3.,1.,0.,0.,0.))/86400D0;   "Days from zero"
+   T=T+SIGN(0.05D0,T);
+   IY=0;
+   L400=T/146097.D0;                    "400 year intervals"
+   IY=IY+L400*400;
+   ID=T-L400*146097.D0;
+   L100=ID/36524;                        "Centuries"
+   L100=MIN(MAX(L100,-3),3);
+   IY=IY+L100*100;
+   ID=ID-L100*36524;
+   L4=ID/1461;                          "Leap years"
+   L4=MIN(MAX(L4,-24),24);
+   IY=IY+L4*4;
+   ID=ID-L4*1461;
+   I=ID/365;                            "Number of years"
+   I=MIN(MAX(I,-3),3);
+   ID=ID-I*365;                          "Days this year"
+   IY=IY+I;
+   IF (ID.lt.0) THEN;
+      ID=365+ID; IY=IY-1;
+      IF (IY.ne.0 .and.
+         (MOD(IY,4).eq.0 .and. MOD(IY,100).ne.0) .or. MOD(IY,400).eq.0)
+        ID=ID+1;
+   ENDIF;
+   MON=1;
+   IMIN=MIN(MAX(ID/32+1,1),12);
+   <I=IMIN,12;
+      IF (ID.ge.IDAYS(I).and.ID.lt.IDAYS(I+1)) THEN; MON=I; <EXIT>;  ENDIF;
+   >
+   ID=ID-IDAYS(MON)+1;
+   MON=MON+2;
+   IF (MON.gt.12) THEN; IY=IY+1; MON=MON-12; ENDIF;
+   YEAR=IY;
+   FMON=MON;
+   DAY=ID;
+END;
+%E  FUNCTION T2TIMF  --- Convert YEARS/MONTHS... to Double precision time in SEC
+FUNCTION T2TIMF(YEAR,FMON,DAY,HOUR,FMIN,SEC);
+   DOUBLE PRECISION T2TIMF,T;
+   $SPECIFICATION;
+   INTEGER IDAYS(12);
+          "   Mar,Apr,May,Jun,Jul,Aug,Sep,Oct,Nov,Dec,Jan,Feb,Mar"
+   DATA IDAYS/  0, 31, 61, 92,122,153,184,214,245,275,306,337/;
+   "For computation IY is year from Mar 1 0 AD."
+   T=SEC;
+   T=T+FMIN*60.D0;
+   T=T+HOUR*3600.D0;
+   IY=NINT(YEAR);
+   IM=(NINT(FMON))-3;
+   IY=IY+IM/12;
+   IM=MOD(IM,12)+1;
+   IF (IM.le.0) THEN; IM=IM+12; IY=IY-1; ENDIF;
+   LEAPS1=(IY)/4-(IY)/100+(IY)/400;
+   IY0=IYEAR; IM0=IMONTH-2;
+   IF (IM0.le.0) THEN; IM0=IM0+12; IY0=IY0-1; ENDIF;
+   LEAPS0=(IY0)/4-(IY0)/100+(IY0)/400;
+   D=DAY-IDAY+IDAYS(IM)-IDAYS(IM0)+LEAPS1-LEAPS0;
+   T=T+D*86400.D0;
+   IY=IY-IY0;
+   T=T+IY*31536.D3;
+   T2TIMF=T;
+END;

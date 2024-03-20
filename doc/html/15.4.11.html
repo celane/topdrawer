@@ -1,0 +1,37 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.4.11</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.4.11  SOLID...</H4></B>  
+
+This  determines  the  texture of the line.  By stringing together several
+texture commands you may create very complicated  textures.   For  example
+DOT  SPACE DOT DASH will produce a dot-dot-dast pattern with a large space
+between the dots.
+
+     1.  SOLID produces a totally solid line.  This overrides all previous
+         specifications.
+     2.  DOT produces a dot
+     3.  DASH produces a short dash
+     4.  DAASH produces a long dash
+     5.  SPACE produces extra space between previous elements
+     6.  FUNNY produces random distances between elements
+     7.  PATTERNED  makes the pattern according to the current SET pattern
+         if it is specified by itself.  If specified with other options it
+         produces the patterns by generating a pattern.  The length of the
+         elements is determined by the size in the SET PATTERN command.
+     8.  Some  combinations  will  produce  the  patterns by hardware when
+         available.  This makes for quick, but not necessarily nice plots.
+         The following generally use hardware:
+         A.  DOT
+         B.  DASH
+         C.  DOT DASH
+         D.  DAASH
+
+See:Command SET TEXTURE
+
+
+</PRE>
+</BODY>

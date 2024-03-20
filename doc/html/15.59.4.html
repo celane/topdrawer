@@ -1,0 +1,19 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.59.4</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.59.4  SPLIT</H4></B> 
+
+SPLIT=ON  splits  channels to preserve the total sum over the projections.
+For example X channels run from 0 to 1, 1 to 2 ...  9 to 10.
+     TD:<U>PROJECT</U>  <U>X</U> <U>FROM</U> <U>0</U> <U>TO</U> <U>10</U> <U>BY</U> <U>2.5</U> Will produce 4 projections, but the
+sum over all projections will not be equal to the original sum.
+     TD:<U>PROJECT</U> <U>SPLIT</U> <U>X</U> <U>FROM</U> <U>0</U> <U>TO</U> <U>10</U> <U>BY</U> <U>2.5</U>
+Produces a set of projections and preserves the sum.
+(Default:SPLIT=OFF)
+
+
+</PRE>
+</BODY>

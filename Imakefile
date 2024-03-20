@@ -1,0 +1,25 @@
+#
+# Imakefile for topdrawer
+#
+
+#include "Imakefile.def"
+
+#define PassCDebugFlags
+
+SUBDIRS = src misc
+
+PROGRAM = td
+
+/* Rules */
+
+MakeSubdirs($(SUBDIRS))
+
+AllTarget($(PROGRAM))
+
+$(PROGRAM)::
+	$(FC) -o $(PROGRAM) src/td.o td.a misc.a \
+	$(UGS) $(LDPRELIB) $(XTOOLLIB) $(XLIB)
+
+MakefileSubdirs($(SUBDIRS))
+
+CleanSubdirs($(SUBDIRS))

@@ -1,0 +1,34 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.59.8</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.59.8  Examples</H4></B> 
+
+You read in a mesh of X,Y vs Z.
+     TD:<U>PROJECT</U> <U>Y</U> <U>FROM</U> <U>5</U> <U>TO</U> <U>10</U>
+Projects  the Y slices corresponding to Y=5 to 10 onto the X axis, and 2-d
+array of values is stored.  The new array of values is the sum  of  all  Z
+values  corresponding  to  the  range  of  Y  values.   The  mesh  data is
+destroyed.
+     TD:<U>PROJECT</U> <U>Y</U> <U>FROM</U> <U>5</U> <U>TO</U> <U>10</U> <U>BY</U> <U>2</U>
+Makes 3 projections from 5 to 7, 7 to 9, and 9 to 10
+
+     TD:<U>PROJECT</U> <U>X</U> <U>Y</U> <U>APPEND</U>
+     TD:<U>SET</U> <U>WINDOW</U> <U>X</U> <U>1</U> <U>of</U> <U>2;HIST</U> <U>SET</U> <U>&lt;SETS-1&gt;;TITLE</U> <U>BOTTOM</U> <U>'X</U> <U>axis'</U>
+     TD:<U>SET</U> <U>WINDOW</U> <U>X</U> <U>2</U> <U>of</U> <U>2;HIST</U> <U>SET</U> <U>LAST;TITLE</U> <U>BOTTOM</U> <U>'Y</U> <U>axis'</U>
+     TD:DELETE SETS FROM &lt;SET-1&gt;
+Projects both X and Y.  The projection along the X axis is in data next to
+last data set while along Y is in the last set.  Both projections are then
+histogrammed in separate windows.  Finally the projections are deleted.
+Note:   This  assumes  only  1 mesh data set exists.  If n mesh sets exist
+then 2n projections will be formed.
+
+     TD:<U>PROJECT</U> <U>X</U> <U>1</U> <U>2.5</U> <U>X</U> <U>3</U> <U>5</U> <U>X</U> <U>6</U> <U>10;HIST</U>
+Projects  3  different  bands of data along the X axis.  All 3 projections
+are then histogrammed.
+
+
+</PRE>
+</BODY>

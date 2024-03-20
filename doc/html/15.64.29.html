@@ -1,0 +1,25 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.29</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.29  FORMAT</H4></B> 
+
+Sets the format used by the Fortran READ statement.
+<U>SE</U>T <U>FOR</U>MAT "format"
+
+This  is  useful if you wish to skip lines at the beginning of a line when
+you are using a list file as input to TOPDRAWER.  Normally you do not need
+to use this command, unless the data is in an extremely weird format.  The
+format is limited  to  64  characters.   (Default:(256A1)  The  number  of
+columns  is  also limited by SET CARD.  This option remains the same until
+changed by a SET FORMAT command.  This option has no effect on  input  you
+enter interactively at the terminal.
+                                  Example
+If you wish to skip the first 10 columns:
+     TD:<U>SET</U> <U>FORMAT</U> <U>"(10x,256A1)"</U>
+
+
+</PRE>
+</BODY>

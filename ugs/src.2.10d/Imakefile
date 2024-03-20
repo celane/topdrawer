@@ -1,0 +1,133 @@
+#
+# Imakefile for ugs/src
+#
+
+LIB      = ../ugs.a
+
+#include "../Imakefile.def"
+
+OBJ    = \
+aux.o    \
+ugnucl.o \
+ugdupl.o \
+ugsimp.o \
+ug2dhg.o \
+ug2dhp.o \
+ug3lin.o \
+ug3mrk.o \
+ug3pln.o \
+ug3pmk.o \
+ug3trn.o \
+ug3txt.o \
+ug3wrd.o \
+ugb001.o \
+ugb002.o \
+ugb003.o \
+ugb004.o \
+ugb005.o \
+ugb006.o \
+ugb007.o \
+ugb008.o \
+ugb009.o \
+ugb010.o \
+ugb011.o \
+ugb012.o \
+ugb013.o \
+ugb014.o \
+ugb015.o \
+ugc001.o \
+ugc002.o \
+ugc003.o \
+ugc004.o \
+ugc005.o \
+ugc006.o \
+ugc007.o \
+ugd001.o \
+ugd002.o \
+ugd003.o \
+uge001.o \
+uge002.o \
+uge003.o \
+ugf001.o \
+ugf002.o \
+ugf003.o \
+ugf004.o \
+ugg001.o \
+ugg002.o \
+ugg003.o \
+ugg004.o \
+ugg005.o \
+ugclos.o \
+ugcntr.o \
+ugcnt1.o \
+ugcnt2.o \
+ugcnt3.o \
+ugcnt4.o \
+ugcnvf.o \
+ugctol.o \
+ugddat.o \
+ugdefl.o \
+ugdsab.o \
+ugdspc.o \
+ugectl.o \
+ugenab.o \
+ugevnt.o \
+ugfont.o \
+ugfrev.o \
+uggetv.o \
+uginfo.o \
+uginit.o \
+uglgax.o \
+uglgdx.o \
+ugline.o \
+uglnax.o \
+uglndx.o \
+ugmark.o \
+ugmctl.o \
+ugmesh.o \
+ugopen.o \
+ugoption.o \
+ugpfil.o \
+ugpict.o \
+ugplin.o \
+ugpmrk.o \
+ugproj.o \
+ugqctr.o \
+ugrerr.o \
+ugscin.o \
+ugshld.o \
+ugslct.o \
+ugtext.o \
+ugtran.o \
+ugwdow.o \
+ugwrit.o \
+ugxerr.o \
+ugxhch.o \
+ugxtxt.o \
+ugz001.o \
+ugz002.o \
+ugz003.o \
+ugz005.o \
+ugz006.o \
+ugxsym.o \
+ran.o
+
+AllTarget($(LIB))
+
+$(LIB): $(OBJ)
+	$(AR) $(ARFLAGS) $(LIB) $(OBJ)
+	$(RANCMD)
+
+#if defined(LinuxAoutArchitecture) || defined(LinuxElfArchitecture)
+#if defined(LinuxElfArchitecture)
+ugnucl.o ugdupl.o ugsimp.o ugclos.o ugslct.o ugz005.o:
+	g77   $(GFLAGS)  -c      $*.f 
+#else
+ugclos.o ugslct.o ugz005.o:
+	g77   $(GFLAGS)  -c      $*.f  
+#endif
+
+ugopen.o:
+	g77   $(GFLAGS)  -c -D$(ARCH) $*.F  
+#endif
+

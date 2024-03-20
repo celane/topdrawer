@@ -1,0 +1,35 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 18.21</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>18.21  TDJOIN</H4></B> 
+
+Joins points
+     CALL TDJOIN(Npts,X,Y[,DX[,DY[,LEVEL[,MODE[,Z[,DZ]]]]]])
+     1.  Npts - Then number of points to plot
+     2.  X(Npts) - The X for each datum to histogram
+     3.  Y(Npts) - The Y for each datum
+     4.  DX(Npts) - The Error in X
+     5.  DY(Npts) - The Error in Y
+     6.  LEVEL - The number of segments per/point
+     7.  MODE  -  Texture,color,intensity,  and  Fit  parameters are added
+         together.  If zero the default is taken or the SET value is used.
+                                     Type of fit
+                 0      1        2
+           Default Spline "GENERAL"
+                The default is initially "GENERAL"
+                                   Texture params
+           Intensity*8 (Intensity=1 to 5)
+           1*64,   2*64,    3*64,  4*64,  5*64,      6*64,    7*64
+             64,    128,     192,   256,   320,       384,     448
+           DOTS, DASHES, DOTDASH, SOLID, FUNNY, PATTERNED, DAASHES
+           WHITE   RED GREEN  BLUE YELLOW MAGENTA CYAN
+           1*512 2*512 3*512 4*512 5*512  6*512  7*512
+     8.  Z(Npts) - The Z for each datum
+     9.  DZ(Npts) - The Error in Z
+
+
+</PRE>
+</BODY>

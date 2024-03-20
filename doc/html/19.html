@@ -1,0 +1,47 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual Chapter 19</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>Chapter 19  LINKING</H4></B>
+<A NAME="236"> </A>
+If  you wish to link a program so that it may share HBOOK4 histograms with
+TOPDRAWER, you need to do the following:
+
+     1.  Insert the following lines of code into your main program.
+              INTEGER HCREATEG
+              PARAMETER IHSIZE=100000
+              COMMON /PAWC/MEMORY(IHSIZE)
+                   ......
+              ISTAT=HCREATEG('region_name',MEMORY,IHSIZE)
+              IF (ISTAT .le.  0) STOP 'Can not create region'
+              CALL HLIMIT(IHSIZE)
+         You may adjust the IHSIZE to the proper value.
+
+     2.  When you link you must also include:
+              TOPDRAWER_DIR:TD_GROUP/OPT
+         To give users in your group only read access to your histograms.
+              ISTAT=HCREATEG('region_name',MEMORY,-IHSIZE)
+                   or link using....
+              TOPDRAWER_DIR:TD/OPT
+         TD_GROUP  uses  a  modified  version  of HCREATEG rather than the
+         standard CERN version.  The modified one in addition  to  setting
+         up  group  read/write  protection  on  the  section also prevents
+         creation of the same global section by more than  1  person.   It
+         creates  a new version instead.  It will type out the name of the
+         created global section.  The modified version will create a  read
+         only section if -IHSIZE is passed to it.
+
+         To  create  a  global  section HCREATEG must open a scratch file.
+         The modified version attempts to do  this  on  SYS$SCRATCH:.   By
+         reassigning  the  scratch  device you may put this file on a disk
+         with enough quota.
+              $ DEFINE SYS$SCRATCH USR$SCRATCH:[name]
+
+For information about using the TD subroutines:
+SEE:SUBROUTINES
+
+
+</PRE>
+</BODY>

@@ -1,0 +1,25 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.65.2</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.65.2  NUMBERED</H4></B>   - A  numbered  window is a special type of relative
+window.  If n2 is omitted then the n2 is assumed to be the last n2.   Both
+n1  and  n2 must be greater than or equal to 1.0.  n2 must be smaller than
+or equal to n2.  You may initially  set  up  a  window  as  relative,  and
+specify  it  as  a  set  of numbered windows.  When you do this the window
+number modifies only  the  integer  part  of  the  relative  window.   For
+example:
+     TD:<U>SET</U> <U>WINDOW</U> <U>1</U> <U>OF</U> <U>4</U>
+<A NAME="189">This sets the lower left window out of 6. </A>
+     TD:<U>SET</U> <U>WINDOW</U> <U>6</U> <U>OF</U> <U>6</U>
+Sets the upper right window out of 6.
+     TD:<U>SET</U> <U>WINDOW</U> <U>X</U> <U>1.1</U> <U>of</U> <U>3.2</U> <U>Y</U> <U>1.2</U> <U>of</U> <U>2.4</U>
+     TD:<U>SET</U> <U>WINDOW</U> <U>5</U>
+          is the same as
+     TD:<U>SET</U> <U>WINDOW</U> <U>X</U> <U>2.1</U> <U>of</U> <U>3.2</U> <U>Y</U> <U>2.2</U> <U>of</U> <U>2.4</U>
+
+
+</PRE>
+</BODY>

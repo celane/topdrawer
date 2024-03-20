@@ -1,0 +1,24 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.37</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.37  MONITOR</H4></B> 
+
+This sets the type of plot each monitor mode produces.
+<U>SE</U>T <U>MON</U>ITOR [{<U>AL</U>L|<U>DA</U>TA|<U>ME</U>SH} {<U>BI</U>N|<U>CO</U>NTOUR|<U>JO</U>IN|<U>HI</U>STOGRAM|<U>PL</U>OT "options"}]
+The options may be any legitimate options for the type of plot selected.
+If you do not supply any options then the defaults are used.
+                                  example
+     TD:<U>SET</U> <U>MONITOR</U> <U>MESH</U> <U>HISTOGRAM</U> <U>"BLOCK"</U>
+Produces a block or "Lego" plot when you monitor a mesh histogram.
+     TD:<U>SET</U> <U>MONITOR</U> <U>DATA</U> <U>JOIN</U> <U>"1</U> <U>dots</U>
+Joins normal data sets with single dotted line segments.
+     TD:<U>SET</U> <U>MONITOR</U> <U>DATA</U> <U>PLOT</U> <U>"SYM=5O"</U> <U>MESH</U> <U>JOIN</U>
+Plots normal data and joins mesh data.
+(Default:MESH PLOT "NORAN VAR SYM=10" DATA HISTOGRAM "")
+
+
+</PRE>
+</BODY>

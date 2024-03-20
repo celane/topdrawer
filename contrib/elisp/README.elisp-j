@@ -1,0 +1,86 @@
+Topdrawer-mode (td.el)
+
+・初めに
+
+この Topdrawer-mode は岡村氏の Topdrawer release 1.2 以降でないと
+動作しません。
+必ず、コマンドラインから、
+
+% td -h
+
+とやり、"-w : wait signal ..." の message がでることを確認して下さい。
+
+
+・組み込み方及び設定
+
+td.el をEmacs の load-path に置き、
+
+~/.emacs に
+
+(load "td" nil nil nil)
+
+等とやると読み込まれます。
+
+＃load-path の default は /usr/local/lib/mule/19.28/lisp;
+＃/usr/local/lib/mule/site-lisp です。
+＃もし、自分のdirectory を指定したい時は、.emacs に
+＃(setq load-path (append (list "/home/oonishi/elisp")
+＃			load-path))
+＃等とやります。
+
+また、Topdrawerの CASE control を UGS-compatible にする時は、
+~/.emacs に
+
+(setq topdrawer-ugsoption t)
+
+を追加して下さい。
+
+もし、Topdrawer の実行ファイル td に PATH を通していない場合は、
+~/.emacs に
+
+(setq topdrawer-command "/home/common/topdrwer/td")
+
+と絶対パスで指定して下さい。
+
+
+・使い方
+
+１、コマンドによる Current Buffer の Xwindow 表示
+(default key は \C-t\C-d)
+
+それに伴う、ページ処理用シグナルの送出
+SIGNAL		default key
+--------------------------------------
+CONTINUE	\C-t\C-f
+STOP		\C-t\C-q
+
+また、Topdrawer からの Message を Window分割をして表示。
+その後２画面の状態から実行した時、何も Message が返って来ない時は１画面に戻す。
+
+２、コマンドによる Current Buffer の PS file(EPS file) 出力
+(default key は \C-t\C-p, EPS の時は \C-t\C-e)
+
+default File name は以下の手続きにより選ばれる
+	拡張子が ".top" ".tdr" の場合は、単に拡張子を ".ps" にする。
+	その他の拡張子については、後ろに ".ps" を加える。
+	ファイル名がついていない時は、directory のみを与える。
+	EPSの時は、".eps"となる。
+
+**注意**
+Current Buffer の内容は PS出力時には Save されません。
+
+３、その他
+	拡張子による auto-mode のサポート(default は "top" "tdr")
+	メニューバーによる選択
+
+
+
+・バグ等
+
+この EmacsLisp は一応動作確認はしてありますが、完全ではないかもしれません。
+バグ等、また、より良い EmacsLisp の書き方等がございましたら御連絡下さい。
+
+--------
+大西哲哉			Email oonishi@tkynx0.phys.s.u-tokyo.ac.jp
+東京大学理学部物理学教室
+酒井研究室

@@ -1,0 +1,1946 @@
+%U+ TDMACROS.MOR
+%E  Graphic Interface 'TXX'
+" ---------  START OF GRAPHIC INTERFACE 'TXX' ----------"
+"
+  This set of routines is for the 'new' version of the Unified Graphics
+  System, the one that uses Fortran-77 on the IBM, and those calling
+  sequences on the VAX.
+  Modified:
+	J. Clement
+		Fixed several errors
+		Converted to Fortran-77 IF,THEN,ELSE and char variables
+		Increased buffer size
+
+"
+$ENGLISH;
+	%'$UNITFAC'='2.54'
+$ELSE;
+	%'$UNITFAC'='1'
+$END;
+%'$XMIN'='1+MOD(IROTAX,2)'
+%'$YMIN'='2-MOD(IROTAX,2)'
+%'$XMAX'='3+MOD(IROTAX,2)'
+%'$YMAX'='4-MOD(IROTAX,2)'
+%'$MOVE'='0'; %'$DRAW'='1';
+
+	<TOKEN USING INFOIN,CARDIN>
+%';SUBROUTINE'=';<RESET> <SET> ;"SUBROUTINE"'
+<SET>;			"Ready for reset"
+
+%E  BLOCK DATA TXDATA  --- Initialize TXCOMD/TXCOMV commons
+    BLOCK DATA TXDATA;
+
+$TXCOMD;
+    REAL       UR ;
+    PARAMETER (UR = .1 / $UNITFAC ) ;
+
+    DATA URSIZE/ UR /;
+    DATA QOPNF/'Default'/;
+    DATA LINTF/.FALSE./;
+    DATA QOPN(1)/' '/;
+    DATA NQOPN/MAX_QOPN*0 /;
+    DATA QTXT/' '/;
+
+    DATA VIRGIN/0/,PXEL(1)/0/;	"Start out virgin"
+
+    DATA DFTCOL/1/,DFTWID/2/,DFTTEX/4/;
+    DATA DFTSIZ/0/,DFTFNT/1/;
+    DATA DFTPRP/0/,DFTVEC/0/,DFTQUI/0/;
+
+    END;
+
+%E  SUBROUTINE TXCURS  --- Get cursor values
+SUBROUTINE TXCURS(X,Y,JCHAR);
+"
+	X = X location on screen
+	Y = Y location
+	JCHAR	= Integer equivalent of char typed
+"
+   IMPLICIT NONE;
+   REAL X,Y,XA,TEMP,X1,Y1;
+   INTEGER I;
+   $TXCOMD; $TXCOM;
+   BYTE JCHAR;
+   INTEGER IA(8);			"Will contain control options"
+   CHARACTER*8 STRING;
+   X=0; Y=0; JCHAR=0;			"If No controls"
+   CALL UGSLCT(' ',IOPEN(2));
+   CALL UGINFO('CONTROLS',STRING,IA,XA);	"CHeck for locator"
+   IF(IA(5) .eq. 0) return;		"None ?"
+   CALL UGENAB('LOCATOR');		"Enable it"
+   CALL UGECTL('LOCATOR',STRING,I,X1,Y1);	"Read it"
+
+   <CASE> IROTAX+1 <OF> :ROT0:,:ROT1:,:ROT2:,:ROT3: <
+	:ROT0: < Y=Y1; X=X1; >
+	:ROT1: < Y=X1; X=PLIM(3,4)-Y1; >
+	:ROT2: < Y=PLIM(4,4)-Y1; X=PLIM(3,4)-X1; >
+	:ROT3: < Y=PLIM(4,4)-X1; X=Y1; >
+   >
+   JCHAR=I;
+END;
+%E  SUBROUTINE TXDEVC  --- SET DEVICE
+SUBROUTINE TXDEVC($INFO,$CARD);
+"
+	Input is the string from a SET DEVICE command.
+	Output, if a valid device is found, is QOPN, which will be used
+	as the argument in the call to UGOPEN  in TXXOPN.
+	NEWOPN is set TRUE if the device to be opened is different
+	from the current situation.
+"
+   IMPLICIT NONE;
+   INTEGER $INFO(10);
+   CHARACTER*(*) $CARD;
+   EXTERNAL UGXERR;
+   LOGICAL INTRAC;
+   $TXCOMD;
+   $TXCOM;	"This needs to transmit IROTAX back to TXDEF1"
+
+	"Set up the TOKEN macros to use the input arguments"
+   $SPECIFICATION;
+   INTEGER NDEVICE;
+   PARAMETER (NDEVICE=30);
+
+   INTEGER   CM ;
+$ENGLISH;
+   PARAMETER (CM=2.54);
+$ELSE;
+   PARAMETER (CM=1.0);
+$END;
+
+   CHARACTER*256  INFILE ; " Input file spec, if any "
+   CHARACTER*80   INNAME ; " Input file name "
+   INTEGER        JNNAME ; " Length of file name "
+   CHARACTER*128  DECWD  ; " Temporary, see if DECW$DISPLAY defined "
+   INTEGER       NDECWD  ;
+   INTEGER       ISTAT   ;
+$VAX;
+   INTEGER       LIB$SYS_TRNLOG ;
+$END;
+
+  INTEGER	IOP, IORIENT, ITYPE;
+   $BOOLEAN	LCOLOR;
+   CHARACTER*(QOPNSIZ) BUFFR;
+   INTEGER EXTFLG;	"0,1,2 = Not set, Internal, External"
+   REAL width,height;
+   $BOOLEAN LOPEN;
+   $BOOLEAN NEWOPN,LTEST,LQUOTE, LDDNAM, L_DEVICE_SET;
+   INTEGER IFORMT,IFANF,NBUFFR,LARGE,IXXXXX,JCODE,I_WSTYPE;
+   INTEGER I,J,JBEG,JEND,K,KBEG,KEND;
+   CHARACTER*1 QUOTE;
+
+$DATA;
+
+   DATA BUFFR/' '/ ;
+
+   INTEGER    MAX_GKS_TYPES ;
+   PARAMETER (MAX_GKS_TYPES=11);
+
+   CHARACTER*4 GKS_TYPE(MAX_GKS_TYPES) /
+" 1"    'DAT'
+" 2"   ,'AGM'
+" 3"   ,'CGM'
+" 4"   ,'SIX'
+" 5"   ,'HP'
+" 6"   ,'PS' 
+" 7"   ,'TEK'
+" 8"   ,'DDIF'
+" 9"   ,'LJ'
+"10"   ,'EPS'
+"11"   ,'REG'
+       /;
+
+   EXTERNAL TXDATA ;
+
+		"J.Clement - used TEK4010,DECGIGI for inter dev."
+		"U.G. device id"
+
+   CHARACTER*8 DDLIST(NDEVICE)/
+" 1"	 'SEQGIGI,'
+" 2"    ,'SDDGIGI,'
+" 3"    ,'DECGIGI,'
+" 4"	,'SDDGRIN,'
+" 5"    ,'IBM2250,'
+" 6"	,'SEQ4010,'
+" 7"    ,'SDD4010,'
+" 8"    ,'TEK4010,'
+" 9"	,'VEP12FF,'
+"10"    ,'VEP12CR,'
+"11"	,'VEP12FX,'
+"12"    ,'VEP12CX,'
+"13"	,'CALFICH,'
+"14"    ,'SDDXCOW,'
+"15"	,'SDDSXSS,'
+"16"	,'SDD4027,'
+"17"    ,'SEQ4027,'
+"18"	,'UGSIXEL,'
+"19"	,'PRNTRNX,'
+"20"	,'QMS1200,'
+"21"	,'SEQEXCL,'
+"22"	,'SEQIMAG,'
+"23"	,'UGUISDC,'
+"24"	,'POST150,'
+"25"	,'UGUISWM,'
+"26"	,'UGHPGLD,'
+"27"	,'UGGKSWM,'
+"28"	,'XWINDOW,'
+"29"	,'TEKEMUL,'
+"30"	,'POSTSCR,'
+        /;
+
+   CHARACTER*4 EXLIST(NDEVICE)/  " Default file extensions "
+" 1      'SEQGIGI " 'reg ',
+" 2      'SDDGIGI " 'reg ',
+" 3      'DECGIGI " 'reg ',
+" 4      'SDDGRIN " '    ',
+" 5      'IBM2250 " '    ',
+" 6      'SEQ4010 " 'tek ',
+" 7      'SDD4010 " 'tek ',
+" 8      'TEK4010 " 'tek ',
+" 9      'VEP12FF " 'vep ',
+"10      'VEP12CR " 'vep ',
+"11      'VEP12FX " 'vep ',
+"12      'VEP12CX " 'vep ',
+"13      'CALFICH " 'cal ',
+"14      'SDDXCOW " '    ',
+"15      'SDDSXSS " '    ',
+"16      'SDD4027 " 'tek ',
+"17      'SEQ4027 " 'tek ',
+"18      'UGSIXEL " 'six ',
+"19      'PRNTRNX " 'ptx ',
+"20      'QMS1200 " 'q   ',
+"21      'SEQEXCL " 'xcl ',
+"22      'SEQIMAG " 'img ',
+"23      'UGUISDC " '    ',
+"24      'POST150 " 'ps  ',
+"25      'UGUISWM " '    ',
+"26      'UGHPGLD " 'hpgl',
+"27      'UGGKSWM " '    ',
+"28      'XWINDOW " '    ',
+"29      'TEKEMUL " 'tek ',
+"30      'POSTSCR " 'ps '
+          /;
+
+   $BOOLEAN LFLUSH, FLUSH(NDEVICE) / "True/False for direct/file devices "
+" 1      'SEQGIGI "  .FALSE. ,
+" 2      'SDDGIGI "  .FALSE. ,
+" 3      'DECGIGI "  .TRUE.  ,
+" 4      'SDDGRIN "  .TRUE.  ,
+" 5      'IBM2250 "  .TRUE.  ,
+" 6      'SEQ4010 "  .FALSE. ,
+" 7      'SDD4010 "  .FALSE. ,
+" 8      'TEK4010 "  .TRUE.  ,
+" 9      'VEP12FF "  .FALSE. ,
+"10      'VEP12CR "  .FALSE. ,
+"11      'VEP12FX "  .FALSE. ,
+"12      'VEP12CX "  .FALSE. ,
+"13      'CALFICH "  .FALSE. ,
+"14      'SDDXCOW "  .TRUE.  ,
+"15      'SDDSXSS "  .TRUE.  ,
+"16      'SDD4027 "  .TRUE.  ,
+"17      'SEQ4027 "  .FALSE. ,
+"18      'UGSIXEL "  .FALSE. ,
+"19      'PRNTRNX "  .FALSE. ,
+"20      'QMS1200 "  .FALSE. ,
+"21      'SEQEXCL "  .FALSE. ,
+"22      'SEQIMAG "  .FALSE. ,
+"23      'UGUISDC "  .TRUE.  ,
+"24      'POST150 "  .FALSE. ,
+"25      'UGUISWM "  .TRUE.  ,
+"26      'UGHPGLD "  .FALSE. ,
+"27      'UGGKSWM "  .TRUE.  ,
+"28      'XWINDOW "  .FALSE. ,
+"29      'TEKEMUL "  .TRUE.  ,
+"30      'POSTSCR "  .FALSE.
+	/;
+
+   ITYPE=0;
+   LCOLOR=.FALSE.;	"No color"
+   IORIENT=0;		"Orientation 0/1 landscape/portrait"
+   IOP=1;		"Default set 1"
+   width=0;		"Default no width,height"
+   height=0;
+   REDUCE(1)=0.;	"No reduction factor"
+   I_WSTYPE=0;
+   IDDEVC = 0;		"No device yet"
+   LDDNAM = .FALSE.;	"DDNAME not set"
+   L_DEVICE_SET = .FALSE.;	"Device not set"
+   LOPEN  = .false.;	"Open new device?"
+   IF (INTRAC(I)) THEN;
+	IFORMT = 1;	"DEFAULT INTERACTIVE for interactive program"
+   ELSE;
+	IFORMT = 2;	"DEFAULT SEQUENTIAL for batch queue"
+   ENDIF;
+   IFANF = 0;	"DEFAULT FANFOLD/CONTINUOUS ROLL"
+   IROTAX=0;
+   EXTFLG=0;	"INTERNAL/EXTERNAL not specified"
+   BUFFR='GENIL,';	"Start the argument buffer"
+   NBUFFR=INDEX(BUFFR,' ');
+   LTEST=.FALSE.;
+   LARGE=0;
+
+   NEWOPN=.false.;
+   <TOKEN LOOP> <
+      STRING:: <
+:PACKSTR:
+	LQUOTE=.false.;
+	<I=1,NSTRNG;
+	    IF(LQUOTE) THEN;				"Quoted string?"
+		IF (NBUFFR .lt. LEN(BUFFR))BUFFR(NBUFFR:NBUFFR)=STRNG(I:I);
+		NBUFFR=NBUFFR+1;
+		IF (STRNG(I:I).eq.QUOTE)LQUOTE=.not.LQUOTE;	"Quotes ???"
+	    ELSE;
+		IF (INDEX('''''"',STRNG(I:I)) .gt. 0) THEN;	"Quotes ???"
+		  LQUOTE=.not.LQUOTE;
+		  QUOTE=STRNG(I:I);
+		ENDIF;
+		IF(STRNG(I:I).ne.' ') THEN;	"Put STRING into BUFFR"
+		  CALL T2UPCS(STRNG(I:I));
+		  IF (NBUFFR .lt. LEN(BUFFR))BUFFR(NBUFFR:NBUFFR)=STRNG(I:I);
+		  NBUFFR=NBUFFR+1;
+		ENDIF;
+	    ENDIF;
+	>
+	IF (NBUFFR .lt. LEN(BUFFR))BUFFR(NBUFFR:NBUFFR)=',';"End with a comma"
+	NBUFFR=NBUFFR+1;
+			"Check if device specified"
+	<I=1,NDEVICE;
+	    IF(INDEX(BUFFR(1:NBUFFR),DDLIST(I)).gt.0) THEN;
+		L_DEVICE_SET=.TRUE.;		"Default device is nothing"
+		LFLUSH=FLUSH(I);
+		FLAGS(54)=LFLUSH;	"Flush buffer at end of picture?"
+	    ENDIF;
+	>
+      >
+      KEY:: <	"MODIFYING PARAMETERS"
+"
+    non-GKS devices
+"
+	TEST:0,
+	REGIS:3,
+	GIGI:3,
+	GRINNELL:4,
+	TEK:8,
+	TEKTRONIX:8,
+	TEK4010:8,
+	TEK4013:8,
+	VERSATEC:9,
+	FICHE:13,
+	COW:14,
+	VAXSTATION:23,
+	SEX:15,
+	TEK4027:16,
+	SIXELS:18,
+	PRINTRONIX:19,
+	QMS1200:20,
+	EXCL:21,
+	IMAGEN:22,
+	OLDPOST:24,
+	UIS:25,
+	HPGL:26,
+        XWINDOW:28,
+        TEKEMUL:29,
+	POSTSCRIPT:30,
+	GKS:27
+			<IDDEVC=INTEG; L_DEVICE_SET=.TRUE.; >
+"
+	GKS
+        - For output only
+              wstype + 1000*GKS_TYPE(gives file extension)
+	+ For I/O and output combined
+              1000*( wstype(output)+1000*GKS_TYPE ) + wstype(I/O)
+"
+	METAFILE:-2002,
+	VT125:11010011,
+	VT125BW:11010012,
+	VT240:11010013,
+	VT240BW:11010014,
+	VT330:11010016,
+	VT340:11010017,
+	LCP01:-15,
+	VT330:16,
+	VT340:17,
+	LA100:-4031,
+	LA50:-4032,
+	LA210:-4034,
+	LA75:-4035,
+	LN03P:-4038,
+	VSXXX:41,
+	LVP16A:-5051,
+	LVP16B:-5052,
+	MPS2000:-55,
+	HP7550:-5053,
+	HP7580:-5054,
+	HP7585:-5056,
+	GPOSTSCRIPT:-6061,
+	EPS:-10065,
+	DDIF:-8065,
+	CGM:-3007,
+	TEK4014:7070072,
+	TEK4107:7080082,
+	TEK4207:7083084,
+	TEK4128:7085086,
+	TEK4129:7087088,
+	VS500:88,
+	TEK4129:88,
+	LJ250:-9091,
+	LJ250_120DPI:-9092,
+	XGKS:210211,
+	XMOTIF:230231
+	    <  IDDEVC=27;			"GKS device"
+		i_wstype=integ;			"Save workstaton type"
+		L_DEVICE_SET=.true.;		"Set device found flag"
+	    >
+"
+    non device qualifiers
+"
+	WSTYPE:0:999:0   <I_WSTYPE=INTEG;> " GKS workstation"
+
+	LARGE:2,
+	BIG:2,
+	SMALL:1	         <LARGE=INTEG;>    " unsupported "
+
+	INTERACTIVE:1,
+	SEQUENTIAL:2,
+	SLAVE:3          <IFORMT=INTEG;>   " interactivity "
+
+	CONTINUOUS:2,
+	FANFOLD:1        <IFANF=INTEG;>    " Versatec "
+
+	INTERNAL:1,
+	EXTERNAL:2       <EXTFLG=INTEG;>   " Versatec "
+"
+    rotations
+"
+	SIDEWAYS:1,
+	ROTATED:1,
+	NORMAL:0,
+        ORIENTATION:-3:3:0,
+	    <	INTEG=MOD(INTEG+4,4);
+		NEWOPN=IROTAX.ne.INTEG; IROTAX=INTEG;>
+"
+    output data set name
+"
+	FILE:F,
+	DDNAME:F,
+	OUTPUT:F <	" J.Clement - No max on file string"
+	    IF (NSTRNG.LE.0) THEN;
+		ERROR OUT; ('*** ERROR *** Missing string');
+	    ELSE;
+		LDDNAM=.TRUE.;	"Flag that DDNAME is set"
+		IF (NBUFFR .lt. LEN(BUFFR))BUFFR(NBUFFR:NBUFFR+6)='DDNAME=';
+		NBUFFR=NBUFFR+7;
+		GOTO :PACKSTR:;
+	    ENDIF;
+	>
+"
+    channel name
+"
+	LANDSCAPE:0,
+	PORTRAIT:1 < IORIENT = INTEG; >
+        COLOR:Y   < LCOLOR=LTOKEN; >
+	OPEN:Y    < LOPEN=LTOKEN; >
+	CHANNEL:F <		" J.Clement - No max on file string"
+	    IF (NSTRNG.LE.0) THEN;
+		ERROR OUT; ('*** ERROR *** Missing string');
+	    ELSE;
+		LDDNAM=.TRUE.;	"Flag that CHANNEL is set"
+		IF (NBUFFR .lt. LEN(BUFFR))BUFFR(NBUFFR:NBUFFR+7)='CHANNEL=';
+		NBUFFR=NBUFFR+8;
+		GOTO :PACKSTR:;
+	    ENDIF;
+	>
+
+	REVERSE   <
+		IF (NBUFFR .lt. LEN(BUFFR))BUFFR(NBUFFR:NBUFFR+7)='REVERSE,';
+		NBUFFR=NBUFFR+8;
+	>
+
+	WIDTH:::0 < WIDTH=FLOTNG; >
+
+	HEIGHT:::0 < HEIGHT=FLOTNG; >
+
+	IDENT:T <		" J.Clement"
+				"String length ok ?"
+	    IF (NSTRNG.LE.0.or.NSTRNG+NBUFFR+10.gt.LEN(BUFFR)) THEN;
+		ERROR OUT;
+		('*** ERROR *** IDENT too long or missing');
+	    ELSE;
+		IF (NBUFFR .lt. LEN(BUFFR))
+			BUFFR(NBUFFR:NBUFFR+7)='PICTID=''''';
+		NBUFFR=NBUFFR+8;
+		IF (NBUFFR .lt. LEN(BUFFR))
+			BUFFR(NBUFFR:NBUFFR+NSTRNG-1)=STRNG(:NSTRNG);
+		NBUFFR=NBUFFR+NSTRNG;
+		IF (NBUFFR .lt. LEN(BUFFR))BUFFR(NBUFFR:NBUFFR)=''''',';
+				"End with a comma"
+		NBUFFR=NBUFFR+2;
+	    ENDIF;
+	>
+
+	NUMBER:0:9999:-1 <		" J.Clement"
+	    IF (INTEG.gt.0) THEN;
+		IF (NBUFFR .lt. LEN(BUFFR))BUFFR(NBUFFR:NBUFFR+6)='PICTSQ=';
+		NBUFFR=NBUFFR+7;
+		<I=1,NSTRNG;
+		  IF (NBUFFR .lt. LEN(BUFFR))BUFFR(NBUFFR:NBUFFR)=STRNG(I:I);
+		  NBUFFR=NBUFFR+1;>
+		IF (NBUFFR .lt. LEN(BUFFR))BUFFR(NBUFFR:NBUFFR)=',';
+				"End with a comma"
+		NBUFFR=NBUFFR+1;
+	    ENDIF;
+	>
+
+	PERMANENT < NQOPNF=0; >
+
+        ADDITIONAL <
+	    <IOP=1,MAX_QOPN;
+		IF (NQOPN(IOP) .EQ. 0) <EXIT>; >
+	    IF( IOP .gt. MAX_QOPN) ERROR OUT;
+		('*** ERROR *** All units are used');
+	>
+
+	UNIT:1:8:1 < IOP=INTEG; >
+"
+    end of Token processing
+"
+   >  >
+
+	IF ($ERROR) RETURN;
+	IROTAF=IROTAX;		"Permanent value"
+
+	IF(.NOT.L_DEVICE_SET.and.NQOPNF.le.0) THEN;	"Default device ?"
+$UNIX;	    IDDEVC=28; L_DEVICE_SET=.TRUE.;
+$ELSE;	    IDDEVC=8; L_DEVICE_SET=.TRUE.;
+$END;
+	ENDIF;
+
+"
+	At this point, the SET DEVICE command has been scanned and the
+	relevant info dumped into BUFFR, PEN, or various flags.  Now
+	go thru PEN and the flags and complete the BUFFR info.
+"
+
+	"Check IFORMT for INTERACTIVE, SEQUENTIAL, PDS output"
+	IF (IFORMT.EQ.0) IFORMT = 3;	"OS default is PDS"
+      $VM; IF (IFORMT.EQ.3) IFORMT=1; $END;	"VM doesn't take PDS"
+      <CASE> IFORMT <OF> :INTERACTIVE:,:SEQ:,:PDS: <
+	:INTERACTIVE: < DO NOTHING; >	"That's default"
+	:SEQ: <
+	    IF (IDDEVC.EQ.8) IDDEVC = 6;	"4010"
+	    IF (IDDEVC.EQ.16)IDDEVC = 17;	"4027"
+	    IF (IDDEVC.EQ.3) IDDEVC = 1;	"REGIS"
+	>
+	:PDS: <
+	    IF (IDDEVC.EQ.3) IDDEVC = 2;	"REGIS"
+	    IF (IDDEVC.EQ.8) IDDEVC = 7;	"4010"
+	>
+      >
+
+	"LARGE?"	"No devices allow 'large'"
+
+	"Vertsatec FANFOLD or CONTINUOUS roll?"
+	IF (IFANF.EQ.0) IFANF=1;		"Default is fanfold"
+	IF (IFANF.EQ.2) THEN;			"Continuous"
+	    IF (IDDEVC.EQ.9) IDDEVC = 10;
+	ENDIF;
+
+	"Versatec INTERNAL or EXTERNAL"
+	IF (EXTFLG.EQ.0) EXTFLG=1;		"Default is internal"
+	IF (EXTFLG.EQ.2) THEN;			"Continuous"
+	    IF (IDDEVC.EQ.9) IDDEVC = 11;
+	    IF (IDDEVC.EQ.10) IDDEVC = 12;
+	ENDIF;
+
+		"Put in DEVICE keyword"
+	JBEG=NBUFFR;
+	IF (IDDEVC.GT.0) THEN;
+	    IDDEVC=MOD(IDDEVC,100);
+	    LFLUSH=FLUSH(IDDEVC);
+	    IF (NBUFFR .lt. LEN(BUFFR))BUFFR(NBUFFR:NBUFFR+7)=DDLIST(IDDEVC);
+	    NBUFFR=NBUFFR+8;
+
+	    $VM;	"On VM only, the DDNAME = the device keyword"
+		IF (.NOT.LDDNAM) THEN;	"'DDNAME' not set explicitly"
+		  IF (NBUFFR .lt. LEN(BUFFR))
+			BUFFR(NBUFFR:NBUFFR+6)='DDNAME=';
+		  NBUFFR=NBUFFR+7;
+		  IF (NBUFFR .lt. LEN(BUFFR))
+			BUFFR(NBUFFR:NBUFFR+7)=DDLIST(IDDEVC);
+		  NBUFFR=NBUFFR+8;
+		ENDIF;
+	    $END;
+
+	ENDIF;
+
+"
+    GKS
+"
+	IF (IDDEVC .eq. 27 .and. i_wstype .ne. 0) THEN;
+$VAX;
+"    If selected sequential, pick sequential part of type code "
+	    LFLUSH=i_wstype .gt. 0;
+	    IF (IFORMT .eq. 2 .and. I_WSTYPE .gt. 1000) THEN;
+		IF (IOP .eq. 1)
+		LFLUSH=.false.;
+		I_WSTYPE=I_WSTYPE/1000;
+	    ENDIF;
+
+"    Make positive "
+	    I_WSTYPE=ABS(I_WSTYPE);
+
+"    decode file type and ws type "
+	    ITYPE=MIN(MAX(I_WSTYPE/1000,1),MAX_GKS_TYPES); "file type"
+	    I_WSTYPE=MOD(I_WSTYPE,1000);		   "  ws type"
+
+"    output file name "
+	    IF (.not. LFLUSH .and. .not. LDDNAM) THEN;
+               LDDNAM = .TRUE. ;
+
+               CALL T2_GET_LOGICAL('TOPDRAWER_OUTPUT',INNAME,JNNAME) ;
+               IF ( JNNAME .GE. 1 ) THEN ;
+                  OUTSTR = 'DDNAME='//INNAME(1:JNNAME)//',' ;
+               ELSE ;
+                  INQUIRE ( UNIT = $INPUT FILE , NAME = INFILE ) ;
+                  CALL FILENAME ( INFILE(:80) , INNAME , JNNAME ) ;
+                  IF ( INNAME .EQ. ' ' ) THEN ;
+                     INNAME = 'UGDEVICE'      ;
+                     JNNAME = 8               ;
+                  ENDIF                       ;
+                  OUTSTR = 
+                  'DDNAME='//INNAME(1:JNNAME)//'.'//GKS_TYPE(ITYPE)//',';
+               ENDIF ;
+               IF (NBUFFR .lt. LEN(BUFFR))BUFFR(NBUFFR:)=OUTSTR;
+               NBUFFR=NBUFFR+INDEX(OUTSTR,',')+1;
+	    ENDIF;
+
+	    IF (I_WSTYPE .eq. 61 .or. I_WSTYPE .eq. 62 .or.
+		I_WSTYPE .eq. 65 .or. I_WSTYPE .eq. 66 .or.
+	    	I_WSTYPE .eq. 15 .or.
+		(I_WSTYPE .ge. 31 .and. I_WSTYPE .le. 36) .or.
+		(I_WSTYPE .ge. 51 .and. I_WSTYPE .le. 56)) THEN;
+		I_WSTYPE = I_WSTYPE + IORIENT * '10000000'x;
+	    ENDIF;
+
+"    GKS connection id logicals   "
+            IF (I_WSTYPE.EQ.210 .OR.
+                I_WSTYPE.EQ.211 .OR.
+                I_WSTYPE.EQ.230 .OR.
+                I_WSTYPE.EQ.231 ) THEN ;
+               ISTAT = LIB$SYS_TRNLOG ( 'DECW$DISPLAY', NDECWD , DECWD );
+               IF ( DECWD .EQ. 'DECW$DISPLAY' ) THEN ;
+                  WRITE (*,*) ' You must set up the remote X11 display with ';
+                  WRITE (*,*) ' $ SET DISPLAY /CREATE /NODE= nodename ';
+               ENDIF;
+               CALL LIB$SET_LOGICAL( 'GKS$CONID',  'DECW$DISPLAY');
+               CALL LIB$SET_LOGICAL( 'GKS3D$CONID','DECW$DISPLAY');
+               CALL LIB$SET_LOGICAL( 'GKS$DOUBLE_BUFFERING',  'ON');
+               CALL LIB$SET_LOGICAL( 'GKS3D$DOUBLE_BUFFERING','ON');
+            ELSE;
+               CALL LIB$SET_LOGICAL( 'GKS$CONID',  'SYS$OUTPUT');
+               CALL LIB$SET_LOGICAL( 'GKS3D$CONID','SYS$OUTPUT');
+            ENDIF;
+
+"    promote mono to color "
+	    IF (LCOLOR) THEN;
+		IF (I_WSTYPE .eq. 12 .OR. I_WSTYPE .EQ. 14) THEN;
+			I_WSTYPE = I_WSTYPE -1;
+		ELSE IF (I_WSTYPE .eq. 16 .or.
+			I_WSTYPE .eq. 61 .or. I_WSTYPE .eq. 65) THEN;
+			I_WSTYPE = I_WSTYPE +1;
+		ENDIF;
+	    ENDIF;
+
+"    put result in buffer "
+	    WRITE(OUTSTR,'(A,I12,A)')'WSTYPE=',I_WSTYPE,',';
+	    IF (NBUFFR .lt. LEN(BUFFR))	BUFFR(NBUFFR:)=OUTSTR;
+	    NBUFFR=NBUFFR+INDEX(OUTSTR,',')+1;
+
+$END;
+	ELSE IF(IORIENT .eq. 1) THEN;
+
+	    IF (NBUFFR .lt. LEN(BUFFR))	BUFFR(NBUFFR:)='ROTAXIS,';
+	    NBUFFR=NBUFFR+8;
+
+	ENDIF;
+
+	IF ( .NOT.LFLUSH .AND. .NOT.LDDNAM ) THEN;
+
+           LDDNAM = .TRUE. ;
+
+           CALL T2_GET_LOGICAL('TOPDRAWER_OUTPUT',INNAME,JNNAME) ;
+
+           IF ( JNNAME .GE. 1 ) THEN ;
+              OUTSTR = 'DDNAME='//INNAME(1:JNNAME)//',' ;
+           ELSE ;
+              INQUIRE ( UNIT = $INPUT FILE , NAME = INFILE ) ;
+              CALL FILENAME ( INFILE(:80) , INNAME , JNNAME ) ;
+              IF ( INNAME .EQ. ' ' ) THEN ;
+                   INNAME = 'UGDEVICE'    ;
+                   JNNAME = 8             ;
+              ENDIF                       ;
+	      OUTSTR = 'DDNAME='//INNAME(:JNNAME)//'.'//EXLIST(IDDEVC)//',';
+           ENDIF ;
+
+           IF (NBUFFR .lt. LEN(BUFFR))BUFFR(NBUFFR:)=OUTSTR;
+           NBUFFR=NBUFFR+INDEX(OUTSTR,',')+1;
+
+	ENDIF;
+
+
+	IF (IOP .eq. 1) FLAGS(54)=LFLUSH;	"Flush buffer at end?"
+
+	IF (WIDTH .gt. 0 .and. NBUFFR+11 .lt. LEN(BUFFR)) THEN;
+	    NBUFFR=NBUFFR+1;
+	    WIDTH=MIN(MAX(WIDTH*CM/REDUCE(2),1.0),99.0);
+	    WRITE(OUTSTR,'(A,F4.1,A)')'WIDTH=',WIDTH,',';
+	    IF (NBUFFR .lt. LEN(BUFFR))BUFFR(NBUFFR:)=OUTSTR;
+	    NBUFFR=NBUFFR+INDEX(OUTSTR,',')+1;
+	ENDIF;
+
+	IF (HEIGHT .gt. 0 .and. NBUFFR+12 .lt. LEN(BUFFR)) THEN;
+	    NBUFFR=NBUFFR;
+	    HEIGHT=MIN(MAX(HEIGHT*CM/REDUCE(2),1.0),99.0);
+	    WRITE(OUTSTR,'(A,F4.1,A)')'HEIGHT=',HEIGHT,',';
+	    IF (NBUFFR .lt. LEN(BUFFR))BUFFR(NBUFFR:)=OUTSTR;
+	    NBUFFR=NBUFFR+INDEX(OUTSTR,',')+1;
+	ENDIF;
+
+	DO I=JBEG,NBUFFR;			"Remove blanks"
+	    IF (BUFFR(I:I) .ne. ' ') THEN;
+		BUFFR(JBEG:JBEG)=BUFFR(I:I);
+		JBEG=JBEG+1;
+	    ENDIF;
+	ENDDO;
+
+	NBUFFR=JBEG;
+
+		"Finish the options string"
+	NBUFFR=NBUFFR-1;		"Omit trailing comma"
+	CALL T2REST;		"Restore things that a SET DEVICE should"
+	FLAGS(53)=FLAGS(54);	"Hardcopy?"
+
+	IF(.NOT.L_DEVICE_SET) THEN;	"No device specified ?"
+	    IF(BUFFR.eq.',') NBUFFR=0;
+	    IF(NBUFFR.gt.1) THEN;
+	    QOPNF(NQOPNF+1:)=BUFFR;
+	ENDIF;
+
+	BUFFR=QOPNF;		"restore default"
+	QOPNF(NQOPNF+1:)=' ';
+	NBUFFR=MIN(NQOPNF+NBUFFR,LEN(QOPNF));
+	FLAGS(53)=LINTF;
+	FLAGS(54)=LINTF;
+   ENDIF;
+
+		"Remove redundant keywords"
+   JBEG=1;
+   <LOOP> <
+      LQUOTE=.false.; JCODE=0; JEND=0;
+      <J=JBEG+1,LEN(BUFFR);
+	IF (LQUOTE) THEN;
+	    IF (STRNG(I:I).eq.QUOTE)LQUOTE=.not.LQUOTE;	"Quotes ???"
+	ELSE;
+	    IF (INDEX('''''"',STRNG(I:I)) .gt. 0) THEN;	"Quotes ???"
+		LQUOTE=.not.LQUOTE;
+		QUOTE=STRNG(I:I);
+	    ENDIF;
+	    IF(BUFFR(J:J).eq.'=') THEN; JCODE=J;
+	    ELSEIF(BUFFR(J:J).eq.',') THEN;
+		JEND=J; IF(JCODE.eq.0) JCODE=JEND; <EXIT>;
+	    ENDIF;
+	ENDIF;
+      >
+      IF (JEND.le.0) <EXIT>;
+      IF(JEND.eq.JBEG+1.or.BUFFR(JBEG+1:JEND-1).eq.' ') THEN;
+			"Double commas ',,'"
+	BUFFR(JBEG:)=BUFFR(J:); NBUFFR=NBUFFR-J+JBEG;
+      ELSE;
+	KBEG=INDEX(BUFFR(JEND:),BUFFR(JBEG:JCODE));
+	IF(KBEG.eq.0) THEN;
+	    JBEG=JEND;
+	ELSE;
+	    LQUOTE=.false.; KEND=0;
+	    <K=KBEG+1,LEN(BUFFR);
+		IF (LQUOTE) THEN;
+		  IF (STRNG(I:I).eq.QUOTE)LQUOTE=.not.LQUOTE;	"Quotes ???"
+		ELSE;
+		  IF (INDEX(STRNG(I:I),'''''"' ) .gt. 0) THEN;	"Quotes ???"
+		     LQUOTE=.not.LQUOTE;
+		     QUOTE=STRNG(I:I);
+		  ENDIF;
+		  IF(BUFFR(K:K).eq.',') THEN;
+		     KEND=K; <EXIT>;
+		  ENDIF;
+		ENDIF; >
+	    BUFFR(JBEG:)=BUFFR(JEND:);
+	    NBUFFR=NBUFFR-(JEND-JBEG);
+	ENDIF;
+      ENDIF;
+   >
+		"Check for identical call to an already open device"
+   NEWOPN     = BUFFR.NE.QOPN(IOP).or.NEWOPN;
+   QOPN(IOP)  = BUFFR;
+   NQOPN(IOP) = NBUFFR;
+   IF(NQOPNF.le.0) THEN;
+	LINTF  = FLAGS(53);
+	QOPNF  = BUFFR;
+	NQOPNF = NBUFFR;
+   ENDIF;
+   IF (NEWOPN) CALL TXEND;
+   IF (LOPEN) THEN;
+      CALL TXEND;
+      CALL TXXOPN(ZSCRN);			"Pick up units"
+   ENDIF;
+END;
+$VAX;
+      SUBROUTINE FILENAME ( FILE , NAME ,NNAME ) ;
+
+      CHARACTER*(*) FILE ;
+      CHARACTER*80  NAME ;
+      INTEGER      NNAME ;
+
+      STRUCTURE /ITEMLIST/ ;
+        INTEGER*2 LEN      ;
+        INTEGER*2 ITEM     ;
+        INTEGER*4 LOC      ;
+      END STRUCTURE        ;
+
+      RECORD /ITEMLIST/ LIST(3) ;
+
+      INCLUDE '($FSCNDEF)' ;
+
+      INTEGER  SYS$FILESCAN ;
+
+      LIST(1).ITEM  = FSCN$_FILESPEC ;
+      LIST(2).ITEM  = FSCN$_NAME ;
+      LIST(3).ITEM  = 0          ;
+
+      JSTAT = SYS$FILESCAN ( FILE , LIST , ) ;
+
+      JNAME = LIST(2).LOC - LIST(1).LOC + 1 ;
+      KNAME = JNAME + LIST(2).LEN - 1       ;
+"
+      WRITE (*,*) ' Filespec  ',FILE ( 1 : LIST(1).LEN )  ;
+      WRITE (*,'(A,I3,X,A)')
+        ' Name      ',LIST(2).LEN,FILE ( JNAME : KNAME ) ;
+"
+      NAME  = FILE ( JNAME : KNAME ) ;
+      NNAME = LIST(2).LEN ;
+
+      RETURN ;
+      END   ;
+$ELSE
+      SUBROUTINE FILENAME ( FILE , NAME , NNAME ) ;
+      CHARACTER*(*) FILE ;
+      CHARACTER*(*) NAME ;
+      INTEGER      NNAME ;
+
+      ITOP  = INDEX ( FILE , '.top' ) ;
+
+      IF ( FILE ( ITOP: ) .EQ. '.top' ) THEN ;
+           NAME = FILE (:ITOP-1) ;
+           NNAME =       ITOP-1  ;
+      ELSE                       ;
+         NAME  = FILE            ;
+         NNAME = LEN ( FILE )    ;
+      ENDIF                      ;
+
+      RETURN ;
+      END   ;
+$END
+%E  SUBROUTINE TXDEVS  --- SHOW DEVICE
+SUBROUTINE TXDEVS;
+"
+	This routine types on the terminal the device info.
+	For all currently open devices.
+"
+   IMPLICIT NONE;
+   $SPECIFICATION;
+   EXTERNAL UGXERR;
+   $TXCOMD;
+   character*20 T2_GET_UNIT_NAME,CUNIT/' '/;
+   character*11 CLEVEL(3);
+   data clevel/'Hardcopy','Slave','Interactive'/;
+   character*11 Controls(6);
+   data controls/'Keyboard','Pick','Button'
+		,'Stroke','Locator','Valuator'/;
+   character*10 cmedium(3);
+   data cmedium/'Nonerase','Raster','Refresh'/;
+   character*8 CENABL(2);
+   DATA CENABL /'Disabled','Enabled'/;
+   character*4 CEXT(4);
+   DATA CEXT/'Xmin','Ymin','Xmax','Ymax'/;
+   character*6 CINTER(6);
+   character*8 string;
+   character*6 CURDEV(2);
+   DATA CURDEV/' ',' <===='/;
+   integer IA(10),IE(10),I,J,ILEVEL,IOP;
+   integer T2BTRIM;
+   REAL DSPC(2),X(2),AFF;
+   IF(NQOPNF.gt.0)
+   WRITE($TERMINAL OUT,*)'   Default:',QOPNF(1:NQOPNF);
+   <IOP=1,MAX_QOPN;
+	IF (NQOPN(IOP) .gt. 0)
+	    WRITE($TERMINAL OUT,*)'   Device:',IOP,' '
+		,QOPN(IOP)(:MAX(1,NQOPN(IOP)));
+   >
+   CALL UGINFO('OPENDEV',STRING,IOPEN,WDOW);
+   IF(IOPEN(1) .eq. 0) return;
+   CUNIT(2:)=T2_GET_UNIT_NAME(1.);
+   CALL UGINFO('ACTDEV',STRING,IACT,WDOW);
+   <IOP=2,IOPEN(1)+1;
+      J=1; IF (IOPEN(IOP).eq.IACT) J=2;
+      WRITE($TERMINAL OUT,*)'   Unit=',IOPEN(IOP),CURDEV(J);
+      CALL UGSLCT(' ',IOPEN(IOP));
+      CALL UGDSPC('GET',X,X(2),AFF);		"How big?"
+      WRITE($TERMINAL OUT,*)'     Size=',X(1),' by '
+		,X(2),CUNIT(:T2BTRIM(CUNIT));
+      <I=1,4; IA(I)=0; >
+      CALL UGINFO('DPHYSIZE',STRING,IA,WDOW);
+      IF (IA(3) .gt. 0) THEN;
+	 <I=1,2; IA(I+2)=IA(I+2)-IA(I)+1;
+		 WDOW(I)=WDOW(I)/$UNITFAC;
+	 >
+	 WRITE($TERMINAL OUT,*)'     Res.=',WDOW(1),' by ',WDOW(2)
+		,CUNIT(:T2BTRIM(CUNIT));
+	 WRITE($TERMINAL OUT,*)'     Pxel=',IA(3),'    by ',IA(4);
+      ENDIF;
+      CALL UGINFO('ILEVEL',STRING,Ilevel,WDOW);
+      CALL UGINFO('DMEDIUM',STRING,IA,WDOW);
+      CALL UGINFO('DEVTYPE',STRING,IA,WDOW);
+      WRITE($TERMINAL OUT,*)'     ',STRING,' - ',CLEVEL(ILEVEL),' - '
+	 ,CMEDIUM(IA(2));
+      IF(ILEVEL.EQ.3) THEN;
+	 CALL UGINFO('CONTROLS',STRING,ia,WDOW);
+	 CALL UGINFO('ECONTROLS',STRING,IE,WDOW);	"Enabled controls"
+	 <I=1,6;
+	    J=MIN(MAX(IE(I)+1,1),2);
+	    If(IA(I) .ne. 0) WRITE($TERMINAL OUT,*)
+		'     Controls= ',controls(I),' - ',CENABL(J);
+	 >
+      ENDIF;
+   >
+   CALL UGSLCT(' ',IACT);
+END;
+%E  FUNCTION TXSYM   --- Convert text to symbol
+REAL FUNCTION TXSYM(TEXT);
+"
+	Function to convert 2-character plot symbol
+	specification to appropriate form for storing in
+	symbol array.  This array is processed by subroutine T2PLOT,
+	and passed for plotting to subroutine TXTSYM.
+	The 'old' Unified Graphics system uses 'P' as the second ('case')
+	character for plotting symbols, as shown in the TD manual.  The
+	'new' version, which is what this code connects to, uses 'O'.
+	(RCB said there was a reason, but he forgot what it was.)
+"
+   IMPLICIT NONE;
+   CHARACTER*(*) TEXT;
+   CHARACTER*5 STR;
+   INTEGER I,J;
+   STR=TEXT; CALL T2UPCS(STR);
+   IF(STR.eq.'NONE') THEN; TXSYM=0;
+   ELSEIF(STR.eq.'DOT') THEN; TXSYM=ICHAR(' ')*257;
+   ELSE;
+      I=ICHAR(TEXT(1:1));
+      IF(LEN(TEXT).gt.1) THEN;
+	 IF(STR(2:2).eq.'0') STR(2:2)='O';
+	 IF(STR(2:2).ne.' ') I=ICHAR(STR(1:1));
+	 J=ICHAR(STR(2:2));
+      ELSE; J=ICHAR(' '); ENDIF;
+      TXSYM=256*I+J;
+      IF (LEN(TEXT).gt.2) THEN;
+         STR = TEXT ;
+	 ERROR STRING;'*** WARNING *** Illegal symbol "'//STR//'"';
+      ENDIF;
+   ENDIF;
+END;
+%E  SUBROUTINE SYMTXT  --- Convert symbol to text
+"
+	SYM is the input symbol
+	TXT is the output text string
+"
+   SUBROUTINE SYMTXT(SYM,TXT);
+   IMPLICIT NONE;
+   REAL SYM,SYMBOL;
+   CHARACTER*2 TXT;
+   INTEGER I,J;
+   J=0;
+   IF(ABS(SYM) .lt. 65536.)J=NINT(SYM);
+   I=J/256;
+   J=MOD(J,256);
+   IF(I.lt.32.or.I.gt.127) I=32;
+   IF(J.lt.32.or.J.gt.127) J=32;
+   TXT=CHAR(I)//CHAR(J);
+   END;
+%E  SUBROUTINE TXTEXT  --- Output text
+SUBROUTINE TXTEXT(X1,Y1,SIZEIN,ORIENT,TEXT,CASE);
+"
+	X1,Y1	are the X,Y locations
+	SIZEIN	is the symbol size
+	ORIENT	is the angle
+	TEXT	is the text string
+	CASE	is the case string
+"
+   IMPLICIT NONE;
+   INTEGER NTEXT,NCASE;
+   REAL X1,Y1,SIZEIN,ORIENT,X,Y;
+   CHARACTER *(*) TEXT,CASE;
+   REAL SIZE,ANGLE,TEMP;
+   INTEGER I;
+   EXTERNAL UGXERR;
+   $TXCOMD;
+   $TXCOM;	"REDUCE & XFRMFC are needed"
+   $SPECIFICATION;
+   $DATA;
+   CHARACTER*12 STEMP/' '/;
+   CHARACTER*7  S_PROP(2)/' ','FIXSIZE'/;
+   <CASE> IROTAX+1 <OF> :ROT0:,:ROT1:,:ROT2:,:ROT3: <
+	:ROT0: < X=X1; Y=Y1; >
+	:ROT1: < X=Y1; Y=PLIM(3,4)-X1; >
+	:ROT2: < X=PLIM(3,4)-X1; Y=PLIM(4,4)-Y1; >
+	:ROT3: < X=PLIM(4,4)-Y1; Y=X1; >
+   >
+
+   IF (TEXT.ne.' ') THEN;
+      NTEXT=LEN(TEXT); NCASE=LEN(CASE);
+      SIZE = ABS(SIZEIN*XFRMFC*REDUCE(2));
+      ANGLE=AMOD(ORIENT+IROTAX*(-90.),360.);
+      IF   (ABS(SIZE-DFTSIZ).GT.0.02*SIZE .OR.	"Size (2%)"
+	    ABS(ANGLE-DFTANG).GE.0.1  )THEN;		"Angle (.1 degree)"
+	 QTXT=' '; NQTXT=1;				"Clear QTXT"
+
+		"Angle"
+	 IF (ABS(ANGLE-DFTANG).GE.0.1) THEN;
+	    QTXT(NQTXT:NQTXT+5)='ANGLE=';
+	    NQTXT=NQTXT+6;
+	    WRITE(STEMP,'(F11.1,A)') ANGLE,',';
+	    <I=1,12;
+		IF(STEMP(I:I).ne.' ') THEN;
+		  QTXT(NQTXT:NQTXT)=STEMP(I:I);
+		  NQTXT=NQTXT+1;
+		ENDIF;
+	    >
+	    DFTANG = ANGLE;
+	 ENDIF;
+
+		"Size"
+	 IF (ABS(SIZE-DFTSIZ).GT.0.02*DFTSIZ) THEN;
+	    TEMP = ABS(0.1*SIZE/URSIZE);		"Actual size"
+	    TEMP = AMIN1(AMAX1(TEMP,.0001),99999.);	"Limits"
+	    QTXT(NQTXT:NQTXT+5)='DSIZE=';
+	    NQTXT=NQTXT+6;
+	    WRITE(STEMP,'(F11.4,A)') TEMP,',';
+	    <I=1,12;
+		IF(STEMP(I:I).ne.' ') THEN;
+		  NQTXT=NQTXT+1;
+		  QTXT(NQTXT:NQTXT)=STEMP(I:I);
+		ENDIF;
+	    >
+	    DFTSIZ = SIZE;
+	 ENDIF;
+	 CALL UGDEFL(QTXT(1:NQTXT),IXX,IXX);
+      ENDIF;
+      FLAGS(1)=.FALSE.;
+      I=MIN(MAX(JPROP,0),1);		"1 kills propor spacing"
+      JPROP=0;
+      if (CASE .ne. ' '.or.(DFTVEC.eq.0.and.SIZEIN.gt.0)) then;
+	 CALL UGXTXT(S_PROP(JPROP+1),X,Y,TEXT,CASE,PXEL);
+      else;
+	 CALL UGTEXT(S_PROP(JPROP+1),X,Y,TEXT,PXEL);
+      endif;
+      FLAGS(1) = .FALSE.;
+   ENDIF;
+END;
+%E  SUBROUTINE TXTSYM  --- Output symbols
+SUBROUTINE TXTSYM(X,Y,SYM,SIZEIN);
+"
+	Uses args already set in TXTEXT to print 1 symbol at (X,Y).
+	called from T2PLOT for plotting symbols
+	SYM is in )the form generated by real function TXSYM
+"
+   IMPLICIT NONE;
+   EXTERNAL UGXERR;
+   $TXCOMD; $TXCOM;
+   REAL X,Y,SYM,SIZEIN;
+   INTEGER I,I1,I2;
+   $SPECIFICATION;
+   REAL XY(2);
+   CHARACTER*(1)  CHARI1 , CHARI2 ;
+
+	"Is the center of the symbol in the current limits?"
+   IF (X .lt. CCSCIS(1) .or. X .gt. CCSCIS(2)) RETURN;
+   IF (Y .lt. CCSCIS(3) .or. Y .gt. CCSCIS(4)) RETURN;
+   I=0;
+   IF(ABS(SYM).lt.65536) I=NINT(ABS(SYM));
+   I1=I/256; I2=I-256*I1;
+   IF(I1.eq.32.and.I2.eq.32)I1=0;	"Plot blanks as dots"
+   FLAGS(1)=.FALSE.;
+   IF(I1.lt.32.or.I2.lt.32) THEN;
+      CALL TXDOT(X,Y);
+   ELSE;
+      JPROP=1;
+      CHARI1 = CHAR(I1) ; CHARI2 = CHAR(I2) ;
+      CALL TXTEXT(X,Y,SIZEIN,0.0,CHARI1,CHARI2);
+   ENDIF;
+   FLAGS(1)=.FALSE.;
+END;
+%E  SUBROUTINE TXDOT   --- Plot dots
+SUBROUTINE TXDOT(X,Y);
+"
+	Plots a single dot at X,Y
+"
+   IMPLICIT NONE;
+   REAL X,Y;
+   INTEGER IHIT;
+   REAL XY1,XY2;
+   EXTERNAL UGXERR;
+   $SPECIFICATION;
+   $TXCOMD; $TXCOM;
+	"Is the point in the current limits?"
+
+   IF (X .lt. CCSCIS(1) .or. X .gt. CCSCIS(2)) RETURN;
+   IF (Y .lt. CCSCIS(3) .or. Y .gt. CCSCIS(4)) RETURN;
+   IF (IHIT.LT.4) THEN;		"Yes."
+	<CASE> IROTAX+1 <OF> :ROT0:,:ROT1:,:ROT2:,:ROT3: <
+		:ROT0: < XY1=X; XY2=Y; >
+		:ROT1: < XY1=Y; XY2=PLIM(3,4)-X; >
+		:ROT2: < XY1=PLIM(3,4)-X; XY2=PLIM(4,4)-Y; >
+		:ROT3: < XY1=PLIM(4,4)-Y; XY2=X; >
+	>
+
+      CALL UGMARK(' ',XY1,XY2,PXEL);
+      FLAGS(1)=.FALSE.;
+   ENDIF;
+END;
+%E  SUBROUTINE TXRDOT   --- Plot random dots
+SUBROUTINE TXRDOT(X1,Y1,X2,Y2,N);
+"
+	Plots N random dots
+	in rectangle bounded by X1,Y1 and X2,Y2
+"
+   IMPLICIT NONE;
+   EXTERNAL UGXERR;
+   $SPECIFICATION;
+   $TXCOMD; $TXCOM;
+   REAL X1,X2,Y1,Y2;
+   REAL XP(4),YP(2),A(2),AP,XY1,XY2;
+   INTEGER I,N,NP,IRAN;
+   REAL RAN;
+	"Is the point in the current limits?"
+
+   XP(1)=MAX(MIN(X1,X2),CCSCIS(1));
+   XP(2)=MIN(MAX(X1,X2),CCSCIS(2));
+   XP(3)=MAX(MIN(Y1,Y2),CCSCIS(3));
+   XP(4)=MIN(MAX(Y1,Y2),CCSCIS(4));
+   <I=1,4,2;
+      IF (XP(I) .gt. XP(I+1)) RETURN;		"Points out of range ?"
+   >
+   A(1)=ABS(X1-X2);
+   A(2)=ABS(Y1-Y2);
+   NP=N;
+   <I=1,2;
+      IF (A(I) .gt. 0) THEN;		"Dist between 1,2 not zero ?"
+	 AP=XP(2*I)-XP(2*I-1);		"Scissored dist"
+	 IF (AP .eq. 0) RETURN;		"Zero ?"
+	 NP=NINT(NP*AP/A(I));		"Adjust the number of dots"
+      ENDIF;
+   >
+   IF( IROTAX.ne.0 ) THEN;		"Rotate axes ?"
+     <I=1,2;
+	<CASE> IROTAX <OF> :ROT1:,:ROT2:,:ROT3: <
+		:ROT1: < AP=XP(I); XP(I)=Xp(I+2); Xp(I+2)=PLIM(3,4)-AP; >
+		:ROT2: < Xp(I+2)=PLIM(3,4)-Xp(I+2); XP(I)=PLIM(4,4)-XP(I); >
+		:ROT3: < AP=XP(I); XP(I)=PLIM(4,4)-Xp(I+2); Xp(I+2)=AP; >
+	>
+
+     >
+   ENDIF;
+   <I=1,4,2;  XP(I+1)=XP(I+1)-XP(I); >
+   <I=1,NP;
+      XY1=XP(1)+RAN(IRAN)*XP(2);
+      XY2=XP(3)+RAN(IRAN)*XP(4);
+      CALL UGMARK(' ',XY1,XY2,PXEL);
+      FLAGS(1)=.FALSE.;
+      IF ($TRAP) RETURN;
+   >
+END;
+%E  SUBROUTINE TXXCLO  --- Close device
+SUBROUTINE TXXCLO;
+"
+	Close the UGdevice
+"
+   IMPLICIT NONE;
+   $SPECIFICATION;
+   $TXCOMD;
+   CHARACTER*8 STRING;
+   INTEGER IOP;
+   REAL X;
+   CALL UGINFO('OPENDEV',' ',IOPEN,X);
+   IF(IOPEN(1).gt.0) THEN;	"Devices open ?"
+	CALL TXXMT;		"Flush any info left in memory"
+	<IOP=2,IOPEN(1)+1;
+	    CALL UGSLCT(' ',IOPEN(IOP));
+	    IF (LCLEAR) THEN;		"Delayed clear ??"
+		JSEGMN=DFTSEG;
+		ISEGMN=DFTSEG;		"Start new segment list"
+		IF(PXNAME.ne.' ') THEN;
+		     CALL UGPICT('CLEAR,ALIAS='//PXNAME,0);
+		ELSE;
+		     CALL UGPICT('CLEAR',0);
+		ENDIF;			"Clear the device"
+	    ENDIF;
+	    CALL UGCLOS('NOCLEAR');		"Close the device"
+	>
+	LCLEAR = .false.;
+	CALL UGINFO('OPENDEV',STRING,IOPEN,WDOW);
+	$OPEN= IOPEN(1) .ne. 0;
+   ENDIF;
+END;
+
+%E  SUBROUTINE TXXCLR  --- Clear device
+SUBROUTINE TXXCLR;
+"
+	Clear the plot device
+"
+   IMPLICIT NONE;
+   $SPECIFICATION;
+   EXTERNAL UGXERR;
+   $TXCOMD;
+   INTEGER IOP;
+   CHARACTER*8 STRING;
+   REAL X;
+   CALL UGINFO('OPENDEV',STRING,IOPEN,X);
+   IF(IOPEN(1).gt.0) THEN;	"Devices open ?"
+      CALL TXXMT;		"Flush any info left in memory"
+      If (FLAGS(60)) THEN;
+	 LCLEAR = .true.;		"Clear the device later"
+      ELSE;
+	JSEGMN=DFTSEG;
+	ISEGMN=DFTSEG;	"Start new segment list"
+	<IOP=2,IOPEN(1)+1;
+	    CALL UGSLCT(' ',IOPEN(IOP));
+	    IF(PXNAME.ne.' ') THEN; CALL UGPICT('CLEAR,ALIAS='//PXNAME,0);
+	    ELSE; CALL UGPICT('CLEAR',0); ENDIF;	"Clear the device"
+	>
+      ENDIF;
+   ENDIF;
+END;
+
+%E  SUBROUTINE TXXERA  --- Selective erase
+SUBROUTINE TXXERA(EWDOW);
+"
+	Selectively clear the plot device
+	EWDOW(2,2) contains MIN X,Y MAX X,Y to clear
+	EWDOW(1,1)=HNONE if clear all
+"
+   IMPLICIT NONE;
+   REAL EWDOW(2,2),VIEW(2,2,2);
+   INTEGER I;
+   $SPECIFYNONE;
+   EXTERNAL UGXERR;
+   $TXCOMD;
+   CHARACTER*8 STRING;
+   REAL X;
+   IF (EWDOW(1,1).eq.HNONE) THEN;
+      CALL TXXCLR;
+      RETURN;
+   ENDIF;
+   CALL UGINFO('OPENDEV',STRING,IOPEN,X);
+   IF(IOPEN(1).gt.0) THEN;			"Devices open ?"
+	CALL UGSLCT(' ',IOPEN(2));		"First device"
+      CALL TXXMT;				"Flush any info left in memory"
+      CALL UGWDOW('GET',VIEW(1,1,1),WDOW);	"Get current window"
+	"Find requested window within current space"
+      <I=1,2;
+	 VIEW(I,1,2)=MAX(MIN(EWDOW(I,1),EWDOW(I,2)),VIEW(I,1,1));
+	 VIEW(I,2,2)=MIN(MAX(EWDOW(I,1),EWDOW(I,2)),VIEW(I,2,1));;
+		"IF (VIEW(I,1,2) .ge. VIEW(I,2,2)) RETURN;"
+      >
+      CALL UGWDOW('PUT',VIEW(1,1,2),WDOW);	"Set new window"
+      CALL UGPICT('CLEAR,WINDOW',0);		"Clear the device"
+      CALL UGWDOW('PUT',VIEW(1,1,1),WDOW);	"ReSet old window"
+   ENDIF;
+END;
+
+%E  SUBROUTINE TXXMT   --- Flush device
+SUBROUTINE TXXMT;
+"
+	Function is to move all plotting information out of memory and
+	to the device itself, e.g. flush the graphic buffers
+"
+   IMPLICIT NONE;
+   EXTERNAL UGXERR;
+   $TXCOMD;
+   $SPECIFICATION;
+   INTEGER IOP;
+   IF (PXEL(1).ne.VIRGIN)  THEN;
+      <IOP=2,IOPEN(1)+1;
+	CALL UGSLCT(' ',IOPEN(IOP));
+        IF (LCLEAR) THEN;		" Delayed clear ??"
+	 JSEGMN=DFTSEG;
+	 ISEGMN=DFTSEG;	"Start new segment list"
+	 IF (PXNAME.ne.' ') THEN; CALL UGPICT('CLEAR,ALIAS='//PXNAME,0);
+	 ELSE; CALL UGPICT('CLEAR',0); ENDIF;	"Clear the device"
+	 LCLEAR = .false.;
+        ENDIF;
+        IF (.not.$TRAP) THEN;
+		"Flush the current element"
+	    IF(LERAS)	THEN; CALL UGWRIT('ERASE',ISEGMN,PXEL);
+			ELSE; CALL UGWRIT(' ',ISEGMN,PXEL); ENDIF;
+	    IF(ISEGMN.gt.0) ISEGMN=ISEGMN+1;	"Next segment"
+        ENDIF;
+      >
+      CALL UGINIT('CLEAR',PXEL,PXELWORDS);"Reset the element"
+      VIRGIN=PXEL(1);
+   ENDIF;
+END;
+%E  SUBROUTINE TXXOPN  --- Open/set limits
+SUBROUTINE TXXOPN(INCHFC);
+"
+	Open the graphic device and return the scaling parameters
+"
+   IMPLICIT NONE;
+   EXTERNAL UGXERR;
+   $TXCOMD;
+   $TXCOM;	"J.Clement - needs to get IROTAX"
+"
+	Apr 1986 - Long plots were not correctly done on Versatec
+"
+   REAL INCHFC(2),EXTREM(4),EXTEND(4);
+   $SPECIFICATION;
+   INTEGER I,UGIVAL(4),IOP;
+   $BOOLEAN L_TEST(MAX_QOPN);
+   CHARACTER*8 STRING;
+   REAL UGRVAL(4);	"For UG calls"
+   CHARACTER*1 UGSTR;
+   REAL X,Y,AFF;
+   IF ($TRAP) RETURN;
+   IF (.NOT.($OPEN)) THEN;
+	CALL UGINFO('OPENDEV',STRING,IOPEN,WDOW);
+	INCHFC(1)=1.; INCHFC(2)=1.;
+	<I=3,4;
+	    PLIM($XMIN,I)=0.0; PLIM($YMIN,I)=0.0;
+	    PLIM($XMAX,I)=13 ; PLIM($YMAX,I)=10;
+	>
+	<IOP=1,MAX_QOPN; l_TEST(IOP)=.false.; >
+	<IOP=2,IOPEN(1)+1;
+		IF (IOPEN(IOP) .gt. 0 .and. IOPEN(IOP) .le. MAX_QOPN)
+		l_TEST(IOPEN(IOP))=.true.; >
+	<IOP=1,MAX_QOPN;
+	IF (NQOPN(IOP) .le. 0 .or. l_TEST(IOP)) <NEXT>;
+"
+write (*,*) ' txxopn nqopn(iop) ',nqopn(iop);
+        CALL UGOPEN ('GENIL,POSTSCR,PERMANENT,',IOP);
+"
+	CALL UGOPEN(QOPN(IOP),IOP);	"Open the device"
+	CALL UGINFO('OPENDEV',STRING,IOPEN,WDOW);
+	$OPEN=IOPEN(1) .gt. 0;
+	CALL UGINFO('ACTDEV',STRING,IACT,WDOW);
+	If (IACT .NE. IOP) <NEXT>;
+	LPROP=INDEX(QOPN(1),'UGGKSWM') .gt. 0;
+		"Set the defaults"
+		"Determine the size used by UGXTXT, which is relative to
+		the original size of the screen."
+
+	CALL UGDSPC('GET',X,Y,AFF);
+	CALL UGINFO('DSPCSIZE',UGSTR,UGIVAL,UGRVAL);
+	CALL UGINFO('DPHYSIZE',UGSTR,UGIVAL,RESOL);
+	<I=1,2; RESOL(I)=RESOL(I)/$UNITFAC;
+	    IF (RESOL(I).LT. 1.0E-4)
+		RESOL(I)=1.2912093E-02*(2.54/$UNITFAC);	"VAXSTATION ?"
+	    RESOL(I)=MAX(RESOL(I),.001);
+	>
+	IF (IOP .EQ. 1)
+	   URSIZE=X*UGRVAL(1)/$UNITFAC;
+
+		"Reset the graphic element"
+
+	>
+	CALL UGINIT('CLEAR',PXEL,PXELWORDS);
+	VIRGIN=PXEL(1);
+
+   ENDIF;
+		"Now set the device limits to pass back to the caller"
+		"Make a screen with the desired aspect ratio"
+		"Modified J. Clement for correct rotated plot"
+
+   CALL TXXSIZ;
+END;
+%E  SUBROUTINE TXXOPT  --- Set options COLOR/INTEN...
+SUBROUTINE TXXOPT(IOPT,IPARM,PARM,IERR);
+"
+	Routine to set optionsd and parameters for the device.
+    IOPT  IPARM                  PARM
+      1   line color
+      2   line texture
+      3   line width/intensity  -
+      4   quick mode (plot fast rather than pretty)
+      5   text font (1-3)
+      6   text color (1-3)
+      7   text width/intensity (1-5)
+      8   Soft/hard structure (0,1)
+      9   Fixed/proportional spacing (1,0)
+     10   BLINK/steady (1,0)
+     11   ERASE on/off (1,0)
+     12   VECTOR on/off (0,1)
+     13   SEGMENTS on/off (1,0)
+"
+   IMPLICIT NONE;
+   EXTERNAL UGXERR;
+   INTEGER IERR,DFTBLD;
+   $BOOLEAN LTEMP;
+   $TXCOMD;
+   $SPECIFICATION;
+   INTEGER IOPT,IPARM; REAL PARM;
+   CHARACTER*8 QWID(5),QTEX(7),QCOL(7);
+   DATA QWID/'VDIM,','DIM,','MEDIUM,','BRIGHT,','VBRIGHT,'/;
+   DATA QCOL/'WHITE,','RED,','GREEN,','BLUE,','YELLOW,','MAGENTA,','CYAN,'/;
+   DATA QTEX/'DOTTED,','DASHED,','DOTDASH,','SOLID,'
+	     ,'SOLID,','SOLID,','DAASHED,'/;
+   CHARACTER*7 QFONT(3);
+   DATA QFONT /'SIMPLEX','SIMPLEX','DUPLEX '/;
+   IF ($TRAP) RETURN;
+   IERR=0;
+   <CASE> IOPT <OF> :LCOLOR:,:LTEXTURE:,:LWIDTH:,:QUICK:
+	    ,:FONT:,:TCOLOR:,:TWIDTH:,:SOFTST:,:PROPSP:,:BLINK:
+	    ,:ERASE:,:VECT:,:SEGM:<
+      :LCOLOR: <
+	    IF (IPARM.ne.DFTCOL) THEN;
+		DFTCOL=MIN(MAX(IPARM,1),7);
+		CALL UGDEFL(QCOL(DFTCOL),IXX,IXX);
+	    ENDIF;
+	 >
+      :LTEXTURE: <
+	    IF (IPARM.ne.DFTTEX) THEN;
+		DFTTEX=MIN(MAX(IPARM,1),7);
+		CALL UGDEFL(QTEX(DFTTEX),IXX,IXX);
+	    ENDIF;
+	 >
+      :LWIDTH: <
+	    IF (IPARM.ne.DFTWID) THEN;
+		DFTWID=MIN(MAX(IPARM,1),5);
+		CALL UGDEFL(QWID(DFTWID),IXX,IXX);
+	    ENDIF;
+	 >
+      :FONT: <
+	    IF (IPARM.NE.DFTFNT) THEN;
+		DFTFNT=MIN(MAX(IPARM,1),3);
+		CALL UGFONT (QFONT(DFTFNT));
+	    ENDIF;
+	 >
+      :QUICK: < DFTQUI=MIN(MAX(IPARM,0),1); >
+      :TCOLOR: <
+	    IF (IPARM.ne.DFTCOL) THEN;
+		DFTCOL=MIN(MAX(IPARM,1),7);
+		CALL UGDEFL(QCOL(DFTCOL),IXX,IXX);
+	    ENDIF;
+	 >
+      :TWIDTH: <
+	    IF (IPARM.ne.DFTWID) THEN;
+		DFTWID=MIN(MAX(IPARM,1),5);
+		CALL UGDEFL(QWID(DFTWID),IXX,IXX);
+	    ENDIF;
+	 >
+      :SOFTST: <
+	 DFTSTR=MIN(MAX(IPARM,0),1);
+	 IF (IPARM.ne.0) THEN; CALL UGDEFL('SOFTST',IXX,IXX);
+			 ELSE; CALL UGDEFL('HARDST',IXX,IXX);  ENDIF;>
+      :PROPSP: <
+	 IF (IPARM.ne.DFTPRP) THEN;
+	    DFTPRP=MIN(MAX(IPARM,0),1);
+	    IF (DFTPRP.ne.0) THEN; CALL UGDEFL('FIXSIZE',IXX,IXX);
+			     ELSE; CALL UGDEFL('NOFXSIZ',IXX,IXX); ENDIF;
+	 ENDIF;>
+
+      :BLINK: <
+	 IF (IPARM.ne.DFTBLK) THEN;
+	    DFTBLK=MIN(MAX(IPARM,0),1);
+	    IF (DFTBLD.ne.0) THEN; CALL UGDEFL('BLINK',IXX,IXX);
+			     ELSE; CALL UGDEFL('STEADY',IXX,IXX); ENDIF;
+	 ENDIF;>
+
+      :ERASE: <  LTEMP=IPARM.ne.0;
+	 IF (LTEMP.NEQV.LERAS) CALL TXXMT;  LERAS=LTEMP;>
+
+      :VECT: <	DFTVEC=MIN(MAX(IPARM,0),1);
+	     >
+
+      :SEGM: < DFTSEG=MIN(MAX(IPARM,0),1);
+		JSEGMN=ISEGMN;			"Save current segment"
+		IF (DFTSEG.eq.0) THEN; ISEGMN=0;	"Segments off ?"
+				ELSE; ISEGMN=MAX(DFTSEG,JSEGMN); ENDIF;
+	     >
+   >
+END;
+%E  SUBROUTINE TXXPLT  --- Plot line
+SUBROUTINE TXXPLT(X1,Y1,LPEN);
+"
+	Plot to X1,Y1
+	LPEN	= 0	to move to X1,Y1
+		= 1	to draw to X1,Y1
+"
+   IMPLICIT NONE;
+   REAL X1,Y1;
+   INTEGER LPEN;
+   EXTERNAL UGXERR;
+   $TXCOMD;  $TXCOM;
+   $SPECIFICATION;
+   $DATA;
+   REAL X,Y;
+   IF ($TRAP) RETURN;
+   FLAGS(1)=.FALSE.;
+   <CASE> IROTAX+1 <OF> :ROT0:,:ROT1:,:ROT2:,:ROT3: <
+	:ROT0: < X=X1; Y=Y1; >
+	:ROT1: < X=Y1; Y=PLIM(3,4)-X1; >
+	:ROT2: < X=PLIM(3,4)-X1; Y=PLIM(4,4)-Y1; >
+	:ROT3: < X=PLIM(4,4)-Y1; Y=X1; >
+   >
+
+   CALL UGLINE(' ',X,Y,LPEN,PXEL);
+END;
+%E  SUBROUTINE TXXSIZ  --- Sets the current screen size
+SUBROUTINE TXXSIZ;
+"
+	Set PLIM as the current limits of the plotting device
+	This routine is needed only if the current limits
+	are smaller than the desired limits, e.g. for a Cal-Comp
+	plotter on which the distance along the paper may be
+	extended to any desired size, but is set at an arbitrary
+	limit at the start of the program.
+"
+   IMPLICIT NONE;
+   INTEGER I, IOP, J;
+   REAL X,Y,AFF,XWIND,YWIND;
+   $TXCOMD;
+   $TXCOM;
+   $SPECIFICATION;
+   INTEGER UGIVAL(4);
+   REAL UGRVAL(4);
+   CHARACTER*1 UGSTR;
+   CHARACTER*7 QFONT(3);
+   DATA QFONT /'SIMPLEX','SIMPLEX','DUPLEX '/;
+   CHARACTER*8 QWID(5),QTEX(7),QCOL(7);
+   DATA QWID/'VDIM,','DIM,','MEDIUM,','BRIGHT,','VBRIGHT,'/;
+   DATA QCOL/'WHITE,','RED,','GREEN,','BLUE,','YELLOW,','MAGENTA,','CYAN,'/;
+   DATA QTEX/'DOTTED,','DASHED,','DOTDASH,','SOLID,'
+	     ,'SOLID,','SOLID,','DAASHED,'/;
+
+   IF ($TRAP) RETURN;
+   IF (.not.$OPEN) RETURN;
+   <IOP=2,IOPEN(1)+1;
+	CALL UGSLCT(' ',IOPEN(IOP));
+	IF (LCLEAR) THEN;			" Delayed clear ??"
+	    JSEGMN=DFTSEG;
+	    ISEGMN=DFTSEG;			"Start new segment list"
+	    IF(PXNAME.ne.' ') THEN;
+		CALL UGPICT('CLEAR,ALIAS='//PXNAME,0);
+	    ELSE;
+		CALL UGPICT('CLEAR',0);
+	    ENDIF;				"Clear the device"
+	ENDIF;
+	IF (IOP .EQ. 2) THEN;
+	    <I=1,2; PSCR(I) = SCREEN(I) + MARGIN(I*2)+MARGIN(I*2-1); >
+	    CALL UGDSPC('PUT',PSCR($XMIN),PSCR($YMIN),1.0);
+					"Make that inches"
+	    CALL UGINFO('DSPCSIZE',UGSTR,UGIVAL,UGRVAL);
+	    X=PSCR($XMIN)*UGRVAL(1)/$UNITFAC;
+	    Y=PSCR($YMIN)*UGRVAL(2)/$UNITFAC;
+						"Set that value as the maximum"
+	    <I=3,4;
+		PLIM($XMIN,I)=0.0; PLIM($YMIN,I)=0.0;
+		PLIM($XMAX,I)=X  ; PLIM($YMAX,I)=Y;   >
+	ENDIF;
+	CALL UGDSPC('PUT',X,Y,1.0);
+	IF (IOP .EQ. 1) THEN;			"Never executed!!!"
+
+					"How big is the current screen?"
+
+	    CALL UGDSPC('GET',X   ,Y   ,AFF);		"How big?"
+	    CALL UGINFO('DSPCSIZE',UGSTR,UGIVAL,UGRVAL);	"How big?"
+	    XWIND=X*UGRVAL(1)/$UNITFAC;  YWIND=Y*UGRVAL(2)/$UNITFAC;
+				"reality check..."
+	    CALL UGINFO('DSPCSIZE',UGSTR,UGIVAL,UGRVAL);
+	    IF (ABS(UGRVAL(1)-$UNITFAC).GT.0.02
+		.OR.ABS(UGRVAL(1)-$UNITFAC).GT.0.02)
+		CALL UGRERR(4,'TXXOPN  ',1);
+
+	ENDIF;
+
+
+
+				"Now set up the default character size"
+
+   >
+   DFTSIZ=0;
+
+
+   QTXT=' ';				"Clear the Qtxt"
+   NQTXT=1;
+   QTXT=' '; NQTXT=1;
+					"Now default angle"
+   DFTANG=-90*IROTAX;
+   <CASE> IROTAX+1 <OF> :ROT0:,:ROT1:,:ROT2:,:ROT3: <
+	:ROT0: < CALL UGDEFL('ANGLE=0.0',IXX,IXX); >
+	:ROT1: < CALL UGDEFL('ANGLE=-90.0',IXX,IXX); >
+	:ROT2: < CALL UGDEFL('ANGLE=180.0',IXX,IXX); >
+	:ROT3: < CALL UGDEFL('ANGLE=90.0',IXX,IXX); >
+   >
+
+"
+   IF(IROTAX.ne.0) THEN; DFTANG=-90*IROTAX;  CALL UGDEFL('ANGLE=-90.',IXX,IXX);
+		   ELSE; DFTANG= 0.0;  CALL UGDEFL('ANGLE=0.0',IXX,IXX); ENDIF;
+"
+
+   CALL UGDEFL('NORMGN',IXX,IXX);
+					"Default proportional spacing"
+   IF (DFTPRP.ne.0) THEN; CALL UGDEFL('FIXSIZE',IXX,IXX);
+		    ELSE; CALL UGDEFL('NOFXSIZ',IXX,IXX); ENDIF;
+   CALL UGFONT(QFONT(DFTFNT));		"Default font"
+   CALL UGDEFL(QCOL(DFTCOL),IXX,IXX);		"Default color"
+   CALL UGDEFL(QWID(DFTWID),IXX,IXX);		"Set up default width"
+   CALL UGDEFL(QTEX(DFTTEX),IXX,IXX);		"Default texture"
+   LCLEAR = .false.;
+END;
+%E  SUBROUTINE TX3TXT  --- Plot 3-d text
+SUBROUTINE TX3TXT(XYZ,SIZEIN,UP,TEXT,CASE,ICNTR);
+"
+	Plots 3-D text
+INPUT:
+	XYZ(3)	= Text location
+	SIZEIN(3)= Character size/direction along string
+	UP(3)	= Up direction
+	TEXT	= Text to plot
+	CASE	= Case of each text char.
+	ICNTR	=1 to center text
+		=2 to right justify
+		=0 Left justify
+		=4 To hide text
+OUTPUT:
+	Lines are placed in segment storage.
+"
+   CHARACTER*(*) TEXT,CASE;
+   INTEGER NTEXT,NCASE,ICNTR;
+   REAL XYZ(3),SIZEIN(3),UP(3),ORIENT;
+   character*13 COPT(2);
+   DATA COPT/'NOFXSIZ,NEXT,','FIXSIZE,NEXT,'/;
+   EXTERNAL UGXERR;
+   $TXCOMD;
+   $SPECIFICATION;
+   INTEGER I,J,N,IHIDE;
+
+   INTEGER IBUFSZ;
+   PARAMETER (IBUFSZ=4);
+
+   REAL POS(3,2),T12(3,2),T1(3),T2(3)
+      ,XY(2,32*IBUFSZ),XY1(2),XY3(2),SIZE(3)
+      ,XARRAY(32*IBUFSZ),YARRAY(32*IBUFSZ);
+   $LONG INTEGER NLONG,BBITS(IBUFSZ+1)	"Long for calls to UG"
+   $DATA;
+
+   IF ($TRAP) RETURN;
+   NTEXT=LEN(TEXT);
+   IF (NTEXT.eq.0) RETURN;		"No data ??"
+   CALL T2CWTS(64*4,ITXSAV);		"Set solid line texture"
+   CALL TXSDEF;
+"
+	First make sure text is right side up !
+"
+   <I=1,3;
+      SIZE(I)=SIZEIN(I);
+      POS(I,1)=XYZ(I);
+      POS(I,2)=XYZ(I)+SIZE(I);
+   >
+   CALL T2XFRM(3,2,POS,LINEAR,XFRM24,3,T12);
+   IF (T12(1,1).GT.T12(1,2)) THEN;
+      <I=1,3; SIZE(I)=-SIZE(I);>
+   ENDIF;
+					"Now if centering requested do it !"
+   I=IAND(ICNTR,3);
+   IHIDE=2;
+   IF (IAND(ICNTR,4).ne.0) IHIDE=6;
+   IF (I.gt.0) THEN;
+      FAC=TXXCSZ(TEXT,CASE,0.05*I);
+      <I=1,3; POS(I,1)=POS(I,1)-FAC*SIZE(I);>
+   ENDIF;
+   IF (ABS(SIZE(1))+ABS(SIZE(2))+ABS(SIZE(3)).EQ.0.) THEN;
+      CALL T2XFRM(3,1,POS,LINEAR,XFRM24,2,XY);
+      CALL TXTEXT(XY(1,1),XY(2,1),0.,0.,TEXT,CASE);
+   ELSE;
+"
+	MAKE A TRANSFORMATION IN 3-SPACE WHICH ROTATES (1,0,0)
+	INTO SIZE, AND (0,1,0) INTO THE DIRECTION OF UP
+"
+      CALL T2CROS(UP,SIZE,T1);
+      IF (ABS(T1(1))+ABS(T1(2))+ABS(T1(3)).EQ.0.)
+	 T1(3)=1.;
+      CALL T2CROS(SIZE,T1,T2);
+      IF (ABS(T2(1))+ABS(T2(2))+ABS(T2(3)).EQ.0.) T2(2)=1.;
+					"NORMALIZE T2 AND ADJUST PARITY"
+      S1=0; S2=0.; S3=0.;
+      <I=1,3;
+	 S1=S1+SIZE(I)**2; S2=S2+T2(I)**2;
+	 S3=S3+T1(I)*VUEDIR(I);
+      >
+      FAC=SIGN(SQRT(S1/S2),S3);
+      <I=1,3; T2(I)=T2(I)*FAC;>
+      FAC=1/0.15;
+      IDP=DFTPRP+1;				"Default prop spacing"
+      <N=1,NTEXT;
+	 IF ($TRAP) GOTO :RET:;
+					"Convert 1 char to line segments"
+	 CALL UGCTOL(COPT(IDP)(1:7),0.,0.,TEXT(N:N),CASE(N:N),32*IBUFSZ
+	    ,XARRAY,YARRAY,NLONG,BBITS);
+	 <I=1,NLONG;				"EACH VECTOR"
+	    <J=1,3;				"T1 IS VECTOR IN WORLD SYSTEM"
+		T1(J)=POS(J,1)+
+		  FAC*(SIZE(J)*XARRAY(I)+T2(J)*YARRAY(I));
+	    >
+	    CALL T2XFRM(3,1,T1,LINEAR,XFRM24,2,XY(1,I));
+	 >
+	 L=1;
+	 <I=1,NLONG;					"EACH VECTOR"
+		"Calculate the move/draw value for the next vector"
+	    J=(I+31)/31;
+	    K=MOD((I-1),32)+1;
+	    IF (IAND(BBITS(J),ISHFT(1,K-1)).EQ.0 .or.	"Next is move ?"
+		I .eq. NLONG) THEN;			"Or this is end?"
+		K=I-L+1;
+		IF (K .ge. 2)
+		CALL T2_MESH_DRAW(XY(1,L),K,IHIDE);
+		L=I+1;
+	    ENDIF;
+	 >
+	 FLAGS(1)=.FALSE.;
+			"Now find current position and scale factor"
+	 CALL UGCTOL(COPT(IDP),0.,0.,TEXT(N:N),CASE(N:N),32*IBUFSZ
+		  ,XARRAY,YARRAY,NL,IDUM);
+			"Save it"
+			"New position"
+	 <J=1,3; POS(J,1)=POS(J,1)+FAC*(SIZE(J)*XARRAY(1)+T2(J)*YARRAY(1)); >
+	 FAC=FAC*XARRAY(2);			"New scale factor"
+      >
+:RET: CONTINUE;
+   CALL T2_MESH_FLUSH;
+   CALL T2CWTS(ITXSAV,IDUM);
+   ENDIF;
+END;
+%E  SUBROUTINT TXFILLSYM  --- Plots filled symbols
+SUBROUTINE TXFILLSYM(X,Y,SYM,SIZEIN);
+"
+	Plots a filled symbol SYM
+	At X,Y	in the text frame
+	With SIZEIN as the size
+"
+   IMPLICIT NONE;
+   REAL X,Y,SYM,SIZEIN,SIZE;
+   CHARACTER*2 TXSYMBOL;
+   CHARACTER*1 TEXT,CASE;
+   INTEGER I,J,K,L,I1, I2;
+   CHARACTER*7 COPT /'FIXSIZE'/;
+   EXTERNAL UGXERR;
+   $TXCOM;
+   $SPECIFYNONE;
+   $SPECIFICATION;
+
+   INTEGER IBUFSZ;
+   PARAMETER (IBUFSZ=4);
+
+   INTEGER ITXSAV,IDUM;				"Save texture"
+   REAL FAC,TXXCSZ;
+   REAL POS(3,2),T12(3,2),T1(3),T2(3)
+      ,XY(2,32*IBUFSZ+1),XY1(2),XY3(2)
+      ,XARRAY(32*IBUFSZ),YARRAY(32*IBUFSZ);
+   $LONG INTEGER NLONG,BBITS(IBUFSZ+1)		"Long for calls to UG"
+   $DATA;
+
+   IF ($TRAP) RETURN;
+   I=0;
+   IF(ABS(SYM).lt.65536) I=NINT(ABS(SYM));
+   I1=I/256; I2=I-256*I1;
+   IF(I1.eq.32.and.I2.eq.32)I1=0;		"Plot blanks as dots"
+   IF(I1.lt.32.or.I2.lt.32) THEN;
+      CALL TXDOT(X,Y);
+      RETURN;
+   ENDIF;
+   CALL SYMTXT(SYM,TXSYMBOL);			"Get the symbol string"
+   TEXT=TXSYMBOL(1:1);
+   CASE=TXSYMBOL(2:2);
+"
+   ITSAV=DFTTEX;
+   IF (DFTTEX.ne.4) CALL TXXOPT(2,4,PARM,IERR);
+"
+   CALL UGCTOL(COPT,0.,0.,TEXT,CASE,32*IBUFSZ
+	    ,XARRAY,YARRAY,NLONG,BBITS);	"Get the character"
+
+   IF (NLONG .eq. 0) THEN;			"Blank ?"
+      CALL TXDOT(X,Y);
+      RETURN;
+   ENDIF;
+   CALL T2CWTS(64*4,ITXSAV);			"Set solid line texture"
+   CALL TXSDEF;
+   SIZE = ABS(SIZEIN*XFRMFC*REDUCE(2));
+   FAC=ABS(SIZE/0.15);				"Scale factor"
+   <I=1,NLONG; XY(1,I)=FAC*XARRAY(I)+X;		"Add X,Y and scale character"
+		XY(2,I)=FAC*YARRAY(I)+Y; >
+   L=1;
+   <I=1,NLONG;						"Each vector"
+			"Calculate the move/draw value for the next vector"
+      IF ($TRAP) GOTO :RET:;
+      J=(I+31)/31;
+      K=MOD((I-1),32)+1;
+      IF (IAND(BBITS(J),ISHFT(1,K-1)).EQ.0 .or.	"Next is Move ?"
+	 I .eq. NLONG) THEN;				"Or last one"
+	 K=I-L+1;
+	 IF (K .ge. 2) THEN;
+	    CALL TXLINX(XY(1,L),K,LINTEX);		"Draw it"
+	    IF (K .gt. 2)
+		CALL TXFILL(XY(1,L),XY(2,1),HNONE,2,K,0);	"And fill it"
+	 ENDIF;
+	 L=I+1;
+      ENDIF;
+   >
+:RET: CONTINUE;
+   CALL T2CWTS(ITXSAV,IDUM);			"Restore line texture"
+"
+   IF (ITSAV.ne.4) CALL TXXOPT(2,ITSAV,PARM,IERR);
+"
+END;
+%E  SUBROUTINE UGXERR  --- Unified graphics internals
+SUBROUTINE UGXERR(LEVEL,NAME,INDX);
+"
+	Error processing subroutine called by the U.G. package
+	This outputs the plot when the segment buffer is full.
+	All other errors are filtered, to prevent fatal errors.
+"
+   IMPLICIT NONE;
+   INTEGER*4 LEVEL,INDX;
+   CHARACTER*(*) NAME;
+   EXTERNAL UGZ001;
+   $SPECIFICATION;
+   $TXCOMD;
+   LOGICAL INTRAC;
+   INTEGER I ,NCHAR, IOP;
+   CHARACTER*8  UGOPEN,UGFONT;
+      DATA UGOPEN,UGFONT/'UGOPEN  ','UGFONT  '/;
+
+   IF (INDX.EQ.11) THEN;			"ELEMENT OVERFLOW"
+      IF (LCLEAR) THEN;				"Delayed clear ?"
+	 JSEGMN=DFTSEG;
+	 ISEGMN=DFTSEG;				"Start new segment list"
+	 IF(PXNAME.ne.' ') THEN; CALL UGPICT('CLEAR,ALIAS='//PXNAME,0);
+	 ELSE; CALL UGPICT('CLEAR',0); ENDIF;	"Clear the device"
+	 LCLEAR = .false.;
+      ENDIF;
+      IF (.NOT.$TRAP) THEN;
+	<IOP=1,IOPEN(1);
+	    CALL UGSLCT(' ',IOPEN(IOP+1));
+	    IF(LERAS)	THEN; CALL UGWRIT('ERASE',ISEGMN,PXEL);	"Flush?"
+			ELSE; CALL UGWRIT(' ',ISEGMN,PXEL); ENDIF;
+	    IF(ISEGMN.gt.0) ISEGMN=ISEGMN+1;	"Next segment"
+	>
+      ENDIF;
+      CALL UGINIT('CONTINUE',PXEL,PXELWORDS);
+      VIRGIN=PXEL(1);
+      LEVEL=0;
+      FLAGS(1)=.FALSE.;
+   ELSEIF (NAME .eq. 'UGTX07  ' .or. NAME.eq.'DECGIGI ' .or.
+	   NAME .eq. 'TAL1590 ' .or. NAME.eq.'UGSIXEL ' .or.
+	   NAME .eq. 'QMS1200 '
+							   ) THEN;
+$VAX;
+      LEVEL=1;
+      CALL SYS$GETMSG(%VAL(INDX),NCHAR,OUTSTR,%VAL(1),);
+      I=INDEX(OUTSTR(1:NCHAR),' at PC')-1;
+      IF (I.gt.0) NCHAR=I;
+      I=INDEX(OUTSTR(1:NCHAR),'!')-1;
+      IF (I.gt.0) NCHAR=I;
+      WRITE($TERMINAL OUT,*)CHAR(7),'*** ERROR *** ',OUTSTR(1:NCHAR);
+$END;
+      INDX=MIN(MAX(INDX,0),9999);
+   ELSEIF (NAME.EQ.UGFONT. AND. INDX.EQ.99) THEN;
+      LEVEL=2;				"Can't load a new font.  T.S."
+   ELSEIF (NAME.EQ.UGOPEN) THEN;
+"
+      $OPEN=.FALSE.;
+      $TRAP=.TRUE.;
+"			"Set for total abort"
+
+"
+      FLAGS(23)=.TRUE.;
+"			"Flag error file output"
+      ERROR MESSAGE QOPN(1)(1:NQOPN(1));
+	 ('  Device="',A,'"');
+
+   ENDIF;
+   IF  (INTRAC()) LEVEL=MIN(LEVEL,2);
+END;
+%E  SUBROUTINE UGZ001  --- Unified graphics termination
+SUBROUTINE UGZ001;
+   IMPLICIT NONE;
+   ERROR STRING;'*** ERROR *** Fatal unified graphics error';
+END;
+%E  SUBROUTINE t2ABCD  --- Alphabetize list
+SUBROUTINE T2ABCD(BUFFR);
+   IMPLICIT NONE;
+   INTEGER NBUFFR,LENBUF,I,J,K,L,IMIN,ISIZ;
+   CHARACTER*(*) BUFFR;
+   CHARACTER*80 STEMP;
+   NBUFFR=LEN(BUFFR);
+   LENBUF=NBUFFR;
+		"Remove redundant keywords"
+
+   I=1;
+   <LOOP> <
+      J=INDEX(BUFFR(I+1:LENBUF),',');  IF (J.le.0) <EXIT>;
+      K=I+J; STEMP=BUFFR(I:I+J); ISIZ=0;
+      <LOOP> <
+	L=INDEX(BUFFR(K+1:LENBUF),','); IF (L.le.0) <EXIT>;
+	IF(STEMP.ge.BUFFR(K:K+L)) THEN;
+	    STEMP=BUFFR(K:K+L);
+	    IMIN=K; ISIZ=L;
+	ENDIF;
+	K=K+L;
+      >
+      IF(ISIZ.gt.0) THEN; K=IMIN; L=ISIZ;
+	STEMP=BUFFR(I:I+J);
+	BUFFR(I:K+L-J)=BUFFR(I+J:K+L);
+	BUFFR(K+L-J:K+L)=STEMP;
+	J=0;
+      ENDIF;
+      I=I+J;
+   >
+end;
+%E  FUNCTION TXXCSZ  --- Gets the length of a string
+REAL FUNCTION TXXCSZ(text,case,size);
+"
+	This returns the length of the text/case string.
+The length is the distance from the center of the first to the last character.
+This accounts for sub/superscripts, proportional spacing, etc.
+If QUICK mode is on a simple 'Inaccurate' but fast calculation
+is used.
+INPUT:
+	TEXT	= Text string
+	CASE	= Its case
+	SIZE	= Character size (negative for hardware chars)
+"
+   IMPLICIT NONE;
+   REAL X(2),Y(2);
+   CHARACTER*(*) text,case;
+   REAL SIZE;
+   INTEGER NC,IB;
+   CHARACTER*13 COPT(2);
+   DATA COPT/'NOFXSIZ,LAST,','FIXSIZE,LAST,'/;
+   $TXCOMD;
+   TXXCSZ=len(TEXT)*ABS(SIZE);
+   IF (DFTQUI.ne.0) RETURN;		"Quick mode ?"
+   IF (TXXCSZ.eq.0) RETURN;		"Only 1 char ?"
+   IF (	case.ne.' ' .or.
+	LPROP .or.
+	(size.gt.0 .and. DFTVEC+DFTPRP.eq.0))
+      THEN;
+      CALL UGCTOL(COPT(DFTPRP+1),0.0,0.0,text,case,1,X,Y,NC,IB);
+      TXXCSZ=ABS(SIZE)*X(1)/0.015;
+   ENDIF;
+END;
+%E  END of TXXUG77

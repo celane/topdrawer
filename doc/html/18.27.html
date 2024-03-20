@@ -1,0 +1,30 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 18.27</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>18.27  TDSET</H4></B> 
+
+Sets parameters.
+     CALL TDSET(OPTIONS)
+
+OPTIONS is a literal, hollerith, or array containing the options.
+     see:Subroutine STRING
+This  routine  is  not recommended.  It is provided for compatability with
+older versions of TOPDRAWER.  Use TDTEXT instead.
+The  options  are  the  same  as for the SET command.  For convenience you
+probably should use TDSETS which is Fortran 77 compatible.
+
+                                  example
+     CALL TDSET('SIZE 10 BY 8')
+This sets the size of the plot.
+     CALL TDSET('COLOR BLUE')
+Now everything is plotted in blue.
+          or....
+     BYTE STRING(11)
+     DATA STRING/'C','O','L','O','R',' ',
+    1 'B','L','U','E',';'/
+     CALL TDSET(STRING)
+</PRE>
+</BODY>

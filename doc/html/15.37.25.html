@@ -1,0 +1,24 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.37.25</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.37.25  SCALE</H4></B>       
+
+Fits  the LOG(X or Y) to the base e if a log scale is selected for X or Y.
+see the  command:   SET SCALE.   Similarly  the  option  EXPONENTIAL  fits
+LOG(Y)=series.
+
+                                  example
+     TD:<U>SET</U> <U>SCALE</U> <U>Y</U> <U>LOG</U>
+     TD:<U>FIT</U> <U>TERMS=4</U>
+Fits a polynomial LOG(Y)=a0+a1*X+a2*X**2+a3*X**3
+                                  example
+     TD:<U>SET</U> <U>SCALE</U> <U>X</U> <U>LOG</U>
+     TD:<U>FIT</U> <U>TERMS=3</U>
+Fits a polynomial Y=a0+a1*LOG(X)+a2*LOG(X)**2
+
+
+</PRE>
+</BODY>

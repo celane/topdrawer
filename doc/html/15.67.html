@@ -1,0 +1,27 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.67</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.67  SORT</H4></B> 
+
+<U>SO</U>RT [<U>SY</U>MBOL] [[N][D]{<U>X</U>|<U>Y</U>|<U>Z</U>|<U>U</U>|<U>V</U>|<U>W</U>|<U>TH</U>ETA|<U>RA</U>DIUS|<U>PH</U>I}]
+     [<U>SET</U>S=[<U>FR</U>OM] n1 [<U>TO</U>] [n2]]
+     [<U>SEL</U>ECT="name"]
+     [<U>PO</U>INTS=[<U>FR</U>OM] n1 [<U>TO</U>] [n2]]
+     [<U>AP</U>PEND[=<U>ON</U>|<U>OF</U>F]] [<U>NAM</U>E="name"]
+     [<U>LO</U>G[=<U>ON</U>|<U>OF</U>F]]
+Sorts the data according to the order of the fields (X,Y...) selected.  If
+fields  are  omitted  then  they  are  sorted  according  to   the   order
+SYMBOL,X,DX,Y,DY,Z,DZ.  Each data set is sorted independently.
+
+                                  example
+     TD:<U>SORT</U> <U>X</U> <U>Y</U> <U>Z</U> <U>SYMBOL</U>
+Sorts  data  so  that  all  low X are first.  Within groups of identical X
+values all low Y values are first, and so on.  Since DX,DY,DZ are  omitted
+the actual sorting order is:  X,Y,Z,SYMBOL,DX,DY,DZ.
+
+
+</PRE>
+</BODY>

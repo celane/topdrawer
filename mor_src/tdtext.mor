@@ -1,0 +1,87 @@
+%U+ TDMACROS.MOR
+"  This is a set of Fortran 77 compatible routines for accessing
+   Topdrawer.  These replace TDTITL, TDCASE, TDTSET, TDSET
+		J. Clement
+		Rice University
+"
+%';SUBROUTINE'=';<RESET> <SET> ;"SUBROUTINE"'
+<SET>;                      "Ready for reset"
+%E  SUBROUTINE TDTEXT
+LOGICAL FUNCTION TDTEXT(options,text,case,x,y,z);
+   IMPLICIT NONE;
+   CHARACTER*(*) OPTIONS,TEXT,CASE;
+   REAL X,Y,Z;
+
+   REAL XYZ(3);
+   EXTERNAL T2SETC;
+   INTEGER I,IMAX,JOUSAV,IBLANK,ISTR;
+   CHARACTER*200 BLANK;
+   CHARACTER*200 OPTX;
+   CHARACTER*200 CASX;
+
+   $SPECIFICATION;
+   INTEGER INFOIN(10);
+   CHARACTER*34 STR;
+   DATA BLANK/' '/;
+
+   $CHECK ARGS(3,6);
+
+   IMAX=NARG-3;
+   IF(IMAX.le.0) THEN;
+      STR=' '; ISTR=1;
+   ELSE;
+      IMAX=MIN(IMAX,3);
+                    XYZ(1)=X;
+      IF(IMAX.ge.2) XYZ(2)=Y;
+      IF(IMAX.ge.3) XYZ(3)=Z;
+      ISTR=11*IMAX+1;
+      WRITE(STR,'(1p,3G11.3)')(XYZ(I),I=1,IMAX);
+   ENDIF;
+   <I=3,10; INFOIN(I)=0;>;
+   INFOIN(2)=-3;
+   INFOIN(1)=LEN(options)+34;
+   IBLANK=LEN(TEXT)-LEN(CASE);
+   IBLANK=MIN(MAX(IBLANK,1),LEN(BLANK));
+   JOUSAV=JOUFIL; JOUFIL=0;          "Turn off journaling"
+   $ERROR=.false.;
+   OPTX = OPTIONS ;
+   CASX = CASE    ;
+   CALL T2TTXT(INFOIN,STR(1:ISTR)//OPTX(:LEN(OPTIONS)),
+               3,TEXT,CASX(:LEN(CASE))//BLANK(1:IBLANK));
+   JOUFIL=JOUSAV;
+   TDTEXT=$ERROR;
+   END;
+%E  SUBROUTINE TDSHOW
+LOGICAL FUNCTION TDSHOW(options);
+   IMPLICIT NONE;
+   EXTERNAL T2SETC;
+   $SPECIFYLUN;
+   INTEGER I,JOUSAV;
+   character*(*) options;
+   INTEGER INFOIN(10);
+   $FLAGS;
+   <I=1,10; INFOIN(I)=0;>;  INFOIN(1)=LEN(options);
+   INFOIN(2)=-3;
+   JOUSAV=JOUFIL; JOUFIL=0;          "Turn off journaling"
+   $ERROR=.false.;
+   CALL T2SHOW(INFOIN,OPTIONS);
+   JOUFIL=JOUSAV;
+   TDSHOW=$ERROR;
+END;
+%E  SUBROUTINE TDSETS
+LOGICAL FUNCTION TDSETS(options);
+   IMPLICIT NONE;
+   EXTERNAL T2SETC;
+   $SPECIFYLUN;
+   $FLAGS;
+   character*(*) options;
+   INTEGER INFOIN(10);
+   INTEGER I,JOUSAV;
+   <I=1,10; INFOIN(I)=0;>;  INFOIN(1)=LEN(options);
+   INFOIN(2)=-3;
+   JOUSAV=JOUFIL; JOUFIL=0;          "Turn off journaling"
+   $ERROR=.false.;
+   CALL T2SET(INFOIN,OPTIONS);
+   JOUFIL=JOUSAV;
+   TDSETS=.not. $ERROR;
+END;

@@ -1,0 +1,22 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.37.30</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.37.30  Yerrors</H4></B>     
+
+The  error bars on the Y values are used as weighting factors for the fit.
+If they are all 0.0 they are assumed to be 1.0.   The  resulting  fit  has
+error  bars on the coefficients according to the assumed error bars on the
+Y values.  X errors are not used in the fit.
+
+When  a curve is generated, it will have error bars on the Y values if the
+fitted curve had non zero error bars.  For some functions the final errors
+depend  on the initial center of the expansion.  This is set by specifying
+an offset (OFFSET=n).  Generally best results are obtained with an  offset
+in the middle of the data set.
+
+
+</PRE>
+</BODY>

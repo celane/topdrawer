@@ -1,0 +1,210 @@
+      SUBROUTINE    UGF004(COFA,COFB,COFC,ERFG)
+C
+C *******************  THE UNIFIED GRAPHICS SYSTEM  *******************
+C *                     POLYGON SCISSORING MODULE                     *
+C *                                                                   *
+C *  THIS SUBROUTINE IS USED TO PERFORM THE ACTUAL SCISSORING         *
+C *  OPERATION.  THE INPUT AND OUTPUT POLYGONS, AS WELL AS THE        *
+C *  SCISSORING LIMITS ARE IN THE COMMON ARRAYS.  THE ARGUMENTS GIVE  *
+C *  THE COEFICIENTS OF A SINGLE STRAIGHT LINE AGAINST WHICH THE      *
+C *  POLYGON IS SCISSORED.  THE PART OF THE POLYGON TO BE SAVED MUST  *
+C *  BE ON THE POSITIVE SIDE OF THE LINE.                             *
+C *                                                                   *
+C *  THE CALLING SEQUENCE IS:                                         *
+C *    CALL UGF004(COFA,COFB,COFC,ERFG)                               *
+C *                                                                   *
+C *  THE PARAMETER IN THE CALLING SEQUENCE IS:                        *
+C *    COFA  THE COEFICIENT OF X IN THE EQUATION OF THE SCISSORING    *
+C *          LINE.                                                    *
+C *    COFB  THE COEFICIENT OF Y IN THE EQUATION OF THE SCISSORING    *
+C *          LINE.                                                    *
+C *    COFC  THE CONSTANT TERM IN THE EQUATION OF THE SCISSORING      *
+C *          LINE.                                                    *
+C *    ERFG  AN ERROR FLAG (0 MEANS NO ERROR, 1 MEANS AN INTERNAL     *
+C *          TABLE HAS OVERFLOWN).                                    *
+C *                                                                   *
+C *                          ROBERT C. BEACH                          *
+C *                    COMPUTATION RESEARCH GROUP                     *
+C *                STANFORD LINEAR ACCELERATOR CENTER                 *
+C *                                                                   *
+C *********************************************************************
+C
+      REAL          COFA,COFB,COFC
+      INTEGER       ERFG
+C
+      INCLUDE       'UGSYSTEM:UGF00CBK.FOR'
+C
+C  THE VALUE OF "INFINITY".
+      REAL          INFN
+C  STEPPING INDICES FOR THE POLYGON ARRAYS.
+      INTEGER       IBEG,IEND,ICUR
+C  POSITIVE/NEGATIVE SIDE FLAGS FOR THE POLYGON.
+      LOGICAL       PSID,NSID
+C  VALUES AND FLAGS OF TWO CONSECUTIVE VERTICES.
+      REAL          VCP1,VCP2
+      LOGICAL       FCP1,FCP2
+C  COORDINATES AND INDICES OF THE INSERTION SEGMENT.
+      REAL          XIS1,YIS1,XIS2,YIS2
+      INTEGER       IIS1,IIS2
+C  CROSSING POINT OF POLYGON AND LINE.
+      REAL          XCPT,YCPT
+C  STARTING VERTEX OF THE SECOND PART OF THE POLYGON.
+      REAL          XSTR,YSTR
+C
+      INTEGER       INT1,INT2
+      LOGICAL       LGL1
+      REAL          FLT1,FLT2
+C
+      DATA          INFN/1E10/
+C
+C  INITIALIZE THE SUBROUTINE AND CHECK FOR TERMINATION.
+      ERFG=0
+      IBEG=1
+  101 IF (IBEG.GT.NPOL) GO TO 501
+C
+C  PERFORM A SCAN THROUGH THE NEXT POLYGON IN THE POLYGON ARRAYS.
+      PSID=.FALSE.
+      NSID=.FALSE.
+      ICUR=IBEG
+      XIS1=INFN
+      XIS2=INFN
+      YIS1=INFN
+      YIS2=INFN
+C  SAVE VALUES AND FLAGS OF LAST VERTEX.
+  201 VCP1=VCP2
+      FCP1=FCP2
+C  COMPUTE THE VALUE OF THE CURRENT VERTEX AND SET ITS FLAG.
+      VCP2=COFA*XPOL(ICUR)+COFB*YPOL(ICUR)+COFC
+      IF (VCP2.GT.0.0) THEN
+        FCP2=.TRUE.
+        IF ((.NOT.PSID).AND.(.NOT.NSID)) FCP1=.TRUE.
+        PSID=.TRUE.
+      ELSE IF (VCP2.LT.0.0) THEN
+        FCP2=.FALSE.
+        IF ((.NOT.PSID).AND.(.NOT.NSID)) FCP1=.FALSE.
+        NSID=.TRUE.
+      ELSE
+        FCP2=FCP1
+      END IF
+C  COMPUTE THE CROSSING POINT AND SAVE IT IF IT IS ONE OF THE TWO
+C  "SMALLEST" ONES FOUND SO FAR.
+      IF (ICUR.GT.IBEG) THEN
+        IF (FCP1.NEQV.FCP2) THEN
+          FLT1=ABS(VCP1)
+          FLT2=ABS(VCP2)
+          IF (COFA.EQ.0.0) THEN
+            XCPT=(FLT2*XPOL(ICUR-1)+FLT1*XPOL(ICUR))/(FLT1+FLT2)
+            YCPT=-COFC/COFB
+          ELSE
+            XCPT=-COFC/COFA
+            YCPT=(FLT2*YPOL(ICUR-1)+FLT1*YPOL(ICUR))/(FLT1+FLT2)
+          END IF
+          IF ((XCPT+YCPT).LT.(XIS2+YIS2)) THEN
+            XIS1=XIS2
+            YIS1=YIS2
+            IIS1=IIS2
+            XIS2=XCPT
+            YIS2=YCPT
+            IIS2=ICUR-1
+          ELSE IF ((XCPT+YCPT).LT.(XIS1+YIS1)) THEN
+            XIS1=XCPT
+            YIS1=YCPT
+            IIS1=ICUR-1
+          END IF
+        END IF
+      END IF
+C  ADVANCE TO THE NEXT VERTEX AND CHECK IF IT IS BEYOND THE CURRENT
+C  POLYGON.
+      ICUR=ICUR+1
+      IF (.NOT.FPOL(ICUR-1)) GO TO 201
+      IEND=ICUR
+C
+C  DELETE THE POLYGON IF IT IS NEVER ON THE POSITIVE SIDE.
+      IF (.NOT.PSID) THEN
+        INT1=IEND-IBEG
+        DO 301 INT2=IEND,NPOL
+          XPOL(INT2-INT1)=XPOL(INT2)
+          YPOL(INT2-INT1)=YPOL(INT2)
+          FPOL(INT2-INT1)=FPOL(INT2)
+  301   CONTINUE
+        NPOL=NPOL-INT1
+        GO TO 101
+      END IF
+C
+C  ACCEPT THE POLYGON IF IT IS NEVER ON THE NEGATIVE SIDE.
+      IF (.NOT.NSID) THEN
+        IBEG=IEND
+        GO TO 101
+      END IF
+C
+C  SPLIT THE POLYGON INTO TWO SEPARATE POLYGONS.  FIRST, ORDER THE
+C  CROSSING POINTS.
+      IF (IIS1.GT.IIS2) THEN
+        FLT1=XIS1
+        XIS1=XIS2
+        XIS2=FLT1
+        FLT1=YIS1
+        YIS1=YIS2
+        YIS2=FLT1
+        INT1=IIS1
+        IIS1=IIS2
+        IIS2=INT1
+      END IF
+C  CHECK TO SEE IF THERE IS ENOUGH ROOM IN THE POLYGON BLOCK.
+      IF ((NPOL+5).GT.MVRT) THEN
+        ERFG=1
+        GO TO 501
+      END IF
+C  SAVE THE START OF THE SECOND PART OF THE POLYGON.
+      XSTR=XPOL(IIS1+1)
+      YSTR=YPOL(IIS1+1)
+C  MOVE THE END OF THE POLYGON BLOCK DOWN BY FIVE VERTICES.
+      DO 401 INT1=NPOL,IEND,-1
+        XPOL(INT1+5)=XPOL(INT1)
+        YPOL(INT1+5)=YPOL(INT1)
+        FPOL(INT1+5)=FPOL(INT1)
+  401 CONTINUE
+      NPOL=NPOL+5
+C  SHUFFLE THE VERTICES TO GET THE RIGHT ORDER.
+      DO 403 INT1=(IIS1+1),IIS2
+        FLT1=XPOL(IIS1+1)
+        FLT2=YPOL(IIS1+1)
+        LGL1=FPOL(IIS1+1)
+        DO 402 INT2=(IIS1+1),(IEND-2)
+          XPOL(INT2)=XPOL(INT2+1)
+          YPOL(INT2)=YPOL(INT2+1)
+          FPOL(INT2)=FPOL(INT2+1)
+  402   CONTINUE
+        XPOL(IEND-1)=FLT1
+        YPOL(IEND-1)=FLT2
+        FPOL(IEND-1)=LGL1
+  403 CONTINUE
+C  SHIFT THE SECOND GROUP OF VERTICES DOWN BY TWO VERTICES.
+      DO 404 INT1=(IEND-1),(IIS1+1),-1
+        XPOL(INT1+2)=XPOL(INT1)
+        YPOL(INT1+2)=YPOL(INT1)
+        FPOL(INT1+2)=FPOL(INT1)
+  404 CONTINUE
+C  INSERT THE CLOSURE OF THE FIRST POLYGON.
+      XPOL(IIS1+1)=XIS1
+      YPOL(IIS1+1)=YIS1
+      FPOL(IIS1+1)=.FALSE.
+      XPOL(IIS1+2)=XIS2
+      YPOL(IIS1+2)=YIS2
+      FPOL(IIS1+2)=.FALSE.
+C  INSERT THE CLOSURE OF THE SECOND POLYGON.
+      XPOL(IEND+2)=XIS2
+      YPOL(IEND+2)=YIS2
+      FPOL(IEND+2)=.FALSE.
+      XPOL(IEND+3)=XIS1
+      YPOL(IEND+3)=YIS1
+      FPOL(IEND+3)=.FALSE.
+      XPOL(IEND+4)=XSTR
+      YPOL(IEND+4)=YSTR
+      FPOL(IEND+4)=.TRUE.
+      GO TO 101
+C
+C  RETURN TO CALLING SUBROUTINE.
+  501 RETURN
+C
+      END

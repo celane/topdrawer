@@ -1,0 +1,23 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.8.2</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.8.2  AVERAGE</H4></B> 
+
+This  option  will  not  work  for  the  SUBTRACT  command.  If AVERAGE is
+specified, the data is averaged together according to  the  Y  statistics.
+If  Y  is non zero but DY is 0 then DY is assumed to be 1.  If both Y1 and
+DY1 are zero then Y3,DY3 = Y2,DY2.
+     Y3=(Y1/DY1**2+Y2/DY2**2)/(1/DY1**2+1/DY2**2)
+     DY3=SQRT(2*DY1**2*DY2**2/(DY1**2+DY2**2))
+<A NAME="36">If you wish to average several data sets with statistics, this should give </A>
+you the correct result.  Zero data  with  zero  statistics  indicates  the
+absence  of  data.   If  you  wish  to  average  several data sets without
+statistics then you should always set the  statistics  to  a  "reasonable"
+value.
+
+
+</PRE>
+</BODY>

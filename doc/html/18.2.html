@@ -1,0 +1,39 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 18.2</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>18.2  STRINGS</H4></B> 
+
+
+
+                                  <U>WARNING</U>
+
+     Routines  TDSET,TDTITL  and  TDCASE  are  not  fully  Fortran-77
+     compatible.  You must use either hollerith  data,  byte  arrays,
+     literals,  or  character  variables sent by reference when using
+     those routines.
+
+
+If  you  use a byte array or a character array sent by reference, you must
+terminate it with a semicolon (;) The following are all legal:
+     CHARACTER*8 str
+     DATA str /'Title;'/
+     CALL TDTITL(%REF(str))
+          or...
+     CALL TDTITL('Title')
+          or...
+     CALL TDTITL(6HTitle;)
+          or...
+     REAL*8 str
+     DATA str /'Title;'/
+     CALL TDTITL(str)
+          or...
+     byte str(5)
+     DATA str /'T','i','t','l','e',';'/
+<A NAME="223">     CALL TDTITL(str) </A>
+
+
+</PRE>
+</BODY>

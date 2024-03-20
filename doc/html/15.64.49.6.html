@@ -1,0 +1,33 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.49.6</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.49.6  LOGARITHMIC</H4></B>   - Log scale is used.  Each decade may be divided
+into  subintervals  corresponding  to  the  leading  digit  of  the  scale
+(1,2...,9).  -LOGARITHMIC generates a log scale for negative values.
+  *  LABELS=n1,n2..   -  Specify  which  subintervals  within a decade are
+     labeled (2-9).  ALL labels all  subintervals  while  NONE  labels  no
+     subintervals.  If you specify NONE then no subintervals are labelled.
+     If EXPONENTIAL is specified exponential notation is used.
+  *  TICKS=n1...   -  specifies  which  subintervals  have unlabeled ticks
+     (2-9).  ALL puts ticks on all subintervals while NONE draws no ticks.
+     SHORT|LONG  determine  whether  labelled ticks are short or long.  If
+     unspecified LONG is assumed.   Labelled  ticks  at  each  decade  are
+     always long.
+  *  DECADES=n  - (1 to 31) Specifies how often decades are labelled.  For
+     example DECADES=2 labels every other decade.
+  *  SUBTICKS=n   -   (0-9)   Specifies  how  many  subticks  are  between
+     subinterval ticks.  If n is greater than 0 then long ticks are  drawn
+     at for each interval and n short subticks are drawn in between.
+If  unspecified  labels,  and  ticks  are  picked  for "pleasing" results.
+Generally if less than one half decade is plotted  the  rules  for  making
+linear  scales  and  ticks  are  followed.   Otherwise a maximum of 6 or 7
+labels are produced.  Exponential notation is only used  if  specified  or
+when  the  the  label  would  exceed  6  digits or more than 3 decades are
+plotted.
+
+
+</PRE>
+</BODY>

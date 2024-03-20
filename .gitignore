@@ -31,3 +31,6 @@
 *.out
 *.app
 td
+
+# diff leftovers
+*.org

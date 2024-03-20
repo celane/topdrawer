@@ -1,0 +1,32 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.20.1</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.20.1  COMMAND</H4></B> 
+
+     <U>DE</U>FINE <U>CO</U>MMAND new_command "command string"
+
+This  defines  a  new command as the command string.  New commands must be
+different from existing commands, and are only used if an existing command
+is  not  found.  There is a limit of 3 command substitutions in a row, and
+1000 total substitutions per input line.   The  limit  on  the  number  of
+substitutions per line may be modified by SET COMMAND.
+
+                                  example
+     <U>DEFINE</U> <U>COMMAND</U> <U>EDT</U> <U>"SPAWN</U> <U>EDT"</U>
+Defines the command EDT so you may edit a file while using TOPDRAWER.
+     <U>DEFINE</U> <U>COMMAND</U> <U>MAIL</U> <U>"SPAWN</U> <U>MAIL"</U>
+Defines  the  command  MAIL  so  you  may use the mail utility while using
+TOPDRAWER.
+     <U>DEFINE</U> <U>COMMAND</U> <U>@</U> <U>"SET</U> <U>FILE</U> <U>INPUT="</U>
+Defines @ to work similarly to @ in VMS.  @filename will get commands from
+the specified file.
+     <U>DEFINE</U>  <U>COMMAND</U>  <U>EDAT</U> <U>"LIST</U> <U>DATA</U> <U>FILE=DAT.TMP;EDT</U> <U>DAT.TMP;DELETE</U> <U>ALL;</U>
+<U>SET</U> <U>FILE</U> <U>IN=DAT.TMP"</U>
+Defines the command EDAT to allow you to edit the current data.
+
+
+</PRE>
+</BODY>

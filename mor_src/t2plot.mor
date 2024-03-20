@@ -1,0 +1,2645 @@
+%N
+%U+ TDMACROS.MOR
+%L
+%';SUBROUTINE'=';<RESET> <SET> ;"SUBROUTINE"'
+<SET>;			"Ready for reset"
+" --------- START OF PLOTTING PACKAGE 'T2PLOT' --------- "
+%E  SUBROUTINE T2_HISTOGRAM  --- Parse Histogram/bargraph commands
+SUBROUTINE T2_HISTOGRAM($INFO,$CARD);
+"
+	Subroutine to set up Histogram plots
+"
+   INTEGER INFOIN(10); CHARACTER*(*) CARDIN;
+   $SPECIFICATION;
+   $SELECTSPEC;
+   $POINT ARRAYS($NPOINTS);
+   $SPECIFYNONE;
+   $MAINSPEC;
+   $BOOLEAN LEXPAN,LCYCLE,LFILL,LTITLE;
+   INTEGER ICYCLE,ICOL,ITXTUR,INTEN,ITX;
+   REAL DXYZ(3),SYMSAV;
+   LEVEL = INTEG;		"0=HISTOGRAM, 1=BARCHART"
+   IXYZ = 0; ITXTUR = 0; INTEN=0; ICOL=0;
+	"If axes + Grid then put grid on HIST"
+   IF (FLAGS(134) .and. IAND(GRDTYP,3) .ne. 0) IXYZ=4096;
+   <I=1,3; DXYZ(I)=0.0;>
+   NINCR1=NINCR; NINCR2=1;
+	   "true if not mesh data"
+   LCYCLE=.false.;
+   ICYCLE=0;
+   LTITLE=$TITLE;
+   LFILL=.false.;
+   LEXPAN=$MODE EXPAND;		"Default expansion"
+   <J=1,2; <I=1,2; NXYLIM(I,J)=0; > >
+   <TOKEN KEY LOOP> <
+      FILL:Y   <LFILL=LTOKEN;>
+      EXPAND:Y <LEXPAN=LTOKEN;>  "Expand plot ?"
+      X:1Y,Y:2Y,Z:4Y,LEGO:7Y,BLOCK:7Y,
+      DEPTH:8N,HIDE:16N,HIDDEN:16N,FRAME:32N,
+      NODEPTH:8,NOHIDE:16,NOHIDDEN:16,NOFRAME:32,
+      XY:256Y,YX:256Y,YZ:64Y,ZY::64Y,ZX:128Y,XZ:128Y,
+      CROSS:512Y,RANDOM:1024Y,ERRORS:2048Y,GRID:4096Y <
+	 IF (LTOKEN) THEN;
+	    IXYZ=IOR(INTEG,IXYZ);
+	    IF (INTEG.eq.1024.and.DXYZ(1).eq.0) DXYZ(1)=5000;
+	    IF (INTEG .eq. 16) LEVEL=IAND(LEVEL,NOT(4));
+	 ELSE;
+	    IXYZ=IAND(NOT(INTEG),IXYZ);
+	    IF (INTEG .eq. 16) LEVEL=IOR(LEVEL,4);   "Hide 2-d hists"
+	 ENDIF;
+      >
+      DO:1,DOT:1,DOTS:1,DOTTED:1,DA:2,DASHES:2,DASHED:2,
+      DOT-DASH:3,DOTDASHED:3,
+      SOLID:4,FUNNY:5,PATTERNED:6,DAASHES:7,SPACE:8,
+	 <CALL T2GTEX(ITXTUR);>
+      INTENSITY:1:5:2,WIDTH:1:5:2 < INTEN=INTEG; >
+      WHITE:1,RED:2,GREEN:3,BLUE:4,YELLOW:5,MAGENTA:6,CYAN:7
+	 <ICOL=INTEG;>
+      DX:1,DY:2,DZ:3 <I=INTEG;
+	 <TOKEN NUMBER> <DXYZ(I)=FLOTNG;>
+      >
+      LINES,ROWS     <CALL T2ROWS($INFO,$CARD,N3,N4); >
+      POINTS,COLUMNS <CALL T2PNTS($INFO,$CARD,N1,N2);>
+      SETS           <CALL T2NSET($INFO,$CARD,NS1,NS2); >
+      SELECT:S       <C_SELECT=STRNG; N_SELECT=MAX(1,NSTRNG); >
+      SLICES         <CALL T2BNDA($INFO,$CARD,TLIM); >
+      TITLE:Y        <LTITLE=LTOKEN; >
+      LIMITED        <CALL T2XYZC($INFO,$CARD,TLIM,2,NLIM); > "Get limits"
+      CYCLE:Y        <LCYCLE=LTOKEN;>  "Cycle thru textures ?"
+   >
+   IF ($ERROR.and.$ABORT) RETURN;	"no errors"
+   IF (LFILL) LEVEL=IOR(LEVEL,2);	"Setup fill"
+   IF (LEXPAN) THEN;
+      NXYLIM(1,1)=N1; NXYLIM(1,2)=N2;
+      NXYLIM(2,1)=N3; NXYLIM(2,2)=N4;
+      NXYLIM(3,1)=NS1; NXYLIM(3,2)=NS2;
+      <I=1,2; <J=1,3; EXYZLIM(J,I)=TLIM(J,I); > >
+   ENDIF;
+   ITX=8*INTEN+64*ITXTUR+512*ICOL;	"Default texture"
+   <ISET=NS1,NS2;
+      CALL T2GDSET(ISET,N1,N2,N3,N4,ISETD,TLIM,C_SELECT(:N_SELECT));
+      IF ($ERROR) RETURN;
+      IF ($TRAP) RETURN;
+      IF (NP .lt. N1) <NEXT>;
+      IF (IBTYPE.eq.1 .or.
+	  (.not.$3D .and. (MESH2D.eq.MESH1 .or. MESH2D.eq.MESH2)) ) THEN;
+	 NN3=N3; NN1=N1;
+	 IF (IBTYPE.eq.2) THEN;		"Mesh data ?"
+	    CALL T23LIM(DATBUF(IM),NINCR0,NINCR1,NINCR2);   "Get limits"
+	    IF (MESH2D.eq.MESH2) THEN;	"Plot colums ?"
+	       NINCR2=NINCR1*NINCR0;
+	       NINCR1=NINCR0;
+	    ELSEIF (MESH2D.eq.MESH1) THEN; "Plot rows ?"
+	       I=N3; NN3=N1; NN1=I;	"Reverse rows,columns"
+	       I=NP; NP=NL; NL=I;
+	       I1=I2; I4=I5;
+	       NINCR1=NINCR1*NINCR0;
+	       NINCR2=NINCR0;
+	    ENDIF;
+	    I2=I3;			"Y=third coordinate"
+	    I5=I6;
+	    I6=1;				"Z/DZ=none"
+	    I3=1;
+	 ELSE;
+	    NL=NN3;			"Fix for normal data"
+	 ENDIF;
+	 J=1;
+	 <I=1,3; IF (IAND(IXYZ,J).ne.0) IXYZ=I; J=J*2;>
+	 <I=NN3,NL;			"Do all rows(columns)"
+	    IF ($TRAP) <EXIT>;
+	    IF (LCYCLE) THEN;			"Cycle through textures"
+	       ICYCLE=ICYCLE+1;
+	       IF (ICYCLE .gt. N_CYCLE) ICYCLE=1;
+	       J=ITX_CYCLE(ICYCLE);
+	       ITX=8*INTEN+64*ITXTUR+512*ICOL;	"Default texture"
+	       IF (ICOL .eq. 0) ITX=ITX+IAND(3584,J);
+	       IF (ITXTUR .eq. 0) ITX=ITX+IAND(448,J);
+	       IF (INTEN .eq. 0) ITX=ITX+IAND(56,J);
+	    ENDIF;
+	    CALL T2HIST(DATBUF(I1),DATBUF(I2),DATBUF(I3),
+	       DATBUF(I4),DATBUF(I5),DATBUF(I6),
+	       ITX,LEVEL,NP-NN1+1,NINCR1,
+		DATBUF(I_NDX),DATBUF(I_NDY),DATBUF(I_NDZ));
+	    I2=I2+NINCR2;			"Next row or values"
+	    IF (DATBUF(I5) .ne. HNONE) I5=I5+NINCR2; "Next row of errors"
+	 >
+      ELSE;
+	 NN1=(I1-IM)/NINCR0;
+	 NN3=(I2-IM)/(NINCR0*NINCR1);
+	 NP=NP-N1+NN1;
+	 NL=NL-N3+NN3;
+	 IF (LEXPAN) THEN;
+	    NXYLIM(1,1)=NN1; NXYLIM(1,2)=NP;
+	    NXYLIM(2,1)=NN3; NXYLIM(2,2)=NL;
+	 ENDIF;
+	 CALL T23HST(DATBUF(IM),NMESH0,NMESH1,NMESH2,IXYZ,
+	    ITX,DXYZ,NN1,NP,NN3,NL);
+      ENDIF;
+      IF (LTITLE) CALL T2_PLOT_TITLE(ISET,.false.);
+   >
+END;
+%E  SUBROUTINE T2_JOIN --- Parse Join command
+SUBROUTINE T2_JOIN($INFO,$CARD);
+   INTEGER INFOIN(10); CHARACTER*(*) CARDIN;
+   $SPECIFICATION;
+   $SELECTSPEC;
+   $POINT ARRAYS($NPOINTS);
+   $SPECIFYNONE;
+   $MAINSPEC;
+   $BOOLEAN LEXPAN,LCYCLE,LTITLE;
+   ITXTUR = 0; ICOL=0; INTEN=0;
+   JTYPE = 0; LEVEL = 0; IXYZ = 0;
+	   "true if not mesh data"
+   LTITLE=$TITLE;
+   LCYCLE=.false.;	"No cycling"
+   ICYCLE=0;
+   LEXPAN=$MODE EXPAND;	"Default expansion"
+   <J=1,2; <I=1,2; NXYLIM(I,J)=0; > >
+   <TOKEN LOOP> <
+      KEY:: <
+	 EXPAND:Y             <LEXPAN=LTOKEN;>
+	 NOFRAME:32,NOHIDE:16,NOHIDDEN:16,
+	 FRAME:32N,HIDE:16N,HIDDEN:16N,ERRORS:64Y <
+	    I=INTEG;
+	    IF ( LTOKEN ) THEN;
+	       IXYZ=IOR(IXYZ,I);
+	       IF (INTEG .eq. 16) JTYPE=IAND(JTYPE,NOT(4));
+	    ELSE;
+	       IXYZ=IAND(NOT(I),IXYZ);
+	       IF (INTEG .eq. 16) JTYPE=IOR(JTYPE,4);   "Hide 2-d hists"
+	    ENDIF;
+	 >
+	 X:1,Y:2,Z:3        <IXYZ=4*(IXYZ/4)+INTEG;>
+	 TEXT:Y,DATA:N      <FLAGS(31)=LTOKEN; >
+	 SPLINE:1,GENERAL:0,FILL:3    <JTYPE = INTEG;>
+	 DO:1,DOT:1,DOTS:1,DOTTED:1,DA:2,DASHES:2,DASHED:2,
+	 DOT-DASH:3,DOTDASHED:3,
+	 SOLID:4,FUNNY:5,PATTERNED:6,DAASHES:7,SPACE:8,
+			<CALL T2GTEX(ITXTUR);>
+	 INTENSITY:1:5:2,WIDTH:1:5:2 < INTEN=INTEG; >
+	 WHITE:1,RED:2,GREEN:3,BLUE:4,YELLOW:5,MAGENTA:6,CYAN:7
+			<ICOL=INTEG;>
+	 LEVEL:0:100:0  < LEVEL=INTEG; >
+	 LINES,ROWS     <CALL T2ROWS($INFO,$CARD,N3,N4); >
+	 POINTS,COLUMNS <CALL T2PNTS($INFO,$CARD,N1,N2);>
+	 SETS           <CALL T2NSET($INFO,$CARD,NS1,NS2); >
+	 SELECT:S       <C_SELECT=STRNG; N_SELECT=MAX(1,NSTRNG); >
+	 SLICES         <CALL T2BNDA($INFO,$CARD,TLIM); >
+	 CYCLE:Y        <LCYCLE=LTOKEN;>		"Cycle thru textures"
+	 LIMITED        <CALL T2XYZC($INFO,$CARD,TLIM,2,NLIM); > "Get limits"
+	 TITLE:Y        <LTITLE=LTOKEN; >
+      >
+      NUMBER::          <LEVEL=INTEG;
+	If (LEVEL .gt. 20) THEN;
+	    ERROR OUT;'*** WARNING *** Level greater that 20 truncated';
+	    LEVEL=20;
+	ENDIF;
+      >
+   >   "END OF LOOP"
+   IF ($ERROR.and.$ABORT) RETURN;		"no errors"
+   ITX=8*INTEN+64*ITXTUR+512*ICOL;	"Default texture"
+   IF (LEXPAN) THEN;
+      NXYLIM(1,1)=N1; NXYLIM(1,2)=N2;
+      NXYLIM(2,1)=N3; NXYLIM(2,2)=N4;
+      NXYLIM(3,1)=NS1; NXYLIM(3,2)=NS2;
+      <I=1,2; <J=1,3; EXYZLIM(J,I)=TLIM(J,I); > >
+   ENDIF;
+   <ISET=NS1,NS2;
+      CALL T2GDSET(ISET,N1,N2,N3,N4,ISETD,TLIM,C_SELECT(:N_SELECT));
+      IF ($ERROR) RETURN;
+      IF ($TRAP) RETURN;
+      IF (NP .lt. N1) <NEXT>;
+      IF (IBTYPE.eq.1 .or.
+	  (.not.$3D .and. (MESH2D.eq.MESH1 .or. MESH2D.eq.MESH2)) ) THEN;
+	 NN3=N3; NN1=N1;
+	 IF (IBTYPE.eq.2) THEN;
+	    CALL T23LIM(DATBUF(IM),NINCR0,NINCR1,NINCR2);
+	    IF (MESH2D.eq.MESH2) THEN;
+	       NINCR2=NINCR1*NINCR0;
+	       NINCR1=NINCR0;
+	    ELSEIF (MESH2D.eq.MESH1) THEN;
+	       I=N3; NN3=N1; NN1=I;
+	       I=NP; NP=NL; NL=I;
+	       I1=I2; I4=I5;
+	       NINCR1=NINCR1*NINCR0;
+	       NINCR2=NINCR0;
+	    ENDIF;
+	    I2=I3;
+	    I5=I6;
+	    I6=1;
+	    I3=1;
+	 ELSE;
+	    NL=NN3;
+	 ENDIF;
+	 <I=NN3,NL;
+	    IF ($TRAP) <EXIT>;
+	    IF (LCYCLE) THEN;			"Cycle through textures"
+	       ICYCLE=ICYCLE+1;
+	       IF (ICYCLE .gt. N_CYCLE) ICYCLE=1;
+	       J=ITX_CYCLE(ICYCLE);
+	       ITX=8*INTEN+64*ITXTUR+512*ICOL;	"Default texture"
+	       IF (ICOL .eq. 0) ITX=ITX+IAND(3584,J);
+	       IF (ITXTUR .eq. 0) ITX=ITX+IAND(448,J);
+	       IF (INTEN .eq. 0) ITX=ITX+IAND(56,J);
+	    ENDIF;
+	    CALL T2JOIN(DATBUF(I1),DATBUF(I2),DATBUF(I3),
+	       ITX+JTYPE,LEVEL,NP-NN1+1,NINCR1);
+	    I2=I2+NINCR2;
+	 >
+      ELSE;	"MESH ARRAY"
+	 NN1=(I1-IM)/NINCR0;
+	 NN3=(I2-IM)/(NINCR0*NINCR1);
+	 NP=NP-N1+NN1;
+	 NL=NL-N3+NN3;
+	 IF (LEXPAN) THEN;
+	    NXYLIM(1,1)=NN1; NXYLIM(1,2)=NP;
+	    NXYLIM(2,1)=NN3; NXYLIM(2,2)=NL;
+	 ENDIF;
+	 CALL T23JIN(DATBUF(IM),NMESH0,NMESH1,NMESH2,IXYZ,ITX,
+	    NN1,NP,NN3,NL);
+      ENDIF;
+      IF (LTITLE) CALL T2_PLOT_TITLE(ISET,.false.);
+   >
+   FLAGS(31) = .FALSE.;
+END;
+%E  SUBROUTINE T2_PLOT  --- Parse Plot command
+SUBROUTINE T2_PLOT($INFO,$CARD);
+   $SPECIFICATION;
+   $SELECTSPEC;
+   $SPECIFYNONE;
+   $POINT ARRAYS($NPOINTS);
+   REAL BUFFR($BUFSIZ);
+   INTEGER IBUFF($BUFSIZ);
+   REAL TLIM1(3,2),XYZIND(3),TBL_OFFSET;
+   REAL TSAVE(3),XYZ(3,2),XYZ0(2),XYZ1(2),XYZ2(3),FRTO(4);
+   $BOOLEAN  LGRID, LOUTL, LTABL, LAXES, TDATA, FSAVE ;
+   $BOOLEAN  LEXPAN, LDATA, LCYCLE, LF1, LF2, LHIDE, LTITLE;
+   INTEGER ITYPE,JTYPE,KTYPE,LTYPE,ITBL_OPT, IHIDE;
+   INTEGER NN1,NN3,I7_MAX,I4_MAX,I5_MAX,I6_MAX;
+   INTEGER INFOIN(10);
+   $MAINSPEC;
+   CHARACTER*(*) CARDIN;
+   SYM=0;  IXYZ=0; ICOL=0; INTEN=0; ITXTUR=0;
+   SYSIZ=0;
+   I7_MAX=$LARGE INTEGER;
+   I4_MAX=$LARGE INTEGER;		"Turns of errors on plots"
+   I5_MAX=$LARGE INTEGER;
+   I6_MAX=$LARGE INTEGER;
+   JTYPE=0;			"Options for regular plot"
+   KTYPE=2;			"Turn off variable size for scatter plot"
+   LTYPE=0;			"Table options"
+   LEXPAN=$MODE EXPAND;		"Default expansion"
+   LHIDE=.false.;
+   LTITLE=$TITLE;
+   LCYCLE=.false.;
+   ICYCLE=0;
+   LDATA=.false.;		"No data plot"
+   LTABL=.FALSE.;		"No table plot"
+   LAXES=.false.;		"No Axes plot"
+   LOUTL=.false.;		"No Outline plot"
+   LGRID=.false.;		"No Grid plot"
+   TBL_OFFSET=HNONE;		"Table offset"
+   ITBL_OPT=0;			"Table options"
+   NUMBER=0; IPOINT=0;
+   TEMP=$LARGE REAL;
+   <J=1,2; TEMP=-TEMP; <I=1,3; TLIM(I,J)=TEMP; > >
+   TLIM(1,1)=HNONE;
+   <J=1,2; <I=1,2; NXYLIM(I,J)=0; > >
+   <TOKEN KEY LOOP> <
+      OUTLINE < LOUTL=.true.; >
+      AXIS:1,AXES:1,GRID:2 <
+	 IF (.not.(LAXES.or.LGRID)) THEN;
+	    FSAVE=FLAGS(82);	"User-axis flag"
+	    IF (.not. $DEF DATA) CALL TXDEF2;	"Set data axes"
+	    <I=1,3;TSAVE(I)=ORAXES(I);>
+	 ENDIF;
+	 IF ( INTEG.eq.1 ) THEN; LAXES=.true.;
+			   ELSE; LGRID=.true.; ENDIF;
+	 ITYPE=9; IFORM=9;
+	 <TOKEN LOOP> <
+	    KEY:: <
+	       AT <		"Location of origin"
+		  FLAGS(82)=.TRUE.;
+		  <I=1,3;ORAXES(I)=0;>
+		  <I=1,3;
+		     <TOKEN> <
+			KEY:: <
+			   CURSOR < CALL T2CURS(J,XYZ0,XYZ1,XYZ2,LF1,LF2); >
+			>
+			NUMBER:: <ORAXES(I)=FLOTNG;>
+			ELSE:: <READ SAME TOKEN>
+	       >  >  >
+	       X:121,Y:112,Z:43,
+	       BOTTOM:21,LEFT:12,G:41,GENERAL:41,TOP:41,RIGHT:32 <
+		  NUMBER=NUMBER+1;
+		  IF (NUMBER.lt.$BUFSIZ/2) THEN;
+		     IBUFF(NUMBER)=INTEG;
+		     NUMBER=NUMBER+1; IPOINT=NUMBER;
+		     IBUFF(IPOINT)=0;
+		  ENDIF;
+		  I=MOD(INTEG,10);
+		  IFORM=9;
+		  IF (NONLIN(I).eq.-7) IFORM=13;
+		  ITYPE=IFORM;
+		  <TOKEN LOOP> <
+		     KEY:: <
+			LONG:1,SHORT:-1 < ITYPE=ISIGN(ITYPE,INTEG); >
+			LABELS <ITYPE= IFORM;>
+			TICKS  <ITYPE=-1;    >
+			FFORMAT:2,GFORMAT:9,EFORMAT:8,
+			YEARS:10,MONTH:11,DAY:12,TIME:13,DATE:14 <
+			   IFORM=INTEG;
+			   IF (IABS(ITYPE).ne.1) ITYPE=ISIGN(IFORM,ITYPE);
+			>
+			FROM,TO,BY,N <
+			   <READ SAME TOKEN>;
+			   CALL T2FTBY($INFO,$CARD,FRTO,0);
+			   IF ($ERROR) RETURN;
+			   IMAX=NINT(FRTO(4));	"Number of ticks"
+			   <I=1,IMAX;
+			      NUMBER=NUMBER+1;
+			      IF (NUMBER.le.$BUFSIZ/2) THEN;
+				 IBUFF(IPOINT)=IBUFF(IPOINT)+1;
+				 TEMP=FRTO(1)+(I-1)*FRTO(3);
+				 BUFFR(NUMBER)=TEMP;
+				 IBUFF(NUMBER)=ITYPE;
+			      ENDIF;
+			   >
+			>
+		     >
+		     NUMBER:: <
+			NUMBER=NUMBER+1;
+			IF (NUMBER.le.$BUFSIZ/2) THEN;
+			   IBUFF(IPOINT)=IBUFF(IPOINT)+1;
+			   BUFFR(NUMBER)=FLOTNG;
+			   IBUFF(NUMBER)=ITYPE;
+			ENDIF;
+		     >
+		     ELSE:: <
+			READ SAME TOKEN; <EXIT>;
+		     >
+		  >
+		  IF (IBUFF(IPOINT).eq.0) THEN;	"No ticks ?"
+		     NB=$BUFSIZ/2-NUMBER;
+		     IB1=NUMBER+1;
+		     JXYZ=IABS(MOD(IBUFF(IPOINT-1),10));
+		     CALL T2STCK(NONLIN(JXYZ),		"Scale type"
+			XYZLIM(JXYZ,1),XYZLIM(JXYZ,2),   "MIN,MAX"
+			NXYZ1(JXYZ),NXYZ2(JXYZ),	"N1,N2 ticks"
+			SCLPRM(1,JXYZ),			"BASE, ETC."
+			NB,				"ARRAY SIZ"
+			J,BUFFR(IB1),IBUFF(IB1));	"OUTPUT"
+		     IBUFF(IPOINT)=J; NUMBER=NUMBER+J;
+		  ENDIF;
+	       >
+	    >
+	    ELSE:: <READ SAME TOKEN; <EXIT>;>
+	 >
+      >
+      VECTOR:1:Y,FILL:2:Y <	"Select vector output"
+	 IF (LTOKEN) THEN; JTYPE=IOR(INTEG,JTYPE);
+		     ELSE; JTYPE=IAND(NOT(INTEG),JTYPE); ENDIF;
+      >
+      CYCLE:Y      <LCYCLE=LTOKEN;>		"Cycle thru textures ?"
+      EXPAND:Y     < LEXPAN=LTOKEN;>		"Expand the plot"
+      NOSYMBOL:Y   < I7_MAX=$LARGE INTEGER;
+		     IF (LTOKEN) I7_MAX=1; >	"Turn off symbols"
+      ERRORS:Y <		"Turn errors off or on"
+	 IF (LTOKEN) THEN;
+	    I=$LARGE INTEGER;
+	 ELSE;
+	    I=1;
+	 ENDIF;
+	 I4_MAX=I; I5_MAX=I; I6_MAX=I;
+      >
+      XERROR:Y < I4_MAX=1; IF (LTOKEN) I4_MAX=$LARGE INTEGER;>
+      YERROR:Y < I5_MAX=1; IF (LTOKEN) I5_MAX=$LARGE INTEGER;>
+      ZERROR:Y < I6_MAX=1; IF (LTOKEN) I6_MAX=$LARGE INTEGER;>
+      NORANDOM,NOSCATTER  < KTYPE=IOR(1,KTYPE);>
+      COUNTS   < IXYZ=-1; >
+      TABLE    <
+	 LTABL=.true.;
+	 LF1=.false.;
+	 <TOKEN LOOP> <
+	    KEY:: <
+	       AT < CONTINUE; >
+	       OFFSET:::0   < TBL_OFFSET=FLOTNG; LF1=.false.; >
+			"The shift from the axes"
+	       TOP:1,DATA:2,ABSOLUTE:4,VALUE:8,
+		  < ITBL_OPT=IOR(INTEG,ITBL_OPT);>
+	       CURSOR < CALL T2CURS(J,XYZ0,XYZ1,XYZ2,LF1,LF2); >
+	    >
+	    ELSE:: <READ SAME TOKEN; <EXIT>;>
+	 >
+	 IF (LF1) THEN;
+	    TBL_OFFSET=XYZ1(2);	"Table offset=Y text value"
+	    ITBL_OPT=IOR(4,ITBL_OPT);
+	 ENDIF;
+      >
+
+      DATA     < TDATA=.true.; >
+"
+      XINDEX:::0 < XYZIND(1)=FLOTNG; >
+      YINDEX:::0 < XYZIND(2)=FLOTNG; >
+      ZINDEX:::0 < XYZIND(3)=FLOTNG; >
+"
+
+      HIDE:Y         < LHIDE=LTOKEN; >
+
+      LIMITED        < CALL T2XYZC($INFO,$CARD,TLIM,2,NLIM);>  "Get limits"
+      TITLE:Y        < LTITLE=LTOKEN; >
+      VARIABLE:2:Y     < KTYPE=IAND(NOT(INTEG),KTYPE);
+		       IF (.not.LTOKEN) KTYPE=IOR(INTEG,KTYPE);>
+      LINES,ROWS     < CALL T2ROWS($INFO,$CARD,N3,N4); >
+      POINTS,COLUMNS < CALL T2PNTS($INFO,$CARD,N1,N2);>
+      SETS           < CALL T2NSET($INFO,$CARD,NS1,NS2); >
+      SELECT:S       < C_SELECT=STRNG; N_SELECT=MAX(1,NSTRNG); >
+      RANDOM:::0,SCATTER:::0 < IXYZ=INTEG;		"Number of dots/bin"
+	 KTYPE=IAND(NOT(1),KTYPE);>
+      SLICES         < CALL T2BNDA($INFO,$CARD,TLIM);>
+      SYMBOL:T <		"Optional symbol"
+	 IF (NSTRNG.gt.0) THEN; SYM=TXSYM(STRNG(1:NSTRNG));
+	 ELSE; SYM=NOSYMB; ENDIF;
+      >
+      SIZE:::2       < SYSIZ=FLOTNG/REDUCE(3); >
+      INTENSITY:1:5:2,WIDTH:1:5:2 < INTEN=INTEG; >
+      WHITE:1,RED:2,GREEN:3,BLUE:4,YELLOW:5,MAGENTA:6,CYAN:7
+	 <ICOL=INTEG;>
+      DO:1,DOT:1,DOTS:1,DOTTED:1,DA:2,DASHES:2,DASHED:2,
+      DOT-DASH:3,DOTDASHED:3,
+      SOLID:4,FUNNY:5,PATTERNED:6,DAASHES:7,SPACE:8,
+	 <CALL T2GTEX(ITXTUR);>
+   >
+   IF (NUMBER.gt.$BUFSIZ/2) THEN;
+      ERROR STRING;('*** ERROR *** Too many ticks');
+      RETURN;
+   ENDIF;
+   IHIDE=0;
+   IF (LHIDE) IHIDE=4;
+   IF (LCYCLE) THEN;
+      KTYPE=IOR(KTYPE,4);
+      LTYPE=IOR(LTYPE,4);
+   ENDIF;
+   IF (.NOT.($ERROR.and.$ABORT)) THEN;"no errors"
+      IF (LEXPAN) THEN;			"Expand ?"
+	 NXYLIM(1,1)=N1; NXYLIM(1,2)=N2;
+	 NXYLIM(2,1)=N3; NXYLIM(2,2)=N4;
+	 NXYLIM(3,1)=NS1; NXYLIM(3,2)=NS2;
+	 <I=1,2; <J=1,3; EXYZLIM(J,I)=TLIM(J,I); > >
+      ENDIF;
+      IF (N1.eq.0) N1=1;
+      IF (IBTYPE.eq.2) THEN;
+	 N2=NMESH1-1; N3=1; N4=NMESH2-1;
+      ENDIF;
+      IF (LAXES.or.LGRID) THEN;		"Axes or grid ?"
+	 <J=1,2; <I=1,3; TLIM1(I,J)=TLIM(I,J); > >
+	 IF (TLIM1(1,1) .eq. HNONE) TLIM1(1,1)=-$LARGE REAL;
+	 ITEX=8*INTEN+64*IAND(7,IAXTEX/64)+512*ICOL;
+	 CALL T2CWTS(ITEX,IAXSAV);
+	 IF (NUMBER.eq.0) THEN;
+	    FLAGS(2) = .FALSE.;	"Set outline to be plotted"
+	    FLAGS(3) = .FALSE.;	"Set axes to be plotted"
+	    CALL T2TCKS(IHIDE+1);
+	 ELSE;
+	    FLAGS(3)=.true.;	"Set axes plotted"
+	    IA=3;
+	    <UNTIL> (IA.gt.NUMBER) <
+	       <I=1,2; <J=1,3;
+		  IF (ABS(TLIM1(J,I)).ge.$LARGE REAL) TLIM1(J,I)=XYZLIM(J,I);
+	       >  >
+	       I=IBUFF(IA-2);
+	       JXYZ=IABS(MOD(I,10));
+	       ILAB1=MOD(I/10,10);
+	       ILAB2=ILAB1+I/50;
+			"Kill ticks out of range"
+	       IF (FLAGS(82) .or. $3D) THEN;
+		  ILAB2=ILAB1;
+	       ENDIF;
+	       <I=1,IBUFF(IA-1); K=IA+I-1; T=BUFFR(K);
+		  IF (T.lt.TLIM1(JXYZ,1) .or. T.gt.TLIM1(JXYZ,2)) IBUFF(K)=0;
+	       >
+	       <I=ILAB1,ILAB2,2;
+		  IAXIS=0; ITICK=0; ILABEL=0;
+		  IF ($3D) THEN;
+		     IBOT=1; IAXIS=1;
+		     IF (FLAGS(JXYZ+43)) ITICK=1;
+		     IF (FLAGS(JXYZ+46)) ILABEL=1;
+		  ELSE;
+		     ILABEL=-I;
+		     IF (JXYZ.eq.3)JXYZ=1;
+		     IBOT=I/3+1;
+		     IF (LSCREV(3-JXYZ)) IBOT=3-IBOT;
+		     ILAB=-I;
+		     IF (FLAGS(I+18)			"Axis exist ?"
+			  .AND. FLAGS(JXYZ+49)) THEN;
+			IF (FLAGS(82)) IAXIS=1;		"Origin ?"
+			IF (FLAGS(JXYZ+43).AND.
+			       FLAGS(I+31)) ITICK=1;	"Ticks ?"
+			IF (FLAGS(JXYZ+46) .AND.
+			       FLAGS(I+35)) ILABEL=I;	"Labels ?"
+		     ENDIF;
+		  ENDIF;
+		  <K=1,2; <J=1,3;
+		     XYZ(JXYZ,K)=TLIM1(JXYZ,K);
+		     IF (J.ne.JXYZ) THEN;	"Not requested axis ?"
+			IF (FLAGS(82)) THEN;	"User selected location ?"
+			   XYZ(J,K)=ORAXES(J);
+			ELSE;			"Standard location ?"
+			   XYZ(J,K)=TLIM1(J,IBOT);
+			ENDIF;
+		     ENDIF;
+		  >  >
+		  IF (IBUFF(IA-1).gt.0.and.LAXES)
+		     CALL T2AXIS(
+			XYZ,			"Ends of axis"
+			JXYZ+IHIDE,		"Direction of axis"
+			BUFFR(IA),		"Values"
+			BUFFR($BUFSIZ/2+1),	"Scratch"
+			1,IBUFF(IA-1),		"Array sizes"
+			IBUFF(IA),		"Tick/label descr"
+			IAXIS,ITICK,ILABEL);	"Draw axis, ticks, labels"
+	       >
+	       IA=IA+IBUFF(IA-1)+2;
+	    >
+	    IF (GRDTYP.ne.0) THEN;
+	       JGRID=$BUFSIZ/2+1;
+	       <JXYZ=1,3;
+		  IBUFF($BUFSIZ/2+JXYZ)=JGRID;
+		  KGRID=JGRID;
+		  IA=3;
+		  <UNTIL> (IA.gt.NUMBER) <
+		     IF (MOD(IBUFF(IA-2),10) .eq. JXYZ) THEN;
+			<I=IA,IA+IBUFF(IA-1)-1;
+			   IF (IBUFF(I).gt.0) THEN;
+			      BUFFR(JGRID)=BUFFR(I); JGRID=JGRID+1;
+			   ENDIF;
+			>
+		     ENDIF;
+		     IA=IA+IBUFF(IA-1)+2;
+		  >
+		  IF (KGRID.eq.JGRID) THEN;
+		     IF (FLAGS(82)) THEN; BUFFR(JGRID)=ORAXES(JXYZ);
+				    ELSE; BUFFR(JGRID)=XYZLIM(JXYZ,1); ENDIF;
+		     JGRID=JGRID+1;
+		  ENDIF;
+		  IBUFF($BUFSIZ/2+JXYZ+3)=JGRID-1;
+	       >
+	       CALL T2GRID(IBUFF($BUFSIZ/2+1),BUFFR,IHIDE);
+	    ENDIF;
+	 ENDIF;
+	 CALL T2CWTS(IAXSAV,IDUM);
+	 FLAGS(82)=FSAVE;
+	 <I=1,3;ORAXES(I)=TSAVE(I);>
+	 IF (.not.(LOUTL.or.LTABL.or.LDATA)) RETURN;
+      ENDIF;
+      IF (LOUTL) THEN;			"Plot outline ?"
+	 ITEX=8*INTEN+64*IAND(7,IAXTEX/64)+512*ICOL;
+	 CALL T2CWTS(ITEX,IAXSAV);
+	 FLAGS(2)=.false.; CALL T2AXES;
+	 CALL T2CWTS(ITEX,IAXSAV);
+	 IF (.not.(LTABL.or.LDATA)) RETURN;
+      ENDIF;
+      ITX=8*INTEN+64*ITXTUR+512*ICOL;	"Default texture"
+      <ISET=NS1,NS2;
+	 CALL T2GDSET(ISET,N1,N2,N3,N4,ISETD,TLIM,C_SELECT(:N_SELECT));
+	 IF ($ERROR) RETURN;
+	 IF ($TRAP) RETURN;
+	 IF (NP .lt. N1) <NEXT>;
+	 I7=MIN(I7,I7_MAX);		"Keep only requested values (SYMBOL)"
+	 I4=MIN(I4,I4_MAX);		"DX"
+	 I5=MIN(I5,I5_MAX);		"DY"
+	 I6=MIN(I6,I6_MAX);		"DZ"
+	 <J=1,2; <I=1,3; TLIM1(I,J)=TLIM(I,J); > >   "Get limits"
+	 IF (IBTYPE.eq.1 .or.
+	     (.not.$3D .and. (MESH2D.eq.MESH1 .or. MESH2D.eq.MESH2)) ) THEN;
+	    NN3=N3; NN1=N1;
+	    IF (IBTYPE.eq.2) THEN;
+	       CALL T23LIM(DATBUF(IM),NINCR0,NINCR1,NINCR2);
+	       IF (MESH2D.eq.MESH2) THEN;
+		  NINCR2=NINCR1*NINCR0;
+		  NINCR1=NINCR0;
+		  I=MESH1;		"Other axis"
+	       ELSEIF (MESH2D.eq.MESH1) THEN;
+		  I=N3; NN3=N1; NN1=I;
+		  I=NP; NP=NL; NL=I;
+		  I1=I2; I4=I5;
+		  NINCR1=NINCR1*NINCR0;
+		  NINCR2=NINCR0;
+		  I=MESH2;
+	       ENDIF;
+	       IF (TLIM(1,1) .ne. HNONE) THEN;   "Get limit if any"
+		  <J=1,2; TLIM1(1,J)=TLIM(I,J);  "Other axis"
+			  TLIM1(2,J)=TLIM(MESH3,J); >  "Third axis"
+	       ENDIF;
+	       I2=I3;
+	       I5=I6;
+	       I6=1;
+	       I3=1;
+	    ELSE;
+	       NL=NN3;
+	    ENDIF;
+	    SYMSAV=SYMBOL;
+	    <I=NN3,NL;
+	       IF ($TRAP) <EXIT>;
+	       IF (LCYCLE) THEN;		"Cycle through textures"
+		  ICYCLE=ICYCLE+1;
+		  IF (ICYCLE .gt. N_CYCLE) ICYCLE=1;
+		  J=ITX_CYCLE(ICYCLE);
+		  ITX=8*INTEN+64*ITXTUR+512*ICOL;	"Default texture"
+		  IF (ICOL .eq. 0) ITX=ITX+IAND(3584,J);
+		  IF (ITXTUR .eq. 0) ITX=ITX+IAND(448,J);
+		  IF (INTEN .eq. 0) ITX=ITX+IAND(56,J);
+		  IF (SYM_CYCLE(ICYCLE) .ne. 0) SYMBOL=SYM_CYCLE(ICYCLE);
+	       ENDIF;
+	       IF (SYM .ne. 0)SYMBOL=SYM;  "New Symbol"
+	       IF (LTABL) THEN;
+		  CALL T2TABL(DATBUF(I1),DATBUF(I2),DATBUF(I3),
+		     NP-NN1+1,NINCR1,IOR(ITX,LTYPE),SYSIZ,TLIM1,
+		     DATBUF(I4),DATBUF(I5),DATBUF(I6),
+		     TBL_OFFSET,ITBL_OPT,
+		     DATBUF(I_NDX),DATBUF(I_NDY),DATBUF(I_NDZ));
+	       ELSE;
+		  CALL T2PLOT(DATBUF(I1),DATBUF(I2),DATBUF(I3),
+		     DATBUF(I4),DATBUF(I5),DATBUF(I6),
+		     DATBUF(I7),NP-NN1+1,NINCR1,IOR(ITX,JTYPE),SYSIZ,TLIM1,
+		     DATBUF(I_NDX),DATBUF(I_NDY),DATBUF(I_NDZ));
+	       ENDIF;
+	       I2=I2+NINCR2;
+	       IF (DATBUF(I5) .ne. HNONE) I5=I5+NINCR2;
+	    >
+	    SYMBOL=SYMSAV;		"Restore symbol"
+	 ELSE;
+	    IF (.not.$DEF DATA) THEN;  "Data frame not defined ?"
+	       IF (MESH2D.eq.0)MESH2D=MESH3;
+	    ENDIF;
+	    NN1=(I1-IM)/NINCR0;
+	    NN3=(I2-IM)/(NINCR0*NINCR1);
+	    NP=NP-N1+NN1;
+	    NL=NL-N3+NN3;
+	    IF (LEXPAN) THEN;
+	       NXYLIM(1,1)=NN1; NXYLIM(1,2)=NP;
+	       NXYLIM(2,1)=NN3; NXYLIM(2,2)=NL;
+	    ENDIF;
+	    CALL T23LIM(DATBUF(IM),NINCR0,NINCR1,NINCR2);
+	    IF (LTABL) THEN;
+	       CALL T23TBL(DATBUF(IM),NINCR0,NINCR1,NINCR2,
+		  NN1,NP,NN3,NL,
+		  SYSIZ,IOR(ITX,LTYPE),TLIM,XYZIND);
+	    ELSE;
+	       IF (SYM .ne. 0)SYMBOL=SYM;  "New Symbol"
+	       CALL T23PLT(DATBUF(IM),NINCR0,NINCR1,NINCR2,IXYZ,
+		  SYM,IOR(ITX,KTYPE),SYSIZ,TLIM,NN1,NP,NN3,NL);
+	    ENDIF;
+	 ENDIF;
+	 IF (LTITLE) CALL T2_PLOT_TITLE(ISET,.false.);
+      >
+   ENDIF;
+END;
+%E  SUBROUTINE T2PLOT - Perform plot
+SUBROUTINE T2PLOT(XVALS,YVALS,ZVALS,XERRS,YERRS,ZERRS,SYMIN,NP,INCRMT,JTYPE,
+      SYSIZ,TLIM,XNERR,YNERR,ZNERR);
+   IMPLICIT NONE;
+   INTEGER INCRMT,NP,JTYPE;
+   REAL XVALS(INCRMT,*),YVALS(INCRMT,*),ZVALS(INCRMT,*),
+      XERRS(INCRMT,*),YERRS(INCRMT,*),ZERRS(INCRMT,*),
+      XNERR(INCRMT,*),YNERR(INCRMT,*),ZNERR(INCRMT,*),
+      SYMIN(INCRMT,*),SYSIZ,TLIM(3,2);
+"
+	XVALS,XERRS,YVALS,YERRS are value and error arrays.
+	SYMIN is the symbol array,DIMENSION (INCRMT,NP).
+	JTYPE	Bit 0 on plot vectors
+		Bit 1 on fill symbols
+	JTYPE	Bit 3... is the line texture,intensity,color
+	SYSIZ	is the symbol size
+	TLIM	is the array of data limits
+"
+   $BOOLEAN XEXIST,YEXIST,ZEXIST,SEXIST;
+   $BOOLEAN NDXEXIS,NDYEXIS,NDZEXIS;
+   $BOOLEAN DXEXIS,DYEXIS,DZEXIS,LLIMIT,LCYCLE,LVECT,LOKAY,LWRT,LSHADOW;
+   $BOOLEAN LFILL,LBAR;
+   INTEGER I,J,K,N,NS,NERR,ITXSAV,IXYZ,IDUM, NDIM,IXYZ1,IXYZ2,IXYZ3;
+   INTEGER JERR(3),T2_GET_AXIS_SIDE;
+   REAL T,TEMP,BAR,BRK,SIZNOW,SIZNEW,ERRP,ERRN,DX,DY,RAD,DIST;
+   REAL T2_MAGN,T2_DOT;		"Functions"
+   REAL XUP(3,2);
+   REAL XYZV(3),XYZW(3,10),XYZE(3,2),XYZE1(3,2),XYZE2(3,8),XY3(2,8),
+	XY(2,9);
+   REAL SYMBL1,SYMBL,FAC(3),T2_DIST;
+
+   CHARACTER*2 SYTITL;
+   $SPECIFICATION;
+   $SPECIFYNONE;
+   $EQUIVALENCE;
+   $DATA;
+   IF (NP.GT.0) THEN;
+      IF (FLAGS(121)) CALL TXXMT;
+      LOKAY=.TRUE.;
+      LVECT=IAND(JTYPE,1) .ne.0;		"Vector plot ?"
+      LFILL=IAND(JTYPE,2) .ne.0;		"Fill symbol ?"
+      LLIMIT=TLIM(1,1) .ne. HNONE;		"Data not limited ?"
+      LSHADOW=SHADOWTYP.ne.0 .and. $3D;		"Shadowing ???"
+      CALL T2AXES;
+      IF (.not.$DEF DATA) RETURN;
+      FLAGS(28) = .TRUE.;			"Points have been treated"
+      CALL T2CWTS(JTYPE,ITXSAV);		"Setup attributes"
+      CALL TXSDEF;
+      CALL TXSCIS(2);				"Scissored at window"
+	 "CALC SYMBOL SIZE IN THIS SCALING FRAME"
+      IF(SYSIZ.eq.0) THEN; SIZNEW=SYMSIZ ;ELSE; SIZNEW=SYSIZ; ENDIF;
+      SIZNOW=SIZNEW;
+	XUP(1,1)=HNONE;
+      IF ($3D) THEN;
+	NDIM=3;
+	IF (SYDIR(2).ge.0) THEN;
+	    CALL T2GTDR(SIZNOW,SYDIR,XUP);	"Get up directions"
+	ENDIF;
+      ELSE;
+	NDIM=2;
+      ENDIF;
+	 "Set up symbols"
+      <I=1,3; XYZV(I)=XYZLIM(I,1); JERR(I)=1; <J=1,2; XYZE(I,J)=0; > >
+      SEXIST=SYMIN(1,1).ne.HNONE;		"Symbol exist ?"
+      XEXIST=XVALS(1,1).NE.HNONE;		"Other values exist ??"
+      YEXIST=YVALS(1,1).NE.HNONE;
+      ZEXIST=ZVALS(1,1).NE.HNONE;
+      DXEXIS=XERRS(1,1).NE.HNONE;
+      DYEXIS=YERRS(1,1).NE.HNONE;
+      DZEXIS=ZERRS(1,1).NE.HNONE;
+      NDXEXIS=XNERR(1,1).NE.HNONE;
+      NDYEXIS=YNERR(1,1).NE.HNONE;
+      NDZEXIS=ZNERR(1,1).NE.HNONE;
+      IF (NDXEXIS) JERR(1)=2;
+      IF (NDYEXIS) JERR(2)=2;
+      IF (NDZEXIS) JERR(3)=2;
+      IF(.not.SEXIST) SYMBL=SYMBOL;		"If no symol use default"
+      NERR=0;
+      IF (DXEXIS) NERR=1;			"Number of errors to handle"
+      IF (DYEXIS) NERR=2;
+      IF (DZEXIS .and. $3D) NERR=3;
+      IF ( NERR .eq. 0) THEN;
+	 LVECT=.false.;
+      ENDIF;
+      IF (LSHADOW) THEN;
+	NONLIN(4)=0;				"Disable polar"
+	<I=1,3;					"For all 3 coord"
+	    IF (FLAGS(82)) THEN;		"Origin spec ?"
+		XYZV(I)=ORAXES(I);
+	    ELSE;
+		XYZV(I)=XYZLIM(I,T2_GET_AXIS_SIDE(-I));	"Get back side"
+	    ENDIF;
+	>
+	CALL T2XFRM(3,1,XYZV,NONLIN,XFRM12,3,XYZW(1,10));	"World coord"
+	NONLIN(4)=1;				"Enable polar"
+      ENDIF;
+      <N=1,NP;					"PUT IN THE POINTS"
+	 IF (FLAGS(127)) CALL TXXMT;
+	 IF ($TRAP) GOTO :RET:;
+	 IF (SEXIST) THEN;			"Symbol ?"
+	    SYMBL = SYMIN(1,N);
+	    IF (SYMBL.EQ.NOSYMB) SYMBL=SYMBOL;
+	 ENDIF;
+	 IF (XEXIST) XYZV(1)=XVALS(1,N);	"Fill in data if it exists"
+	 IF (YEXIST) XYZV(2)=YVALS(1,N);
+	 IF (ZEXIST) XYZV(3)=ZVALS(1,N);
+	 IF (DXEXIS) XYZE(1,1)=XERRS(1,N);
+	 IF (DYEXIS) XYZE(2,1)=YERRS(1,N);
+	 IF (DZEXIS) XYZE(3,1)=ZERRS(1,N);
+	 IF (NDXEXIS) XYZE(1,2)=XNERR(1,N);
+	 IF (NDYEXIS) XYZE(2,2)=YNERR(1,N);
+	 IF (NDZEXIS) XYZE(3,2)=ZNERR(1,N);
+	 IF (LLIMIT) THEN;		"Check limits ?"
+	    LOKAY=.TRUE.;
+	    IF (XEXIST) LOKAY=
+	       XYZV(1).GE.TLIM(1,1) .and.XYZV(1) .LE.TLIM(1,2);
+	    IF (LOKAY.and.YEXIST) LOKAY=
+	       XYZV(2).GE.TLIM(2,1) .and.XYZV(2) .LE.TLIM(2,2);
+	    IF (LOKAY.and.ZEXIST) LOKAY=
+	       XYZV(3).GE.TLIM(3,1) .and.XYZV(3) .LE.TLIM(3,2);
+	    IF (.not.LOKAY) <NEXT>;
+	 ENDIF;
+	 LWRT=.false.;		"Nothing yet put at this point"
+	 IF (SYMBL.NE.NOSYMB .or. LSHADOW) THEN;	"Symbol requestd ??"
+	    CALL T2XFRM(3,1,XYZV,NONLIN,XFRM12,3,XYZW);
+	    CALL T2XFRM(3,1,XYZW,LINEAR,XFRM24,2,XY);
+	    IF (LSHADOW) THEN;
+	      <IXYZ1=1,3;				"Chech shadow planes"
+		IF (IAND(SHADOWTYP,2**(IXYZ1+3)) .ne. 0) THEN; "Plane ok?"
+		    <I=1,3; XYZW(I,2)=XYZW(I,1); >
+		    XYZW(IXYZ1,2)=XYZW(IXYZ1,10);	"Shadow location"
+		    IF (IAND(SHADOWTYP,2**(IXYZ1-1)) .ne. 0) THEN; "Direction ?"
+		      CALL T2CWTS(SHADOWTEX,IDUM);
+		      CALL TXSDEF;
+		      CALL T2XFRM(3,1,XYZW(1,2),LINEAR,XFRM24,2,XY(1,2));
+		      CALL TXLINX(XY,2,LINTEX);		"Plot shadow"
+		      CALL T2CWTS(JTYPE,IDUM);		"Setup attributes"
+		      CALL TXSDEF;
+		    ENDIF;
+		    IF (IAND(SHADOWTYP,8).NE.0) THEN;		"Symbol ?"
+			DIST=0.;
+			<I=1,3; DIST=DIST+VUEDIR(I)*(XYZW(I,2)-EYEPNT(I));>
+			SIZNOW=SIZNEW*SCRD/AMAX1(0.0001,ABS(DIST));
+			CALL TXTSYM(XY(1,2),XY(2,2),SYMBL,SIZNOW);
+		    ELSE;
+			CALL TXDOT(XY(1,2),XY(2,2));
+		    ENDIF;
+		ENDIF;
+	      >
+	    ENDIF;
+	    IF (SYMBL.NE.NOSYMB) THEN;
+	      IF ($3D) THEN;			"3D--MAKE NEW SYMBOL SIZE"
+		DIST=0.;
+		<I=1,3; DIST=DIST+VUEDIR(I)*(XYZW(I,1)-EYEPNT(I));>
+		SIZNOW=SIZNEW*SCRD/AMAX1(0.0001,ABS(DIST));
+	      ENDIF;
+		"PROJECT INTO DEVICE SYSTEM"
+	      LWRT=.true.;				"Some data plotted"
+	      IF (XUP(1,1) .ne. HNONE) THEN;
+		CALL SYMTXT(SYMBL,SYTITL);
+		CALL TX3TXT(XYZW,XUP(1,1),XUP(1,2),SYTITL(1:1),SYTITL(2:2),0);
+	      ELSE;
+		IF (LFILL) THEN;
+		  CALL TXFILLSYM(XY(1,1),XY(2,1),SYMBL,SIZNOW);
+		ELSE;
+		  CALL TXTSYM(XY(1,1),XY(2,1),SYMBL,SIZNOW);
+		ENDIF;
+	      ENDIF;
+	    ENDIF;
+	 ENDIF;
+	 IF (.not. LVECT) THEN;
+	  <IXYZ=1,NERR;
+	    ERRP=ABS(XYZE(IXYZ,1));
+	    ERRN=ABS(XYZE(IXYZ,JERR(IXYZ)));
+	    IF (ABS(ERRP)+ABS(ERRN) .GT. $MIN REAL) THEN;	"Error bar ?"
+	       IF($POLAR)THEN;
+		  IF(IXYZ .eq. 1) THEN;
+			ERRP=MIN(ERRP,3.1415/RADANG);
+			ERRN=MIN(ERRN,3.1415/RADANG);
+		  ELSE IF(IXYZ .eq. 3 .and. $SPHERICAL) THEN;
+			ERRP=MIN(ERRP,(3.1415/2)/RADANG);
+			ERRN=MIN(ERRN,(3.1415/2)/RADANG);
+		  ENDIF;
+	       ENDIF;
+			"Get XY3=ends of error bar in TEXT system"
+	       <J=1,2; <I=1,3; XYZE1(I,J)=XYZV(I);>  >
+	       CALL T2XFRM(3,1,XYZV,NONLIN,XFRM13,2,XY3(1,7));
+	       XYZE1(IXYZ,1)=XYZV(IXYZ)+ERRP;
+	       XYZE1(IXYZ,2)=XYZV(IXYZ)-ERRN;
+	       CALL T2XFRM(3,2,XYZE1,NONLIN,XFRM13,2,XY3(1,1));
+	       BAR=BARSIZ(IXYZ);		"Size of end of err bar"
+	       IF (BAR .lt. 0) BAR=BAR*SIZNOW/10;	"Relative bar ?"
+		IF ($3D .and. BAR .ne. 0) THEN;
+		    CALL T2XFRM(3,2,XYZE1,NONLIN,XFRM12,3,XYZE2(1,1));
+		    IF ($POLAR)
+		        CALL T2XFRM(3,2,XYZV,NONLIN,XFRM12,3,XYZE2(1,7));
+		ELSE;
+		    <J=1,2; <I=1,2; XYZE2(I,J)=XY3(I,J); >  >
+		    <I=1,2; XYZE2(I,7)=XY3(I,7); >
+		ENDIF;
+	       BRK=BARBRK(IXYZ);
+			"IF( $3D ) THEN; BAR=0; ENDIF;"
+	       IF(BRK .lt. 0)BRK=ABS(BRK*SIZNOW/10);	"Relative ?"
+	       IF (BAR .NE. 0) THEN;	"Put in end of error bar ?"
+		  <I=1,NDIM; FAC(I)=0; >
+		  FAC(MAX(1,3-IXYZ))=1;
+		  IF($POLAR) THEN;
+		     DX=XYZE2(1,7)-XYZE2(1,1);
+		     DY=XYZE2(2,7)-XYZE2(2,1);
+		     RAD=SQRT(DX**2+DY**2);
+		     IF(RAD.ne.0) THEN;
+			FAC(1)=DY/RAD; FAC(2)=-DX/RAD;
+		     ENDIF;
+		  ENDIF;
+		  <I=1,2;		"Generate 1 end of bar"
+		      <J=1,NDIM;
+			 XYZE2(J,I+2) = XYZE2(J,1)+BAR*FAC(J);
+		      >
+		      BAR=-BAR;
+		  >
+		  LBAR=.true.;
+		  IF (FLAGS(131) .AND.			"Suppress err bar ?"
+			SYMBL .NE. NOSYMB ) THEN;
+		     <J=1,2; XY3(J,8)=XY3(J,1); >	"First bar"
+		     T=T2_DIST(XY3(1,7),XY3(1,8),2);	"Length of error"
+		     LBAR=T .GE. MAX(BRK,SIZNOW/10)/2;	" Do bar ?"
+		  ENDIF;
+		  IF (LBAR) THEN;
+		     IF ($3D) THEN;
+			CALL T2XFRM(3,2,XYZE2(1,3),LINEAR,XFRM24,2,XY);
+		     ELSE;
+			<J=3,4; <I=1,2; XY3(I,J)=XYZE2(I,J); > >
+			CALL T2XFRM(2,2,XY3(1,3),LINEAR,XFRM34,2,XY);
+		     ENDIF;
+		     CALL TXLINX(XY,2,LINTEX);	"Plot bar"
+		  ENDIF;
+	       ENDIF;
+	       IF ( (BRK .NE. 0 .AND. SYMBL .NE. NOSYMB) .or. $POLAR ) THEN;
+			"Put in broken error bar ?"
+		  <I=1,2;
+			<J=1,2; XY3(J,8)=XY3(J,I); >	"First bar"
+			T=T2_DIST(XY3(1,7),XY3(1,8),2);	"Length of error"
+			IF ( T .eq. 0.0) <NEXT>;
+			T=MIN(1.0,MAX(0.0,0.5*BRK/T));		"Length of broken"
+			IF ( T .eq. 1.0) <NEXT>;
+			IF (SYMBL .EQ. NOSYMB ) T=0;
+			<J=1,2;
+			    XY3(J,I+4) = XY3(J,8);
+			    XY3(J,7-I) = XY3(J,7)*(1-T)+XY3(J,8)*T;
+			>
+			CALL T2XFRM(2,2,XY3(1,5),LINEAR,XFRM34,2,XY);
+			CALL TXLINX(XY,2,LINTEX);	"Plot broken err"
+			LWRT=.true.;		"Yes, we have something"
+		  >
+	       ELSE;
+	"Put in the error bar itself"
+		   CALL T2XFRM(2,2,XY3,LINEAR,XFRM34,2,XY);
+		   CALL TXLINX(XY,2,LINTEX);
+		   LWRT=.true.;		"Yes, we have something"
+	       ENDIF;
+	       IF (BAR.NE.0.) THEN;	"Put in other end of error bar ?"
+		  IF($POLAR) THEN;
+		     DX=XYZE2(1,7)-XYZE2(1,2);
+		     DY=XYZE2(2,7)-XYZE2(2,2);
+		     RAD=SQRT(DX**2+DY**2);
+		     IF(RAD.ne.0) THEN;
+			FAC(1)=DY/RAD; FAC(2)=-DX/RAD;
+		     ENDIF;
+		  ENDIF;
+		  <I=1,2;		"Generate 1 end of bar"
+		      <J=1,NDIM;
+			 XYZE2(J,I+2) = XYZE2(J,2)+BAR*FAC(J);
+		      >
+		      BAR=-BAR;
+		  >
+		  LBAR=.true.;
+		  IF (FLAGS(131) .AND.			"Suppress err bar ?"
+			SYMBL .NE. NOSYMB ) THEN;
+		     <J=1,2; XY3(J,8)=XY3(J,2); >	"First bar"
+		     T=T2_DIST(XY3(1,7),XY3(1,8),2);	"Length of error"
+		     LBAR=T .GE. MAX(BRK,SIZNOW/10)/2;	" Do bar ?"
+		  ENDIF;
+		  IF (LBAR) THEN;
+		     IF ($3D) THEN;
+			CALL T2XFRM(3,2,XYZE2(1,3),LINEAR,XFRM24,2,XY);
+		     ELSE;
+			<J=3,4; <I=1,2; XY3(I,J)=XYZE2(I,J); > >
+			CALL T2XFRM(2,2,XY3(1,3),LINEAR,XFRM34,2,XY);
+		     ENDIF;
+		     CALL TXLINX(XY,2,LINTEX);	"Plot bar"
+		  ENDIF;
+	       ENDIF;
+	    ENDIF;
+	  >
+	 ENDIF;
+	 IF (LVECT .and.
+	     T2_MAGN(XYZE,3).gt.$MIN REAL) THEN;	"Draw a vector ?"
+	     <J=1,3;	XYZE2(J,1)=XYZV(J);			"Get location"
+			XYZE2(J,2)=XYZE(J,1); >
+	    IF ($POLAR) THEN;
+		IF ($SPHERICAL) THEN;
+		    CALL T2SPHCV(XYZE2(1,1),XYZE2(2,1),XYZE(3,1),
+			XYZE2(1,1),XYZE2(2,1),XYZE(3,1),
+			-2,3,.false.,radang);
+		ELSE;
+		    CALL T2POLCV(XYZE2(1,1),XYZE2(2,1),
+			XYZE2(1,1),XYZE2(2,1),
+			-2,3,.false.,radang);
+		ENDIF;
+	    ENDIF;
+	    <J=1,3; XYZE2(J,2)=XYZE2(J,2)+XYZE2(J,1); >
+	    IF ($POLAR) THEN;
+		IF ($SPHERICAL) THEN;
+		    CALL T2SPHCV(XYZE2(1,1),XYZE2(2,1),XYZE(3,1),
+			XYZE2(1,1),XYZE2(2,1),XYZE(3,1),
+			2,3,.false.,radang);
+		ELSE;
+		    CALL T2POLCV(XYZE2(1,1),XYZE2(2,1),
+			XYZE2(1,1),XYZE2(2,1),
+			2,3,.false.,radang);
+		ENDIF;
+	    ENDIF;
+	    IF (BARSIZ(1) .eq. 0) THEN;			"No arrow head ??"
+		NS=2;
+		CALL T2XFRM(3,2,XYZE2,NONLIN,XFRM14,2,XY); "Get vect length"
+	    ELSE;
+"
+	Here we draw an arrow head.  The arrow head is in 3-d
+	XYZW contains the coordinates.
+		1=tail of arrow,
+		2,5,8=head of arrow
+		3,4 define flare of arrow head (triangle)
+		6,7 define flare
+	Both flares are in 3-d in perpendicular directions.
+	This first flare is either perp. to Z axis or to the Y axis.
+
+"
+	       NS=8; IF (.not. $3D) NS=5;		"2-d only 1 head"
+	       BAR=BARSIZ(1);
+	       IF (BAR .lt. 0) BAR=BAR*SIZNOW;
+	       CALL T2XFRM(3,2,XYZE2,NONLIN,XFRM12,3,XYZW);	"To text frame"
+	       <I=1,3;				"Get unit vector direction"
+		    XYZE1(I,1)=XYZW(I,2)-XYZW(I,1); >
+	       TEMP=T2_MAGN(XYZE1,3);
+	       IF (TEMP .gt. $MIN REAL) THEN;
+		  "IF (BAR .lt. 0) BAR=BAR*TEMP;"
+"Modified by S. G. Kim."
+		  IF (BAR .lt. 0) BAR=ABS(BAR*TEMP);
+		  IF (TEMP .lt. .25*BAR)
+			 BAR=.25*TEMP;		"Limit size of arrow head"
+		  TEMP=2*BAR/(TEMP);		"Now normalize to bar"
+		  <I=1,3; XYZE1(I,1)=TEMP*XYZE1(I,1); >	"Arrow head dir"
+		  <I=3,NS; <J=1,3;		"Set up locations"
+		     IF (MOD(I-2,3) .ne. 0) THEN;
+			XYZW(J,I)=XYZW(J,2)-XYZE1(J,1);	"Bottom of arrow head"
+		     ELSE;
+			XYZW(J,I)=XYZW(J,2);	"At point of arrow head"
+		     ENDIF;
+		  > >
+		  K=1; TEMP=0;
+		  <I=1,NS/4; <J=1,3; XYZE2(I,6)=0; >
+		      XYZE2(4-I,6)=1;		"Unit vect"
+		      CALL T2_CROSS(XYZE2(1,6),XYZE1,XYZE2(1,I));"X product"
+		      T=T2_MAGN(XYZE2(1,I),3);	"SIze of vect"
+		      IF (T .gt. TEMP) THEN; K=I; TEMP=T; ENDIF; "Largest one"
+		  >
+		  IF ($3D)
+		    CALL T2_CROSS(XYZE2(1,K),XYZE1,XYZE2(1,3-K)); "Other vect"
+		  <K=1,NS/4;			"Of largest cross prod"
+		     T=T2_MAGN(XYZE2(1,K),3);	"SIze of vect"
+		     T=BAR/T;			"Nomalization"
+		     <I=1,3; XYZE2(I,K)=XYZE2(I,K)*T; >  "Normalize it"
+		     J=K*3;			"Location of flare"
+		     <I=1,3; XYZW(I,j)=  XYZW(I,j)  +XYZE2(I,K);
+			     XYZW(I,j+1)=XYZW(I,j+1)-XYZE2(I,K); >
+		  >
+	       ELSE;
+		  NS=2;
+	       ENDIF;
+"Modified by S. G. Kim."
+		CALL T2XFRM(3,NS,XYZW,LINEAR,XFRM24,2,XY);  "Get dev frame"
+	    ENDIF;
+	    CALL TXLINX(XY,NS,LINTEX);			"Draw it"
+	 ELSEIF (.not. LWRT) THEN;  "Haven't put out anything? Make a dot"
+	    CALL T2XFRM(3,1,XYZV,NONLIN,XFRM14,2,XY);
+	    CALL TXDOT(XY(1,1),XY(2,1));
+	 ENDIF;
+      >"END OF LOOP OVER ALL POINTS AND ERROR BARS"
+      IF (FLAGS(121)) CALL TXXMT;
+:RET:
+      CALL TXSCIS(1); "RESET SCALING TO FULL SCREEN"
+      CALL T2CWTS(ITXSAV,IDUM);
+   ENDIF;
+   CALL T2TCKS(8); "EVEN IF NP=0"
+END;
+%E  REAL FUNCTION T2_DOT(XYZ1,XYZ2,N);
+REAL FUNCTION T2_DOT(XYZ1,XYZ2,N);
+"	Find dot product of 2 vectors"
+   IMPLICIT NONE;
+   INTEGER I,N;
+   REAL XYZ1(N),XYZ2(N),TEMP;
+   TEMP=0;
+   <I=1,N; TEMP=TEMP+XYZ1(I)*XYZ2(I);>
+   T2_DOT=TEMP;
+END;
+%E  REAL FUNCTION T2_DIST(XYZ1,XYZ2,N);
+REAL FUNCTION T2_DIST(XYZ1,XYZ2,N);
+"	Find distance between 2 vectors"
+   IMPLICIT NONE;
+   INTEGER I,N;
+   REAL XYZ1(N),XYZ2(N),TEMP;
+   TEMP=0;
+   <I=1,N; TEMP=TEMP+(XYZ1(I)-XYZ2(I))**2;>
+   T2_DIST=SQRT(TEMP);
+END;
+%E  SUBROUTINE T2_CROSS(XYZ1,XYZ2,XYZ3);
+SUBROUTINE T2_CROSS(XYZ1,XYZ2,XYZ3);
+"	Find cross product of 2 vectors"
+   IMPLICIT NONE;
+   INTEGER I,J,K;
+   REAL XYZ1(3),XYZ2(3),XYZ3(3);
+   <I=1,3; J=MOD(I,3)+1; K=6-I-J;
+      XYZ3(I)=XYZ1(J)*XYZ2(K)-XYZ2(J)*XYZ1(K); >
+END;
+%E  REAL FUNCTION T2_MAGN(XYZ,N);
+REAL FUNCTION T2_MAGN(XYZ,N);
+"	Find magnitude of a vector"
+   IMPLICIT NONE;
+   INTEGER I,N;
+   REAL XYZ(N),TEMP;
+   TEMP=0;
+   <I=1,N; TEMP=TEMP+XYZ(I)**2;>
+   T2_MAGN=SQRT(TEMP);
+END;
+%E  SUBROUTINE T2GTDR
+SUBROUTINE T2GTDR(SIZE,SYDIR,XUP);
+   IMPLICIT NONE;
+   REAL XUP(3,2),SYDIR(3),TEMP1,TEMP2,SIZE;
+   INTEGER I;
+   XUP(1,1)= COSD(SYDIR(3)); XUP(2,1)=SIND(SYDIR(3));
+   XUP(1,2)=-SIND(SYDIR(3)); XUP(2,2)=COSD(SYDIR(3));
+   <I=1,2; XUP(3,I)=0; >
+   IF (SYDIR(2).gt. 0) THEN;
+      <I=1,2;
+	 TEMP1=XUP(1,I)*COSD(SYDIR(1))+XUP(2,I)*SIND(SYDIR(1));
+	 TEMP2=-XUP(1,I)*SIND(SYDIR(1))+XUP(2,I)*COSD(SYDIR(1));
+	 XUP(1,I)=-SIND(SYDIR(1))*TEMP2+
+		   COSD(SYDIR(2))*COSD(SYDIR(1))*TEMP1;
+	 XUP(2,I)= COSD(SYDIR(1))*TEMP2+
+		   COSD(SYDIR(2))*SIND(SYDIR(1))*TEMP1;
+	 XUP(3,I)=-SIND(SYDIR(2))*TEMP1;
+      >
+   ENDIF;
+   <I=1,3; XUP(I,1)=SIZE*XUP(I,1); >
+END;
+%E  SUBROUTINE T2_ARROW  --- Parses Arrow command
+SUBROUTINE T2_ARROW($INFO,$CARD);
+   IMPLICIT NONE;
+   INTEGER INFOIN(10);
+   CHARACTER*(*) CARDIN;
+   $SPECIFICATION;
+   $SPECIFYNONE;
+   $BOOLEAN LF1,LF2, LFILL, LHIDE;
+   INTEGER I,J,K,ICOL,INTEN,IFT,IXYZ,ITXTUR;
+   REAL AROXYZ(3,5),AROD(4),XYZ0(2),XYZ2(2);
+   INTEGER AROMOD(5);
+   <I=1,2; AROD(I) = 0.;	"Default value for less"
+	   AROMOD(I) = 0;	"Default TEXT mode"
+	   AROXYZ(1,I) = HNONE;  "No data indicator"
+	   AROXYZ(2,I) = HNONE;  "No data indicator"
+	   AROXYZ(3,I) = 0;
+   >
+   AROD(3) = ASIZE;		"Default values"
+   AROD(4) = AFLARE;
+   ICOL=0; ITXTUR=0; INTEN=0; IFT=1; IXYZ=1;
+   LFILL=.false.;
+   LHIDE=.false.;
+   <TOKEN LOOP> <
+      NUMBER:: <
+	 IF (IXYZ.le.3) THEN;
+	    AROXYZ(IXYZ,IFT)=FLOTNG;
+	    IF (IXYZ.eq.3) AROMOD(IFT)=1;	"3-D ?"
+	    IXYZ=IXYZ+1;
+	 ELSE;
+	    ERROR OUT; ('*** ERROR *** Extraneous number');
+	 ENDIF;
+      >
+      KEY:: <
+	 FILL:Y < LFILL=LTOKEN; >
+	 HIDE:Y < LHIDE=LTOKEN; >
+	 DO:1,DOT:1,DOTS:1,DOTTED:1,DA:2,DASHES:2,DASHED:2,
+	 DOT-DASH:3,DOTDASHED:3,
+	 SOLID:4,FUNNY:5,PATTERNED:6,DAASHES:7,SPACE:8,
+	    <CALL T2GTEX(ITXTUR);>
+	 INTENSITY:1:5:2,WIDTH:1:5:2 < INTEN=INTEG; >
+	 WHITE:1,RED:2,GREEN:3,BLUE:4,YELLOW:5,MAGENTA:6,CYAN:7
+	    <ICOL=INTEG;>
+	 SIZE:3,FLAIR:4,FLARE:4 <
+	    I = INTEG;
+	    <TOKEN NUMBER> <
+		IF (I .eq. 3) FLOTNG=FLOTNG/REDUCE(3);
+		AROD(I)=FLOTNG;
+	    >
+	 >
+	 HEAD:4,TAIL:3 <
+	    <I=1,3; AROXYZ(I,IFT)=AROXYZ(I,INTEG); >
+	    AROMOD(IFT)=AROMOD(INTEG);
+	 >
+	 CURSOR <
+	    NSTJOU=LSTJOU;
+	    CALL T2CURS(J,XYZ0,AROXYZ(1,5),XYZ2,LF1,LF2);
+	    IF (J.eq.ICHAR(' ')) THEN;
+	       <I=1,2; AROXYZ(I,IFT)=AROXYZ(I,5); >
+	       AROMOD(IFT)=0;	"Text system"
+	       I=23;
+	       IF (JOUFIL.ne.0.and. LSTJOU+I.le.LEN(STJOU)) THEN;
+		  WRITE(STJOU(LSTJOU+1:LSTJOU+I),
+		     '(1p,2(A,G10.3))',ERR=:CURERR1:)
+		     ' ',AROXYZ(1,IFT),',',AROXYZ(2,IFT);
+		  CALL T2SQEZ(STJOU(LSTJOU+2:LSTJOU+I),I);
+		  NSTJOU=NSTJOU+I+1;
+		  :CURERR1: CONTINUE;
+	       ENDIF;
+	    ENDIF;
+	 >
+	 FROM:1,TO:2 <
+	    IFT = INTEG;  "1,2 FOR FROM,TO"
+	    IXYZ= 1;
+	 >
+	 DATA:1,TEXT:0 < AROMOD(IFT) = INTEG;>
+	 LESS:::0      < AROD(IFT) = FLOTNG;>
+      >
+      ERROR:: <<TOKEN ERROR>; RETURN;>
+   >
+   IF ($ERROR .or. $TRAP) RETURN;		"no errors"
+   <I=1,2;
+      <J=1,2;
+	 IF (AROXYZ(J,I).eq.HNONE) THEN;
+	    ERROR OUT;('*** ERROR *** Missing FROM or TO values');
+	    RETURN;
+	 ENDIF;
+   >  >
+   ITXTUR=8*INTEN+64*ITXTUR+512*ICOL;
+   IF (LFILL) ITXTUR=ITXTUR+3;
+   IF (LHIDE) ITXTUR=ITXTUR+4;
+   CALL T2ARRO(AROXYZ,AROMOD,AROD,ITXTUR);
+   <J=1,2; <I=1,3; AROXYZ(I,J+2)=AROXYZ(I,J); > AROMOD(J+2)=AROMOD(J); >
+END;
+%E  SUBROUTINE T2ARRO
+SUBROUTINE T2ARRO(XYZARO,MODARO,DARO,JTYPE);
+   REAL XYZARO(3,2),DARO(4);
+   INTEGER JTYPE,MODARO(2),NP;
+"
+    Draws arrows.  XYZ may be in data coords, D are text only.
+    MODE = 0 FOR TEXT
+	   1 FOR DATA
+    DARO(1) = 'LESS' VALUE FOR 'FROM'
+	 2    'LESS' VALUE FOR 'TO'
+	 3  = SIZE
+	 4  = FLARE
+"
+   $SPECIFICATION;
+   $EQUIVALENCE;
+   REAL XYB(6,2),XY(2,2);	"For drawing body and head"
+
+   IF (.NOT.$DEF TEXT) CALL TXDEF1;
+   "GET INTO TEXT SYSTEM"
+      IF (MODARO(1)+MODARO(2).NE.0) THEN;  "DATA SYSTEM SOMEWHERE"
+	 IF (.NOT.$DEF DATA) CALL TXDEF2;
+	 IF (.NOT.$DEF DATA) RETURN;	"COULDNT DO IT"
+      ENDIF;
+      <I=1,2;
+	 IF (MODARO(I).NE.0) THEN;
+	    CALL T2XFRM(3,1,XYZARO(1,I),NONLIN,XFRM13,2,XY(1,I));
+	 ELSE;
+	    XY(1,I)=XYZARO(1,I); XY(2,I)=XYZARO(2,I);
+	 ENDIF;
+      >
+      IF (XY(1,2).NE.XY(1,1) .OR. XY(2,2).NE.XY(2,1)) THEN;
+	"FIGURE ANGLES"
+	 DX = XY(1,2)-XY(1,1);
+	 DY = XY(2,2)-XY(2,1);
+	 DSQ = DX**2+DY**2;
+	 D = SQRT(DSQ);
+	 SINE = DY/D; COSINE = DX/D;
+	"POINTS--
+		      H(1:3)
+       B(1)           B(2)  H(3:1)
+		      H(2)
+       RECALCULATE ENDPOINTS TO ALLOW FOR 'LESS' VALUES"
+	 XYB(1,1) = XY(1,1) + COSINE*DARO(1);	"Tail"
+	 XYB(1,2) = XY(2,1) + SINE*DARO(1);
+	 XYB(4,1) = XY(1,2) - COSINE*DARO(2);	"Head"
+	 XYB(4,2) = XY(2,2) - SINE*DARO(2);
+	"CALCULATE JOIN BETWEEN ARROW BODY AND TIP"
+	 NP=2;				"Number of points"
+	 DR = 0.1*REDUCE(2)*DARO(3);
+	 IF (DR .ne. 0) THEN;
+	    NP=4;
+	 ENDIF;
+	 DX = COSINE*DR;
+	 DY =   SINE*DR;
+	 XYB(2,1) = XYB(4,1) - DX;
+	 XYB(2,2) = XYB(4,2) - DY;
+	"CALCULATE 2 SIDES OF ARROWHEAD"
+	 DR = 0.5*DARO(4);
+	 IF (DR .ne. 0) THEN;
+	    NP=6;
+	    SAVE = DX;
+	    DX = DR*DY;
+	    DY =-DR*SAVE;
+	    XYB(3,1) = XYB(2,1) - DX;
+	    XYB(3,2) = XYB(2,2) - DY;
+	    XYB(5,1) = XYB(2,1) + DX;
+	    XYB(5,2) = XYB(2,2) + DY;
+	    XYB(6,1) = XYB(2,1);
+	    XYB(6,2) = XYB(2,2);
+	 ENDIF;
+	 FLAGS(31) = .TRUE.;	"TEXT SYSTEM FLAG FOR JOIN"
+	 CALL T2JOIN(XYB,XYB(1,2),HNONE,JTYPE,1,NP,1);
+	 FLAGS(31) = .FALSE.;
+	"Set the defaults"
+   ENDIF;
+   IF (FLAGS(121)) CALL TXXMT;
+END;
+%E  SUBROUTINE T2_BCED  --- BOX,CIRCLE,ELLIPSE,DIAMOND commands
+SUBROUTINE T2_BCED($INFO,$CARD);
+   IMPLICIT NONE;
+   $SPECIFICATION;
+   $SPECIFYNONE;
+   INTEGER INFOIN(10); CHARACTER*(*) CARDIN;
+   CHARACTER*6 CFRTO(3);
+   DATA CFRTO/' FROM',' TO',' '/;
+   REAL CIRCEN(3,2),CRCLIM(2),XYZ1(2),XYZ0(2),XYZ2(3),T,ROTATE;
+   INTEGER MODCIR(2);
+   $BOOLEAN LF1,LF2,LSQ, LFILL, LHIDE;
+   INTEGER ITXTUR,ICOL,INTEN,ICEN,IFRTO,LFRTO(2),I,J;
+   INTEGER IMIN,IMAX;
+   real val3;
+   ITXTUR = 0; ICOL=0; INTEN=0;
+   MODCIR(2) = INTEG;  "1,2,3 FOR BOX,DIAMOND,ELLIPSE"
+   MODCIR(1) = 0;  "START WITH TEXT SYSTEM"
+   LFILL=.false.;
+   LHIDE=.false.;
+   LF1=.false.; LF2=.false.; LSQ=.false.;
+   ICEN=0; IFRTO=1;
+   LFRTO(1)=0; LFRTO(2)=0;
+   CRCLIM(1)=0; CRCLIM(2)=0;
+   ROTATE=0;
+   <I=1,2; <J=1,2; CIRCEN(J,I)=HNONE; CIRCEN(J,I)=HNONE; > CIRCEN(3,I)=0; >
+   <TOKEN LOOP> <
+      NUMBER:: <	"Z-VALUE?"
+	 IF (LFRTO(IFRTO).eq.0) LFRTO(IFRTO)=1;
+	 ICEN=ICEN+1;
+	 IF (ICEN.le.3) THEN;
+	    CIRCEN(ICEN,IFRTO)=FLOTNG;
+	    IF (ICEN.eq.3) THEN;
+	       MODCIR(1) = IOR(MODCIR(1),1);	"DATA SYSTEM"
+	       IF (LFRTO(IFRTO).ne.1) MODCIR(1)=3;
+	    ENDIF;
+	 ELSE;
+	    ERROR OUT;('*** ERROR *** Extraneous number');
+	    RETURN;
+	 ENDIF;
+      >
+      KEY:: <
+	 CURSOR <
+	    IF (ICEN.gt.0.or.MODCIR(1).ne.0) GOTO :CERR:;
+	    NSTJOU=LSTJOU;
+	    IF (LFRTO(IFRTO).gt.0) THEN;
+	       IMIN=IFRTO; IMAX=IFRTO;
+	    ELSE;
+	       IMIN=1; IMAX=2;
+	    ENDIF;
+	    <I=IMIN,IMAX;
+	       ICEN=0;
+	       J = 0;
+	       CALL T2CURS(J,XYZ0,XYZ1,XYZ2,LF1,LF2);
+	       IF (.not.LF1.or.J.ne.ICHAR(' ')) GOTO :NOCURS:;
+	       <J=1,2; CIRCEN(J,I)=XYZ1(J); >
+		   "Write cursor value to journal file"
+	       IF (JOUFIL.ne.0.and. NSTJOU+28.le.LEN(STJOU)) THEN;
+		  J=3; IF (LFRTO(I).eq.0) J=I;
+		  WRITE(STJOU(NSTJOU+1:NSTJOU+28),'(1p,4(A,G10.3))'
+		     ,ERR=:CURERR3:)
+		  CFRTO(J),CIRCEN(1,I),' ',CIRCEN(2,I),' ';
+		  CALL T2SQEZ(STJOU(NSTJOU+2:NSTJOU+27),J);
+		  NSTJOU=NSTJOU+J+1;
+:CURERR3:
+	       ENDIF;
+	       ICEN=3;
+	       IF (LFRTO(I).eq.0) LFRTO(I)=I+1;
+	    >
+:NOCURS:
+	 >
+	 FILL:Y < LFILL=LTOKEN; >
+	 HIDE:Y < LHIDE=LTOKEN; >
+	 DO:1,DOT:1,DOTS:1,DOTTED:1,DA:2,DASHES:2,
+	 DOT-DASH:3,DOTDASHED:3,
+	 SOLID:4,FUNNY:5,PATTERNED:6,DAASHES:7,SPACE:8,
+	      < CALL T2GTEX(ITXTUR);>
+	 INTENSITY:1:5:2,WIDTH:1:5:2 < INTEN=INTEG; >
+	 WHITE:1,RED:2,GREEN:3,BLUE:4,YELLOW:5,MAGENTA:6,CYAN:7
+	      < ICOL=INTEG;>
+	 SQUARE:Y,SYMMETRIC:Y < LSQ=LTOKEN; >
+	 DATA < MODCIR(1) = IOR(MODCIR(1),1); IF (LF1) GOTO :CERR:;>
+	 AT:1,FROM:2,TO:3   < I=1;
+	 IF (LFRTO(IFRTO) .ne.0)IFRTO=2;
+	 IF (LFRTO(IFRTO).ne.0.or.LFRTO(1).eq.INTEG) THEN;
+:CERR:         ERROR OUT;('*** ERROR *** Conflicting options');
+	       RETURN;
+	    ELSE;
+	       ICEN=0;
+	       LFRTO(IFRTO)=INTEG;
+	    ENDIF;
+	 >
+	 SIZE:::1 <
+	    GOTO :CSIZ:;
+	 >
+	 DSIZE:::1 <
+	    MODCIR(1) = 3;
+	    IF (LF1) GOTO :CERR:;
+:CSIZ:      IF (LFRTO(IFRTO) .ne.0) IFRTO=2;
+	    IF (LFRTO(IFRTO) .ne.0.or.LFRTO(1).eq.4) GOTO :CERR:;
+	    CIRCEN(1,IFRTO)=FLOTNG; CIRCEN(2,IFRTO)=FLOTNG;
+	    LFRTO(IFRTO)=4; ICEN=1;
+	 >
+
+	 ROTATE:-360:360:0 < ROTATE=FLOTNG; >
+	 ANGLE <
+	    VAL3=CRCLIM(1);
+	    CRCLIM(1)=-360; CRCLIM(2)=360;
+	    CALL T2FRTO($INFO,$CARD,CRCLIM(1),CRCLIM(2),VAL3);
+	 >
+      >
+      ERROR:: <<TOKEN ERROR>; RETURN;>
+   >
+   IF (LFRTO(2).eq.0.and.LFRTO(1).eq.1) THEN;
+      LFRTO(2)=4;
+      I=MODCIR(2);
+      <J=1,2; CIRCEN(j,2) = CIRSIZ(J,I); >  "Default XY-size"
+   ENDIF;
+   <I=1,2; <J=1,2;
+	 IF (CIRCEN(J,I).eq.HNONE) THEN;
+	    ERROR OUT;('*** ERROR *** X,Y value(s) missing'); RETURN;
+	 ENDIF;
+   >  >
+   IMIN=1; IF (LFRTO(2).lt.LFRTO(1)) IMIN=2;
+   IMAX=3-IMIN;
+   IF (LFRTO(IMIN).eq.1) THEN;
+      IF (LFRTO(IMAX).ne.4) THEN;
+	 <I=1,3; CIRCEN(I,IMAX)=(CIRCEN(I,IMAX)-CIRCEN(I,IMIN))*2; >
+      ENDIF;
+   ELSE;		"Handle from to coordinates"
+      <I=1,3;
+	 IF (LFRTO(IMAX).eq.4) THEN;
+	    T = CIRCEN(I,IMAX);
+	    IF (LFRTO(IMAX).eq.3) T=-T;
+	 ELSE;
+	    T =(CIRCEN(I,IMAX)-CIRCEN(I,IMIN));
+	 ENDIF;
+	 CIRCEN(I,IMIN)=CIRCEN(I,IMIN)+T/2;
+	 CIRCEN(I,IMAX)=T;
+      >
+   ENDIF;
+   IF (LSQ) THEN;
+      IF (MODCIR(2).eq.3) THEN;
+	 T=SQRT(CIRCEN(1,IMAX)**2+CIRCEN(2,IMAX)**2);
+      ELSE;
+	 T=MAX(CIRCEN(1,IMAX),CIRCEN(2,IMAX));
+      ENDIF;
+      <I=1,2; CIRCEN(I,IMAX)=T; >
+   ENDIF;
+   ITXTUR=8*INTEN+64*ITXTUR+512*ICOL;
+   IF (ABS(CRCLIM(2)-CRCLIM(1)).ge.360.) THEN;
+      CRCLIM(1)=0; CRCLIM(2)=0;
+   ENDIF;
+   IF (LFILL) ITXTUR=ITXTUR+3;
+   IF (LHIDE) ITXTUR=ITXTUR+4;
+   IF (.not.$ERROR)		"no errors"
+      CALL T2CRCL(CIRCEN(1,IMIN)
+	,MODCIR
+	,CIRCEN(1,IMAX)
+	,ITXTUR
+	,CRCLIM
+	,ROTATE);
+END;
+%E  SUBROUTINE T2CRCL
+SUBROUTINE T2CRCL(XYZCRC,MODCRC,SIZCRC,JTYPE,CRCLIM,ROTATE);
+   IMPLICIT NONE;
+   REAL XYZCRC(3),SIZCRC(3),ROTATE;
+   INTEGER MODCRC(2);
+"
+    Routine to draw circles, ellipses, boxes, diamonds
+    MODCRC(1) = 0 -- XYZ IS IN TEXT SYSTEM
+		1 -- XYZ IS IN DATA SYSTEM
+		3 -- XYZ/Size in Data system
+    MODCRC(2) = 1 -- BOX
+		2    DIAMOND
+		3    ELLIPSE
+    XYZCRC = COORDINATES OF CENTER
+    SIZCRC = (BOX) WIDTHS
+	     (DIAMOND) POINT-TO-POINT
+	     (CIRCLE) WIDTHS
+    JTYPE  = Texture*64 (0-7)
+    CRCFAC CONTAINS (X,Y) PAIRS OF FACTORS.  EACH FORM TO BE
+    DRAWN IS DEFINED BY A NUMBER OF POINTS.  THE POINTS ARE GIVEN
+    BY  X(I) = X(CENTER) + CRCFCX(I)*SIZCRC(1)
+	Y(I) = Y(CENTER) + CRCFCY(I)*SIZCRC(2)
+    THE INDICES IN CRCFAC ARE GIVEN BY CRCPNT.  POINTS CRCPNT(1)
+    TO CRCPNT(2)-1 ARE FOR A BOX, CRCPNT(2) TO CRCPNT(3)-1 FOR
+    A DIAMOND, ETC.
+    THE POINTS ARE JOINED BY T2JOIN.  JOIN LEVEL IS IN CRCLVL.
+"
+   $SPECIFICATION;
+   $SPECIFYNONE;
+   REAL SINR,COSR,t1,t2;
+   REAL CRCSIZ(3),CRCLIM(2);
+   REAL CRCFCX(27),CRCFCY(27);
+   INTEGER CRCPNT(4), CRCLVL(3);
+   REAL XYCEN(3),CRCX(20),CRCY(20);"SCRATCH FOR MAKING FORMS"
+   integer i,j,k,mode,np,jtype;
+   real	dc,temp;
+   $EQUIVALENCE;
+   $DATA;
+   DATA CRCPNT /0,5,10,27/;
+   DATA CRCLVL /1,1,5/;
+   DATA CRCFCX /
+	1.0,-1.0,-1.0, 1.0, 1.0,	"BOX"
+	1.0, 0.0,-1.0, 0.0, 1.0,	"DIAMOND"
+	0.0,.3928,.7070,.9240,		"CIRCLE QUADRANT 1"
+	1.0,.9240,.7070,.3928,				"2"
+	0.0,-.3928,-.7070,-.9240,			"3"
+	-1.0,-.9240,-.7070,-.3928,0.0/;			"4"
+   DATA CRCFCY /
+	1.0, 1.0,-1.0,-1.0, 1.0,	"BOX"
+	0.0, 1.0, 0.0,-1.0, 0.0,	"DIAMOND"
+	1.0,.9240,.7070,.3928,		"CIRCLE QUADRANT 1"
+	0.0,-.3928,-.7070,-.9240,			"2"
+	-1.0,-.9240,-.7070,-.3928,			"3"
+	0.0,.3928,.7070,.9240,1.0/;			"4"
+   NONLIN(4)=0;		"Turn off polar"
+   "GET INTO TEXT SYSTEM"
+      sinr = SIND (rotate);
+      cosr = cosD (rotate);
+      CRCSIZ(1) = SIZCRC(1)/2;
+      CRCSIZ(2) = SIZCRC(2)/2;
+      CRCSIZ(3) = SIZCRC(3)/2;
+      IF (MODCRC(1).ne.0 .and. .NOT.$DEF DATA) THEN;
+	 CALL TXDEF2;
+	 IF (.NOT.$DEF DATA) RETURN;	"COULDNT DO IT"
+      ENDIF;
+      IF (MODCRC(1) .EQ. 0) then;
+	 IF (.NOT.$DEF TEXT) CALL TXDEF1;
+	 XYCEN(1) = XYZCRC(1);
+	 XYCEN(2) = XYZCRC(2);
+      ELSEIF(abs(MODCRC(1)) .EQ. 1) then;
+	 CALL T2XFRM(3,1,XYZCRC,NONLIN,XFRM13,2,XYCEN);
+      ELSE;
+	 CRCX(1) = XYZCRC(1)+crcsiz(1);
+	 CRCX(2) = XYZCRC(2)+crcsiz(2);
+	 CRCX(3) = XYZCRC(3)+crcsiz(3);
+	 CALL T2XFRM(3,1,CRCX,NONLIN,XFRM13,2,CRCX(4));
+	 CRCY(1) = XYZCRC(1)-crcsiz(1);
+	 CRCY(2) = XYZCRC(2)-crcsiz(2);
+	 CRCY(3) = XYZCRC(3)-crcsiz(3);
+	 CALL T2XFRM(3,1,CRCY,NONLIN,XFRM13,2,CRCY(4));
+	 if($3D) then;
+	    <I=-1,1,2;<J=-1,1,2;<K=-1,1,2;
+	      CRCY(1) = XYZCRC(1)+I*crcsiz(1);
+	      CRCY(2) = XYZCRC(2)+J*crcsiz(2);
+	      CRCY(3) = XYZCRC(3)+K*crcsiz(3);
+	      CALL T2XFRM(3,1,CRCY,NONLIN,XFRM13,2,CRCY(6));
+	      CRCX(4) = MIN(CRCX(4),CRCY(6));
+	      CRCX(5) = MIN(CRCX(5),CRCY(7));
+	      CRCY(4) = MAX(CRCY(4),CRCY(6));
+	      CRCY(5) = MAX(CRCY(5),CRCY(7));
+	    >  >  >
+	 endif;
+	 CRCSIZ(1)=(CRCX(4)-CRCY(4))/2.;
+	 CRCSIZ(2)=(CRCX(5)-CRCY(5))/2.;
+	 XYCEN(1)=(CRCX(4)+CRCY(4))/2.;
+	 XYCEN(2)=(CRCX(5)+CRCY(5))/2.;
+      ENDIF;
+   MODE = MIN(MAX(ABS(MODCRC(2)),1),3);
+   J = CRCPNT(MODE);
+   NP = CRCPNT(MODE+1) - J;
+   DC=CRCLIM(2)-CRCLIM(1);
+   IF(MODE.eq.3 .and. ABS(DC).gt. 1.E-5) THEN;
+      NP=MIN(MAX(NINT(20.*DC/360.),5),20);
+      DC=DC/(57.29578*(NP-1));
+      <I=1,NP; TEMP=DC*(I-1)+(CRCLIM(1)-rotate)/57.29578;
+	t1 = CRCSIZ(1)*COS(TEMP);
+	t2 = CRCSIZ(2)*SIN(TEMP);
+	CRCX(I) = XYCEN(1)+cosr*t1 - sinr*t2; 
+	CRCY(I) = XYCEN(2)+cosr*t2 + sinr*t1;
+      >
+   ELSE;
+      <I=1,NP;
+	J = J+1;
+	t1 = CRCSIZ(1)*CRCFCX(J);
+	t2 = CRCSIZ(2)*CRCFCY(J);
+	CRCX(I) = XYCEN(1)+cosr*t1 - sinr*t2;
+	CRCY(I) = XYCEN(2)+cosr*t2 + sinr*t1;
+      >
+   ENDIF;
+   FLAGS(31) = .TRUE.;	"TEXT SYSTEM FLAG FOR JOIN"
+   CALL T2JOIN(CRCX,CRCY,HNONE,JTYPE,CRCLVL(MODE),NP,1);
+   FLAGS(31) = .FALSE.;
+   NONLIN(4)=1;		"Turn on polar"
+   IF (FLAGS(121)) CALL TXXMT;
+END;
+%E  SUBROUTINE T2HIST
+SUBROUTINE T2HIST(XVALS,YVALS,ZVALS,XERRS,YERRS,ZERRS,
+   JTYPE,INLEVL,NP,INCRMT,
+      XNERR,YNERR,ZNERR);
+"
+	Input:	XVALS(INCRMT,NP),YVALS(INCRMT,NP),ZVALS(INCRMT,NP)
+		XERRS(INCRMT,NP),YERRS(INCRMT,NP),ZERRS(INCRMT,NP)
+
+		JTYPE	Color, width, linetype
+		INLEVL	Type of plot
+			1 -	Barchart
+			2 -	Fill it
+			4 -	Hide it
+"
+   %'$ADD POINT'=
+      '"BUFFER(JXB+1)=XYZ(1);BUFFER(JXB+2)=XYZ(2);
+	BUFFER(JXB+3)=XYZ(3);JXB=JXB+3";'
+   EQUIVALENCE (XYEX(1),XEXIST),(XYEX(2),YEXIST),(XYEX(3),ZEXIST);
+   INTEGER MAXJ;
+   PARAMETER (MAXJ = $BUFSIZ - 15); "-15 IS FOR END-POINTS"
+   INTEGER JTYPE,INLEVL,NP;
+   REAL XVALS(INCRMT,*),YVALS(INCRMT,*),ZVALS(INCRMT,*),
+      XNERR(INCRMT,*),YNERR(INCRMT,*),ZNERR(INCRMT,*),
+      XERRS(INCRMT,*),YERRS(INCRMT,*),ZERRS(INCRMT,*);
+   "   ROUTINE TO MAKE HISTOGRAM.  Y-ERRORS NOT USED.
+	  BIN EDGES ARE HALFWAY BETWEEN ENDS OF ADJACENT ERROR-BARS
+	  IN THE X-DIRECTION.
+   "
+   $SPECIFICATION;
+   $BOOLEAN LSAVE1, LSAVE2, LFILL ;
+   REAL XYZ(3), WIDTH(2);
+   INTEGER IHIDE,IE(3),INE(3),IV(3);
+   $BOOLEAN XEXIST,YEXIST,ZEXIST,XYEX(3);
+   $BOOLEAN NDXEXIS,NDYEXIS,NDZEXIS;
+   $BOOLEAN LIMSET(3);
+   INTEGER MONTH ; REAL DAY ; REAL DAYMON (12)
+
+   $DATA;
+   DATA  DAYMON / .31, .28, .31, .30, .31, .30, .31, .31, .30, .31, .30, .31 / ;
+
+   $SPECIFYNONE;
+
+IF (NP.le.0) RETURN;
+"REMEMBER WHETHER LOWER LIMITS ARE SET"
+   <I=1,3; LIMSET(I)=FLAGS(2*I+3);>
+"SET UP AXES"
+   CALL T2AXES;
+   IF (.not.$DEF DATA) RETURN;
+   FLAGS(28) = .TRUE.;  "POINTS HAVE BEEN TREATED"
+   CALL T2CWTS(JTYPE,ITXSAV);
+   CALL TXSDEF;
+   CALL TXSCIS(2);	"SCISSORED AT WINDOW"
+"SET DEPENDENT VARIABLE"
+XEXIST=XVALS(1,1).NE.HNONE;
+YEXIST=YVALS(1,1).NE.HNONE;
+ZEXIST=ZVALS(1,1).NE.HNONE;
+	 "first select default dep variable"
+IDEP=2;
+IF (.not.YEXIST .OR. ($3D.and.ZEXIST)) THEN;
+   IDEP=3;
+   IF(.not.ZEXIST) THEN;
+      ERROR STRING; ('*** ERROR *** Missing Y and Z coor in T2HIST');
+      RETURN;
+   ENDIF;
+ENDIF;
+	 "Now set according to user"
+I=IAND(INLEVL/8,3);
+IF(I.ne.0) THEN;
+   IF(XYEX(I)) IDEP=I;
+ENDIF;
+JMIN=1; JMAX=NP;
+IFIRST=1;
+JPTS=JMAX-JMIN+1;
+   "SET BOTTOM OF HISTOGRAM AT ZERO"
+IF (.NOT.(LIMSET(IDEP))			"LIMIT WASN'T ALREADY SET"
+	 .AND. NONLIN(IDEP).EQ.-1		"AND LINEAR SCALE"
+	 .AND. XYZLIM(IDEP,1).GT.0.	"AND LIMIT IS > 0 "
+	 .AND. NXYLIM(1,1).eq.0    ) THEN;  "Now selected points ?"
+      XYZLIM(IDEP,1)=0.;	"RESET TO ZERO"
+      CALL TXDEF2;	"REDEFINE THE COORD SYSTEM"
+      IF (.NOT.$DEF DATA) RETURN;	"COULDNT DO IT"
+ENDIF;
+   "SET UP VALUE AND ERROR FLAGS, AND FIRST POINT"
+<I=1,3; XYZ(I)=XYZLIM(I,1); IV(I)=0; IE(I)=0; INE(I)=0; >
+IF (XVALS(1,1).NE.HNONE) IV(1)=1;
+IF (YVALS(1,1).NE.HNONE) IV(2)=1;
+IF (ZVALS(1,1).NE.HNONE) IV(3)=1;
+IF (XERRS(1,1).NE.HNONE) IE(1)=1;
+IF (YERRS(1,1).NE.HNONE) IE(2)=1;
+IF (ZERRS(1,1).NE.HNONE) IE(3)=1;
+IF (XNERR(1,1).NE.HNONE) INE(1)=1;
+IF (YNERR(1,1).NE.HNONE) INE(2)=1;
+IF (ZNERR(1,1).NE.HNONE) INE(3)=1;
+   "CHANGE THE FLAG SO THE DEP VAR ISN'T CHANGED WITH THE OTHERS"
+IV(IDEP)=0;
+LSAVE1=IDEP.ne.2;		"For fast hists"
+LFILL=IAND(INLEVL,2) .ne. 0;
+IHIDE=2;
+IF (IAND(INLEVL,4) .ne. 0) IHIDE=6;
+IF (IAND(INLEVL,7).EQ.0.and.JPTS.gt.0) THEN;	"Fast histogram"
+	 "YVALUE FOR BASELINE AND FIRST POINT"
+   IF (NONLIN(IDEP).EQ.(-1)"LINEAR") THEN; XYZ(IDEP)=0.;
+   ELSE; XYZ(IDEP)=XYZLIM(IDEP,1); ENDIF;
+   YSTART=XYZ(IDEP);  "SAVE IT TO COME BACK TO AT END"
+	 "MAXIMUM # OF POINTS DEPENDS ON THE (X,Y) BUFFER SIZE"
+   JXB=3;		"START OFF THE BUFFER POINTER"
+	"PUT IN THE FIRST POINT"
+   IF (.NOT.$3D) THEN; $ADD POINT; ENDIF;
+	 "PUT IN BASELINE FROM LEFT SIDE TO LEFT EDGE OF BIN 1"
+   IF (IV(1).NE.0) THEN;
+		"2*X1 - (X2-X1)"
+	 XYZ(1) = 3.*XVALS(1,JMIN) - XVALS(1,JMIN+1);
+		"2*X1 - ((X2-XE2)-(X1-XE1))"
+	 IF (IE(1).NE.0) THEN;
+	    IF (INE(1).NE.0) THEN;
+	      IF (XVALS(1,JMIN+1) .gt. XVALS(1,JMIN)) THEN;
+		DIFF = ABS(XNERR(1,JMIN+1))-ABS(XERRS(1,JMIN));
+	      ELSE;
+		DIFF = ABS(XERRS(1,JMIN+1))-ABS(XNERR(1,JMIN));
+	      ENDIF;
+	    ELSE;
+		DIFF = ABS(XERRS(1,JMIN+1))-ABS(XERRS(1,JMIN));
+	    ENDIF;
+	    XYZ(1) = XYZ(1)+DIFF;
+	 ENDIF;
+	 XYZ(1)=0.5*XYZ(1);
+   ENDIF;
+   IF (IV(2).NE.0) THEN;
+	 XYZ(2) = 3.*YVALS(1,JMIN) - YVALS(1,JMIN+1);
+	 IF (IE(2).NE.0) THEN;
+	    IF (INE(1).NE.0) THEN;
+	      IF (YVALS(1,JMIN+1) .gt. YVALS(1,JMIN)) THEN;
+		DIFF = ABS(YNERR(1,JMIN+1))-ABS(YERRS(1,JMIN));
+	      ELSE;
+		DIFF = ABS(YERRS(1,JMIN+1))-ABS(YNERR(1,JMIN));
+	      ENDIF;
+	    ELSE;
+		DIFF = ABS(YERRS(1,JMIN+1))-ABS(YERRS(1,JMIN));
+	    ENDIF;
+	    XYZ(2) = XYZ(2)+DIFF;
+	 ENDIF;
+	 XYZ(2)=0.5*XYZ(2);
+   ENDIF;
+   IF (IV(3).NE.0) THEN;
+	 XYZ(3) = 3.*ZVALS(1,JMIN) - ZVALS(1,JMIN+1);
+	 IF (IE(3).NE.0) THEN;
+	    IF (INE(1).NE.0) THEN;
+	      IF (ZVALS(1,JMIN+1) .gt. ZVALS(1,JMIN)) THEN;
+		DIFF = ABS(ZNERR(1,JMIN+1))-ABS(ZERRS(1,JMIN));
+	      ELSE;
+		DIFF = ABS(ZERRS(1,JMIN+1))-ABS(ZNERR(1,JMIN));
+	      ENDIF;
+	    ELSE;
+		DIFF = ABS(ZERRS(1,JMIN+1))-ABS(ZERRS(1,JMIN));
+	    ENDIF;
+	    XYZ(3) = XYZ(3)+DIFF;
+	 ENDIF;
+	 XYZ(3)=0.5*XYZ(3);
+   ENDIF;
+   $ADD POINT
+   YSAVE=YSTART;		"Save for fast hist"
+	"Draw vert line at left side of first bin"
+   IF (JPTS.gt.1) THEN;
+      IF (IDEP-2) :X0:,:Y0:,:Z0:;
+	 :X0: YTEMP=XVALS(1,JMIN); GOTO :XYZ0:;
+	 :Y0: YTEMP=YVALS(1,JMIN); GOTO :XYZ0:;
+	 :Z0: YTEMP=ZVALS(1,JMIN);
+	 :XYZ0:
+      XYZ(IDEP)=YTEMP;
+      IF (ABS(YSAVE-YTEMP).gt.ABS($DELTA*YSAVE)) THEN;
+	 $ADD POINT;  YSAVE=YTEMP;
+      ENDIF;
+   ENDIF;
+	 "LOOP OVER ALL BINS"
+   <I=JMIN+1,JMAX;
+      IF ($TRAP) GOTO :RET:;
+      GOTO (:X:,:Y:,:Z:) IDEP;
+	 :X: YTEMP=XVALS(1,I); GOTO :XYZ:;
+	 :Y: YTEMP=YVALS(1,I); GOTO :XYZ:;
+	 :Z: YTEMP=ZVALS(1,I);
+	 :XYZ:
+      LSAVE2=ABS(YSAVE-YTEMP).gt.ABS($DELTA*YSAVE);
+      IF(LSAVE1.or.LSAVE2) THEN;
+	 IF (IV(1).NE.0) THEN;
+	    XYZ(1) = XVALS(1,I-1) + XVALS(1,I);
+	    IF (IE(1).NE.0) THEN;
+	      IF (INE(1).NE.0) THEN;
+		IF (XVALS(1,I) .gt. XVALS(1,I-1)) THEN;
+		    DIFF = ABS(XNERR(1,I))-ABS(XERRS(1,I-1));
+		ELSE;
+		    DIFF = ABS(XERRS(1,I))-ABS(XNERR(1,I-1));
+		ENDIF;
+	      ELSE;
+		DIFF = ABS(XERRS(1,I))-ABS(XERRS(1,I-1));
+	      ENDIF;
+	       IF (XVALS(1,I).LE.XVALS(1,I-1))
+	       THEN; XYZ(1)=XYZ(1)+DIFF;
+	       ELSE; XYZ(1)=XYZ(1)-DIFF; ENDIF;
+	    ENDIF;
+	    XYZ(1)=XYZ(1)*0.5;
+	 ENDIF;
+	 IF (IV(2).NE.0) THEN;
+	    XYZ(2) = YVALS(1,I-1) + YVALS(1,I);
+	    IF (IE(2).NE.0) THEN;
+	      IF (INE(1).NE.0) THEN;
+		IF (YVALS(1,I) .gt. YVALS(1,I-1)) THEN;
+		    DIFF = ABS(YNERR(1,I))-ABS(YERRS(1,I-1));
+		ELSE;
+		    DIFF = ABS(YERRS(1,I))-ABS(YNERR(1,I-1));
+		ENDIF;
+	      ELSE;
+	       DIFF = ABS(YERRS(1,I))-ABS(YERRS(1,I-1));
+	      ENDIF;
+	       IF (YVALS(1,I).LE.YVALS(1,I-1))
+	       THEN; XYZ(2)=XYZ(2)+DIFF;
+	       ELSE; XYZ(2)=XYZ(2)-DIFF; ENDIF;
+	    ENDIF;
+	    XYZ(2)=XYZ(2)*0.5;
+	 ENDIF;
+	 IF (IV(3).NE.0) THEN;
+	    XYZ(3) = ZVALS(1,I-1) + ZVALS(1,I);
+	    IF (IE(3).NE.0) THEN;
+	      IF (INE(1).NE.0) THEN;
+		IF (ZVALS(1,I) .gt. ZVALS(1,I-1)) THEN;
+		    DIFF = ABS(ZNERR(1,I))-ABS(ZERRS(1,I-1));
+		ELSE;
+		    DIFF = ABS(ZERRS(1,I))-ABS(ZNERR(1,I-1));
+		ENDIF;
+	      ELSE;
+	       DIFF = ABS(ZERRS(1,I))-ABS(ZERRS(1,I-1));
+	      ENDIF;
+	       IF (ZVALS(1,I).LE.ZVALS(1,I-1))
+	       THEN; XYZ(3)=XYZ(3)+DIFF;
+	       ELSE; XYZ(3)=XYZ(3)-DIFF; ENDIF;
+	    ENDIF;
+	    XYZ(3)=XYZ(3)*0.5;
+	 ENDIF;
+	 $ADD POINT
+      ENDIF;
+      IF(LSAVE2) THEN;
+	 XYZ(IDEP)=YTEMP;
+	 $ADD POINT;
+	 YSAVE=XYZ(IDEP);	"Save for fast hist"
+      ENDIF;
+      IF (JXB.GE.MAXJ) THEN;   "BUFFER IS FULL"
+		"MAP TO DEVICE SYSTEM"
+	 JXB=(JXB-3)/3;
+	 CALL T2XFRM(3,JXB,BUFFER(4),NONLIN,XFRM14,2,BUFFER);
+		"PLOT THEM"
+	 CALL TXLINX(BUFFER,IFIRST*JXB,LINTEX);
+	 IFIRST=-1;
+		"START AGAIN AT MOST RECENT POINT"
+	 JXB=3; <JJ=1,2; $ADD POINT; >
+      ENDIF;
+   >
+	"GOTO RIGHT END OF LAST BIN"
+   IF (IV(1).NE.0)THEN;
+      XYZ(1) = 2*XVALS(1,JMAX) -XYZ(1);
+"
+      XYZ(1) = 3.*XVALS(1,JMAX) - XVALS(1,JMAX-1);
+      IF (IE(1).NE.0) THEN;
+	XYZ(1)=XYZ(1)+DIFF;
+	DIFF=ABS(XERRS(1,JMAX))-ABS(XERRS(1,JMAX-1));
+      THEN;
+       XYZ(1)=XYZ(1)*0.5;
+"
+   ENDIF;
+   IF (IV(2).NE.0) THEN;
+      XYZ(2) = 2*YVALS(1,JMAX) -XYZ(2);
+"
+      XYZ(2) = 3.*YVALS(1,JMAX) - YVALS(1,JMAX-1);
+      IF (IE(2).NE.0) THEN;
+	XYZ(2)=XYZ(2)+DIFF;
+	DIFF=ABS(YERRS(1,JMAX))-ABS(YERRS(1,JMAX-1));
+      THEN;
+      XYZ(2)=XYZ(2)*0.5;
+"
+   ENDIF;
+   IF (IV(3).NE.0) THEN;
+      XYZ(3) = 2*ZVALS(1,JMAX) -XYZ(3);
+"
+      XYZ(3) = 3.*ZVALS(1,JMAX) - ZVALS(1,JMAX-1);
+      IF (IE(3).NE.0) THEN;
+	XYZ(3)=XYZ(3)+DIFF;
+	DIFF=ABS(ZERRS(1,JMAX))-ABS(ZERRS(1,JMAX-1));
+      THEN;
+      XYZ(3)=XYZ(3)*0.5;
+"
+   ENDIF;
+   $ADD POINT
+	"GOTO LEFT END OF BASELINE"
+   XYZ(IDEP) = YSTART;   $ADD POINT
+	"AND TO RIGHT END OF BASELINE"
+   IF (.NOT.$3D) THEN;
+      XYZ(1) = XYZLIM(1,2);   $ADD POINT;
+   ENDIF;
+	"EMPTY LINE BUFFER"
+   JXB=(JXB-3)/3;
+   CALL T2XFRM(3,JXB,BUFFER(4),NONLIN,XFRM14,2,BUFFER);
+   CALL TXLINX(BUFFER,IFIRST*JXB,LINTEX);
+%E  --- Bar chart
+ELSE;		"BAR CHART"
+"
+	Choose major & minor indep axis for bar widths
+"
+      JXB=4;
+      IF (IAND(INLEVL,1) .eq. 0) JXB=3;
+      J=0; MAJOR=0;
+      <I=1,3;
+	 IF (IV(I).NE.0) THEN;
+	    J=I; IF (IE(I).NE.0) MAJOR=I;
+	 ENDIF;
+      >
+      IF (MAJOR.EQ.0) MAJOR=J;
+      IF (MAJOR.EQ.0) RETURN;   "NO INDEPENDENT VARIABLES"
+      MINOR=6-IDEP-MAJOR;
+   "SET UP Y-VALUE FOR BOTTOM OF BAR, WHICH WILL BE UNCHANGED."
+      YSTART = AMAX1(0.,XYZLIM(IDEP,1));
+   "PUT ON A BASELINE, IF NEEDED"
+      IF (.NOT.($3D)) THEN;
+	 IF (BETWEEN(XYZLIM(IDEP,1),YSTART,XYZLIM(IDEP,2))) THEN;
+	    SAV1 = XYZLIM(IDEP,1); SAV2 = XYZLIM(IDEP,2);
+	    XYZLIM(IDEP,1) = YSTART; XYZLIM(IDEP,2) = YSTART;
+	    CALL T2XFRM(3,2,XYZLIM,NONLIN,XFRM14,2,BUFFER);
+	    XYZLIM(IDEP,1) = SAV1; XYZLIM(IDEP,2) = SAV2;
+	    CALL TXLINX(BUFFER,2,LINTEX);
+	 ENDIF;
+      ENDIF;
+   "Look at all bins, to get a default width"
+      WIDDF=0;
+      IF (JMAX .gt. 1) WIDDF=$LARGE REAL;
+      IF (MAJOR.EQ.1) THEN;
+	 <I=JMIN+1,JMAX;
+	    W=XVALS(1,I)-XVALS(1,I-1);
+	    IF (W.NE.0.) WIDDF=AMIN1(WIDDF,ABS(W));
+	 >
+      ENDIF;
+      IF (MAJOR.EQ.2) THEN;
+	 <I=JMIN+1,JMAX;
+	    W = YVALS(1,I)-YVALS(1,I-1);
+	    IF (W.NE.0.) WIDDF=AMIN1(WIDDF,ABS(W));
+	 >
+      ENDIF;
+      IF (MAJOR.EQ.3) THEN;
+	 <I=JMIN+1,JMAX;
+	    W = ZVALS(1,I)-ZVALS(1,I-1);
+	    IF (W.NE.0.) WIDDF=AMIN1(WIDDF,ABS(W));
+	 >
+      ENDIF;
+   "BUGGER FOR MONTHS & YEARS"
+      IF (NONLIN(MAJOR).EQ.-4 .OR. NONLIN(MAJOR).EQ.-5)
+	 WIDDF = AMIN1(WIDDF,0.05);
+   "Set default bar width at 30% for bar chart, 50% for hist"
+	 IF (IAND(INLEVL,1) .ne. 0) THEN;	"Bar chart ??"
+	    WIDDF=0.3333*WIDDF;
+	 ELSE;
+	    WIDDF=0.5*WIDDF;
+	 ENDIF;
+      WIDTH(1)=WIDDF;
+      WIDTH(2)=WIDDF;
+   "SET UP DEFAULT VALUES AT LOWER LIMIT OR ZERO"
+      <I=1,3;
+	 BUFFER(I+3)=XYZLIM(I,1);   "DEFAULT IS LOWER LIMIT"
+	 IF (SIGN(1.,XYZLIM(I,1)) .NE. SIGN(1.,XYZLIM(I,2)) )
+	    BUFFER(I+3)=0.;	"IF ZERO IS IN RANGE, USE IT"
+      >
+      BUFFER(IDEP+9)=BUFFER(IDEP+3); BUFFER(IDEP)=BUFFER(IDEP+3);
+   "LOOP OVER ALL BINS"
+      <I=JMIN,JMAX;
+	 IF ($TRAP) GOTO :RET:;
+	 IF (IE(MAJOR).NE.0) THEN;   "WIDTH HAS ERROR BARS"
+	    WIDTH(1)=0.;
+	    GOTO (:X2:,:Y2:,:Z2:) MAJOR;
+	    :X2: WIDTH(1)=ABS(XERRS(1,I)); GOTO :XYZ2:;
+	    :Y2: WIDTH(1)=ABS(YERRS(1,I)); GOTO :XYZ2:;
+	    :Z2: WIDTH(1)=ABS(ZERRS(1,I));
+	    :XYZ2: IF (WIDTH(1).EQ.0.) WIDTH(1)=WIDDF;
+	 ENDIF;
+	 IF (INE(MAJOR).NE.0) THEN;   "WIDTH HAS ERROR BARS"
+	    WIDTH(2)=0.;
+	    GOTO (:X3:,:Y3:,:Z3:) MAJOR;
+	    :X3: WIDTH(2)=ABS(XNERR(1,I)); GOTO :XYZ3:;
+	    :Y3: WIDTH(2)=ABS(YNERR(1,I)); GOTO :XYZ3:;
+	    :Z3: WIDTH(2)=ABS(ZNERR(1,I));
+	    :XYZ3: IF (WIDTH(2).EQ.0.) WIDTH(2)=WIDDF;
+	 ENDIF;
+	 IF (XEXIST) BUFFER(4)=XVALS(1,I);
+	 IF (YEXIST) BUFFER(5)=YVALS(1,I);
+	 IF (ZEXIST) BUFFER(6)=ZVALS(1,I);
+	 "BUGGER MONTHS & YEARS"
+	    <J=1,3;
+	       IF (NONLIN(J).NE.-4 .AND. NONLIN(J).NE.-5) <NEXT>;
+	       IF (ABS( BUFFER(J+3)-AINT(BUFFER(J+3)) ).LT.0.002)
+		  BUFFER(J+3)=BUFFER(J+3)+0.16;
+	    >
+	 "X"
+	    BUFFER(MAJOR+6)=BUFFER(MAJOR+3)+WIDTH(1);
+	    BUFFER(MAJOR+9)=BUFFER(MAJOR+6);
+	    BUFFER(MAJOR+3)=BUFFER(MAJOR+3)-WIDTH(INE(MAJOR)+1);
+            IF ( NONLIN(MAJOR).EQ.-4 .OR. NONLIN(MAJOR).EQ.-4) THEN ;
+               MONTH = BUFFER(MAJOR+3) ;
+	       DAY   = BUFFER(MAJOR+3) - MONTH ;
+               IF ( DAY .GT. .50 ) THEN ;
+                  BUFFER(MAJOR+3) = BUFFER(MAJOR+3) - 1. + 
+                     DAYMON ( 1 + MOD ( MONTH-1 , 12 ) ) ;
+               IF ( MONTH.EQ.2 .AND. MOD ( (MONTH-1)/12 , 4 ).EQ.3 )
+                  BUFFER(MAJOR+3) = BUFFER(MAJOR+3) + 1 ;
+               ENDIF ;
+            ENDIF ;
+	    BUFFER(MAJOR)=BUFFER(MAJOR+3);
+	 "Y"
+	    BUFFER(IDEP+6)=BUFFER(IDEP+3);
+	 "Z"
+	    BUFFER(MINOR)=BUFFER(MINOR+3);
+	    BUFFER(MINOR+6)=BUFFER(MINOR+3);
+	    BUFFER(MINOR+9)=BUFFER(MINOR+3);
+	 "Transform to devc system"
+	    CALL T2XFRM(3,4,BUFFER,NONLIN,XFRM14,2,BUFFER(13));
+	    <J=0,1; BUFFER(J+21)=BUFFER(J+13); >	"First point at end"
+	    IF (LFILL)				"Fill the area ?"
+		CALL TXFILL(BUFFER(13),BUFFER(14),HNONE,2,4,IHIDE);
+	    IF (JXB .eq. 3) THEN;			"Not bar chart ?"
+	       <J=0,1;
+		       T=BUFFER(J+23);
+		       BUFFER(J+23)=BUFFER(J+17);   "Save 3'rd point"
+		       IF (I .ne. JMIN) THEN;	"Use saved pont"
+			  BUFFER(J+13)=T;
+		       ENDIF;
+	       >
+	       IF (I .eq. JMAX) JXB=4;
+	    ENDIF;
+	    CALL T2_MESH_DRAW(BUFFER(13),JXB,IHIDE);
+	    IF (IHIDE .eq. 6) THEN;
+	       <J=0,1; BUFFER(J+13)=BUFFER(J+21); >
+	       CALL T2_MESH_DRAW(BUFFER(13),5,5);	"Now hide"
+	    ENDIF;
+      >
+      IF (IHIDE .eq. 6) CALL T2_MESH_FLUSH;
+ENDIF;
+	   "FINISH UP"
+:RET:
+      IF (FLAGS(121)) CALL TXXMT;
+CALL T2_MESH_FLUSH;
+CALL T2CWTS(ITXSAV,IDUM);
+CALL TXSCIS(1);"RESET SCISSORING TO FULL-SCREEN"
+CALL T2TCKS(8);  "Put on ticks"
+END;
+%E  SUBROUTINE T2JOIN
+SUBROUTINE T2JOIN(XVALS,YVALS,ZVALS,JTYPE,INLEVL,NP,INCRMT);
+   IMPLICIT NONE;
+   INTEGER JSETS,JTYPE,INLEVL,NP,INCRMT;
+   REAL XVALS(INCRMT,*),YVALS(INCRMT,*),ZVALS(INCRMT,*);
+"
+	ROUTINE TO JOIN POINTS IN GRAPH.  ERRORS NOT USED.
+	EXCEPT FOR DETERMINING LIMITS OF ENTIRE GRAPH.
+		JTYPE = 0 -- MY CHOICE OF ALGORITHM
+		(BITS	1 -- SPLINE
+		  3-0)	0 -- GENERAL
+			3 -- FILL
+			4 -  HIDE
+
+		( 4-)	0 -- USE LINTEX.
+			1 -- DOTS  (64)
+			2 -- DASH  (128)
+			3 -- DOT-DASH (192)
+			4 -- SOLID (256)
+"
+   REAL TWOPI;
+   PARAMETER (TWOPI=6.2831 85307 18 D0 );
+   $SPECIFICATION;
+   INTEGER FIRST,FIRSTJ,OVERLP,LAST,NDIM,ISC(4);
+   INTEGER I,J,K,L,N,ITXSAV,JMIN,JMAX;
+   INTEGER LEVEL,IXB,LP1,JJTYPE,NBUFF;
+   INTEGER IYB,IXP,IXPP,IXPPP,ILX,ILY,MINX,MAXX,MINY,MAXY,IXMONO,IXB1,IYB1;
+   INTEGER ILX1,ILY1,JJX,JJY,MAXM1,MAXPNT,IMIN,IMAX;
+   INTEGER IDUM,NJ,IHIDE,NHIDE;
+   REAL X,Y,XY(2),XYZ(3),XFRM(12),DXX,XP,XPP,XPPP,DX,TEMP1,TEMP2;
+   $BOOLEAN CLOSED;	"If first point=last point, this is true"
+   $BOOLEAN XEXIST,YEXIST,ZEXIST;
+   $EQUIVALENCE;
+   $DATA;
+   $SPECIFYNONE;
+
+   IF (NP.LE.1) RETURN;
+   IXB= 1;				"Start of X in buffer"
+   IYB=IXB+1;				"Start of Y in buffer"
+   XEXIST=XVALS(1,1).NE.HNONE;
+   YEXIST=YVALS(1,1).NE.HNONE;
+   ZEXIST=ZVALS(1,1).NE.HNONE;
+   IF (FLAGS(31))			"Text mode?"
+   THEN;
+      <I=1,3; XYZ(I)=0;>
+      IF (.NOT.$DEF TEXT) CALL TXDEF1;  "DEFINE TEXT COORD SYS"
+      NDIM=2;
+      <I=1,3; ISC(I)=LINEAR(I); XFRM(I)=XFRM34(I); XFRM(I+3)=XFRM34(I+3);>
+      ISC(4)=LINEAR(4);
+   ELSE;				"Set X- and Y-limits for the plot"
+      <I=1,3; XYZ(I)=XYZLIM(I,1);>
+      CALL T2AXES;
+      IF (.not.$DEF DATA) RETURN;
+      CALL TXSCIS(2);			"Scissored at window"
+      NDIM=3; <I=1,4; ISC(I)=NONLIN(I);> <I=1,12; XFRM(I)=XFRM14(I);>
+   ENDIF;
+   FLAGS(28)= .TRUE.;			"Points have been treated"
+   CALL T2CWTS(JTYPE,ITXSAV);
+   CALL TXSDEF;
+   JMIN=1; JMAX=NP;
+"Find join level"
+   LEVEL=ABS(INLEVL);
+   IF (JMAX.LE.2 .and. LEVEL.eq.0) LEVEL=1;
+   IF ($3D .AND. LEVEL.EQ.0) LEVEL=1;
+   IF ($3D .AND. FLAGS(120) .and. LEVEL.eq.1 .and. IAND(JTYPE,7) .eq.0) THEN;
+      CALL TXLINZ(XVALS,YVALS,ZVALS,INCRMT,JMAX,.TRUE.);
+      GOTO :RET:;
+   ENDIF;
+   IF (LEVEL.LE.0 .OR. LEVEL.GT.20) THEN;	"Must calculate"
+      IF (FLAGS(31)) THEN;  LEVEL=1;		"Text mode"
+      ELSE;
+	 I=SQRT(FLOAT(JMAX)-.5)+1;
+	 LEVEL=MAX(1,10-I);
+      ENDIF;
+   ENDIF;
+"Choose type of fit"
+   JJTYPE= MOD(JTYPE,4);			"Type of fit"
+
+   IF (JJTYPE .eq.3 ".and.2*NP*LEVEL+4.gt.$BUFSIZ" ) THEN; "Fill ?"
+      LEVEL=1;				"Set level to 1"
+   ELSEIF (LEVEL.EQ.1 .or. JJTYPE.EQ.0) THEN;  "Default to General"
+      JJTYPE=2; "Use general join if my choice"
+   ENDIF;
+"Pre-plot housekeeping"
+   LP1= LEVEL + 1;
+"
+	Do the joining, with whatever type is required
+"
+IHIDE=2;  IF (IAND(JTYPE,4) .ne.0 ) IHIDE=6;
+:AGAIN:
+IF (JJTYPE.EQ.1) THEN;
+"
+	Spline fit.  Need 5 buffers (x,y,3 derivs) of length
+	NBUFF.  LOCS used are pointer+0 to POINTER+NBUFF-1.
+	also 2 of size LEVEL+1, for subpoints in each segment.
+	LOCS used are pointer+0 to pointer+level.
+"
+   IF (JMAX.LT.4) THEN;		"CANT DO SPLINE"
+      ERROR STRING;
+	 ('*** WARNING *** Spline fit needs 4 points. General fit used.');
+      GOTO :GENERAL:;
+   ENDIF;
+   NBUFF= ($BUFSIZ - 2*LP1-2)/5;
+   IF (NBUFF .lt. JMAX) THEN;		"Can't do spline fit"
+      IXB=0;
+      CALL T2_GET_MEMORY(BUFFER,5*JMAX+2*LP1+2,IXB);	"Get more"
+      IF (IXB .eq. 0) THEN;
+	 IXB=1;
+	 ERROR MESSAGE JMAX,NBUFF;
+	     ('*** WARNING ***',I6,' points exceeds maximum (',I3,
+	     ') for spline fit. General fit used.');
+	 GOTO :GENERAL:;
+      ENDIF;
+      IYB=IXB+1;
+      NBUFF=JMAX;
+   ENDIF;
+
+"
+	Assign space in 'buffer'
+"
+   IXP=IXB+2*JMAX;
+   IXPP=IXP+JMAX;
+   IXPPP=IXPP+JMAX;
+   ILX=IXPPP+JMAX+2;
+   ILY=ILX+1;
+   MINX=IXB;
+"
+	Load buffer arrays with coordinates in device system
+"
+   <I=JMIN,JMAX;
+      IF (XEXIST) XYZ(1)=XVALS(1,I);
+      IF (YEXIST) XYZ(2)=YVALS(1,I);
+      IF (ZEXIST) XYZ(3)=ZVALS(1,I);
+      CALL T2XFRM(NDIM,1,XYZ,ISC,XFRM,2,BUFFER(MINX));
+      MINX=MINX+2;
+   >
+"
+	Check that either X or Y is monotonic
+"
+   MINX=IXB; MAXX=IXB+2*(JMAX-2);
+   MINY=IYB; MAXY=IYB+2*(JMAX-2);
+   :CHECK:
+   <BLOCK> <
+     <I=MINX,MAXX,2;
+       IF (BUFFER(I+2).LE.BUFFER(I)) THEN;	"X not incr"
+	 <J=MINX,MAXX,2;
+	   IF (BUFFER(J+2).GE.BUFFER(J)) THEN;	"X not decr"
+	     <K=MINY,MAXY,2;
+	       IF (BUFFER(K+2).LE.BUFFER(K)) THEN;
+		 <L=MINY,MAXY,2;
+		   IF (BUFFER(L+2).GE.BUFFER(L)) THEN;
+		       ERROR MESSAGE;
+			 ('*** WARNING *** Spline fit needs ',
+			  'monotonic points.  '
+			    ,'General fit used.');
+		     GOTO :GENERAL:;
+		   ENDIF;
+		 >
+		 IXMONO=0;
+		 <EXIT>:CHECK:;			"Y DECREASING"
+	       ENDIF;
+	     >
+	     IXMONO=0;			"Y INCREASING"
+	     <EXIT>:CHECK:;
+	   ENDIF;
+	 >
+	 IXMONO=1;			"X DECREASING"
+	 <EXIT>:CHECK:;
+       ENDIF;
+     >
+     IXMONO=1;				"X INCREASING"
+   >	"End of :check: block"
+"
+	More buffer pointers, for x-spline or y-spline
+"
+   IF (IXMONO.EQ.1)			"X-spline"
+   THEN; IXB1=IXB; IYB1=IYB; ILX1=ILX; ILY1=ILY;
+   ELSE; IXB1=IYB; IYB1=IXB; ILX1=ILY; ILY1=ILX; ENDIF;
+   CALL T2SPLN(2,JMAX,BUFFER(IXB1),BUFFER(IYB1),1,BUFFER(IXP),
+      BUFFER(IXPP),BUFFER(IXPPP)); "GET DERIVATIVES"
+"
+	Now join each pair of points in turn
+"
+   <I=1,JMAX-1;				"Now plot the spline"
+      IF ($TRAP) GOTO :RET:;
+      X=BUFFER(IXB1);			"X1"
+      IXB1=IXB1+2;
+      DXX=(BUFFER(IXB1)-X)/FLOAT(LEVEL);	"(X2-X1)/LEVEL"
+      Y=BUFFER(IYB1);			"Y1"
+      IYB1=IYB1+2;
+      XP=BUFFER(IXP);      IXP=IXP+1;
+      XPP=BUFFER(IXPP);    IXPP=IXPP+1;
+      XPPP=BUFFER (IXPPP); IXPPP=IXPPP+1;
+      JJX=ILX1;
+      JJY=ILY1;
+      BUFFER(JJX)= X;			"X1"
+      BUFFER(JJY)= Y;			"Y1"
+      JJX=JJX+2;
+      JJY=JJY+2;
+      <J=2,LEVEL;			"Calculate the spline"
+	 DX=(J-1)*DXX;
+	 BUFFER(JJY)=Y + DX*(XP+DX*(XPP+DX*XPPP));
+	 BUFFER(JJX)=X + DX;
+	 JJX=JJX+2;
+	 JJY=JJY+2;
+      >
+      BUFFER(JJX)= BUFFER(IXB1);	"X2"
+      BUFFER(JJY)= BUFFER(IYB1);	"Y2"
+	 IF ($TRAP) GOTO :RET:;
+      CALL T2_MESH_DRAW(BUFFER(ILX),LP1,IHIDE);	"Draw or hide"
+   >
+%E  --- General fit
+ELSE;
+:GENERAL:
+"
+	general fit.  need 2 buffers (x and y), for both
+	sub- and superpoints.  locs used are POINTER+0 to
+	POINTER+NBUFF-1.
+"
+   CLOSED=JMAX.GT.2 .and. LEVEL.gt.1;		"Inicates a closed curve"
+"
+
+	Check to see if first point=last
+
+"
+   IF (XEXIST) THEN;
+      TEMP1=XVALS(1,JMIN); TEMP2=XVALS(1,JMAX);
+      IF ($POLAR) THEN;				"Check polar angles"
+	 TEMP1=MOD(TEMP1*RADANG,TWOPI);
+	 TEMP2=MOD(TEMP2*RADANG,TWOPI);
+	 IF(TEMP1.lt.0) TEMP1=TEMP1+TWOPI;
+	 IF(TEMP2.lt.0) TEMP2=TEMP2+TWOPI;
+      ENDIF;
+      IF (ABS(TEMP1-TEMP2) .gt. $DELTA*(ABS(TEMP1)+ABS(TEMP2)))CLOSED=.FALSE.;
+   ENDIF;
+   IF (YEXIST) THEN;
+      TEMP1=YVALS(1,JMIN); TEMP2=YVALS(1,JMAX);
+      IF (ABS(TEMP1-TEMP2) .gt. $DELTA*(ABS(TEMP1)+ABS(TEMP2)))CLOSED=.FALSE.;
+   ENDIF;
+   IF (ZEXIST) THEN;
+      TEMP1=ZVALS(1,JMIN); TEMP2=ZVALS(1,JMAX);
+      IF ($POLAR.AND.$SPHERICAL) THEN;		"Check polar angles ?"
+	 TEMP1=MOD(TEMP1*RADANG,TWOPI);
+	 TEMP2=MOD(TEMP2*RADANG,TWOPI);
+	 IF(TEMP1.lt.0) TEMP1=TEMP1+TWOPI;
+	 IF(TEMP2.lt.0) TEMP2=TEMP2+TWOPI;
+      ENDIF;
+      IF (ABS(TEMP1-TEMP2) .gt. $DELTA*(ABS(TEMP1)+ABS(TEMP2)))CLOSED=.FALSE.;
+   ENDIF;
+   OVERLP= 2;				"Number of points overlap"
+   NBUFF= $BUFSIZ/2;			"Buffer size"
+   MAXM1=(NBUFF-1)/LEVEL;		"Max numbr of superpoints (-1)"
+   IF (CLOSED) THEN;			"Closed curve ??"
+"
+	If closed curve, must pick up
+	more points from beginning of array
+	START AT first point-1 (SAME AS LAST, SO I WONT USE IT)
+"
+	FIRST=JMAX-OVERLP;		"First superpoint"
+	JMAX=JMAX-1;			"Skip last=first"
+	LAST=2*JMAX+OVERLP+1;		"Last superpoint"
+	FIRSTJ=OVERLP*LEVEL;		"First value to join"
+   ELSE;
+	FIRST=JMIN;			"Do only first point--->last"
+	LAST=JMAX;
+	FIRSTJ=0;			"Plot first generated point"
+   ENDIF;
+   MAXPNT=MAXM1-2*OVERLP;		"Maximum number of super points"
+   <IMIN=FIRST,LAST,MAXPNT;		"First point to get"
+      IXB1=IXB;				"Buffer"
+      IMAX=MIN(LAST,IMIN+MAXM1-1);	"Last point to get"
+      <I=IMIN,IMAX;			"Get the points"
+	J=MOD(I-JMIN,JMAX)+JMIN;	"Element of array"
+	IF (XEXIST) XYZ(1)=XVALS(1,J);
+	IF (YEXIST) XYZ(2)=YVALS(1,J);
+	IF (ZEXIST) XYZ(3)=ZVALS(1,J);
+	CALL T2XFRM(NDIM,1,XYZ,ISC,XFRM,2,BUFFER(IXB1));
+		"Convert to device frame"
+	IXB1=IXB1+2;			"Next XY value"
+      >
+      N=IMAX-IMIN+1;			"Number of points"
+      NJ=(N-1)*LEVEL+1;			"Number to generate"
+      IF (LEVEL .gt. 1)			"Generate smoothed points"
+	 CALL T2CFIT(2,N,BUFFER(IXB),BUFFER(IYB),
+	     LEVEL,NJ,BUFFER(IXB),BUFFER(IYB));
+      IF (IMAX .LT. LAST .OR. CLOSED)	"Not Last time, or closed?"
+		NJ=NJ-OVERLP*LEVEL;	"Remove end overlap points"
+      NJ=NJ-FIRSTJ;			"Remove begin overlap"
+      IXB1=IXB+2*FIRSTJ;		"First point (overlap removed)"
+	 IF ($TRAP) GOTO :RET:;
+      CALL T2_MESH_DRAW(BUFFER(IXB1),NJ,IHIDE);	"Draw"
+      FIRSTJ=OVERLP*LEVEL-1;		"Next First value to join"
+	IF (IMAX .ge. LAST) <EXIT>;	"Done ??"
+   >
+   IF (JJTYPE .eq. 3) THEN;
+      CALL T2_MESH_FLUSH;
+      IF (LEVEL .gt. 1) THEN;
+	 CALL TXFILL(BUFFER(IXB1),BUFFER(IXB1+1),HNONE,2,NJ,IHIDE);
+      ELSE;
+	 CALL TXFILL(XVALS,YVALS,ZVALS,INCRMT,-JMAX,IHIDE);
+      ENDIF;
+   ENDIF;
+ENDIF;
+IF (IHIDE .eq. 6) THEN;
+   CALL T2_MESH_FLUSH;
+   IHIDE=5;
+   IF (JJTYPE .eq. 3) JJTYPE=2;
+   GOTO :AGAIN:;
+ENDIF;
+:RET:
+   IF (IXB .ne. 1) CALL T2_FREE_MEMORY(BUFFER,IXP,5*JMAX+2*LP1+2);
+      IF (FLAGS(121)) CALL TXXMT;
+CALL T2_MESH_FLUSH;
+CALL T2CWTS(ITXSAV,IDUM);
+IF (.NOT.FLAGS(31)) THEN;			"Text mode?"
+   CALL TXSCIS(1);"RESET SCALING TO FULL-SCREEN"
+   CALL T2TCKS(8);
+ENDIF;
+END;
+
+%E  SUBROUTINE T2_PLOT_TITLE --- Puts titles around a plot
+SUBROUTINE T2_PLOT_TITLE(ISET,LFIRST);
+"
+	Plot titles around a plot
+	Input:	ISET = data set number
+		LFIRST= true if first title this window
+"
+    IMPLICIT NONE;
+    $SPECIFICATION;
+    $SPECIFYNONE;
+    $MAINSPEC;
+    $BOOLEAN LFIRST;
+    INTEGER ISET;
+    CHARACTER*15 LOCATION(4)
+	/'TOP NEXT','X CENTER NEXT','Y CENTER NEXT','Z CENTER NEXT'/;
+    INTEGER I,J,K,T2BTRIM,ISIZ;
+    CALL T2GDSET(ISET,1,1,1,1,ISETD,HNONE,'*');
+    CALL T2_GET_SET_NAME(IBGDAT,OUTSTR);
+    ISIZ=T2BTRIM(OUTSTR);
+    IF (OUTSTR(:ISIZ) .eq. ' ') RETURN;
+    K=0;
+    <I=1,4;
+	J=K+1;
+	IF (J .gt. ISIZ) <EXIT>;
+	K=INDEX(OUTSTR(J:),';')+J-1;
+	IF (K .lt. J) K=ISIZ+1;
+	IF (K .gt. J) THEN;
+	    CALL TDTEXT(LOCATION(I),OUTSTR(J:K-1),' ');
+	ENDIF;
+    >
+END;
+%E  SUBROUTINE T2CFIT
+SUBROUTINE T2CFIT(LL,L,X,Y,M,N,U,V);
+INTEGER L,M,N;
+REAL X(LL,L),Y(LL,L);
+REAL U(LL,*),V(LL,*);  "TRUE DIMENSION IS N"
+" THIS SUBROUTINE IS ADAPTED FROM ACM ALGORITHM #433,"
+"BY HIROSHI AKIMA"
+"INTERPOLATION AND SMOOTH CURVE FITTING BASED ON LOCAL"
+"PROCEDURES, C.A.C.M. 15,10 PP914-918 (OCT 72)."
+"     ---ROGER CHAFFEE   7 MARCH 1974   "
+
+"IT IS EQUIVALENT TO AKIMA'S SUBROUTINE CRVFIT, WITH
+ MD=2 (MULTIPLE-VALUED FUNCTIONS), BUT IT ALLOWS THE TRIVIAL
+ CASES OF ONE DATA POINT AND/OR ONE SUBINTERVAL.  IN THE
+ CASE OF IDENTICAL POINTS, IT GIVES INTERPOLATED POINTS
+ THE SAME AS THE INPUT POINTS, AND CALCULATES OTHER
+ POINTS AS IF THERE WERE NO DEGENERACY."
+
+" THIS SUBROUTINE FITS A SMOOTH CURVE TO A GIVEN SET OF IN-
+ PUT DATA POINTS IN AN X-Y PLANE.  IT INTERPOLATES POINTS
+ IN EACH INTERVAL BETWEEN A PAIR OF DATA POINTS AND GENER-
+ ATES A SET OF OUTPUT POINTS CONSISTING OF THE INPUT DATA
+ POINTS AND THE INTERPOLATED POINTS."
+
+"THE INPUT PARAMETERS ARE
+      L = NUMBER OF INPUT DATA POINTS
+      X = ARRAY OF DIMENSION L WITH INPUT ABSCISSAE
+      Y = ARRAY OF DIMENSION L WITH INPUT ORDINATES
+      M = NUMBER OF SUBINTERVALS BETWEEN EACH INPUT POINT
+
+ THE OUTPUT PARAMETERS ARE
+      N = NUMBER OF OUTPUT POINTS
+	= (L-1)*M + 1
+      U = ARRAY OF DIMENSION N WITH OUTPUT ABSCISSAE
+      V = ARRAY OF DIMENSION N WITH OUTPUT ORDINATES"
+
+
+"PRELIMINARY PROCESSING"
+   M0=MAX0(M,1);   "NUMBER OF SUB-INTERVALS BETWEEN INPUT POINTS"
+   L0=MAX0(L,1);   "NUMBER OF INPUT POINTS"
+   N0=(L0-1)*M0+1; "NUMBER OF OUTPUT POINTS"
+   MM1=M0-1;
+   N=N0;
+   IF (M0 .eq. 1) RETURN;
+   RM=1./FLOAT(M0);
+"PUT (X,Y) POINTS INTO (U,V) ARRAY"
+   K2=N0+M0;I=L0+1;
+   <J=1,L0;  K2=K2-M0;I=I-1; U(1,K2)=X(1,I); V(1,K2)=Y(1,I);>
+   IF (N0.EQ.1 .OR. MM1.EQ.0) RETURN; "IF NOTHING TO DO"
+"SET UP POINTS AND DIFFERENCES"
+   K2=1;   "K2 POINTS TO LOW END OF INTERVAL BEING FILLED"
+   K5=1;   "K5 POINTS TO HIGHEST POINT IN USE"
+   X3=U(1,1); Y3=V(1,1);
+   "POINT 4 IS NEXT NON-DEGENERATE POINT"
+      <LOOP> <
+	 K5=K5+M0;
+	 X4=U(1,K5); Y4=V(1,K5); A3=X4-X3; B3=Y4-Y3;
+	 IF (A3.NE.0.0 .OR. B3.NE.0.0. OR. K5.EQ.N0) <EXIT>;
+      >
+   "POINT 5 IS NEXT NON-DEGENERATE POINT"
+      IF (K5.NE.N0) K5=K5+M0;
+      <LOOP> <
+	 X5=U(1,K5); Y5=V(1,K5); A4=X5-X4; B4=Y5-Y4;
+	 IF (A4.NE.0.0 .OR. B4.NE.0.0. OR. K5.EQ.N0) <EXIT>;
+	 K5=K5+M0;
+      >
+
+   "ESTIMATE SLOPES AND DISTANCES FOR DUMMY POINTS 1 AND 2"
+      A2=A3+A3-A4;B2=B3+B3-B4;
+      A1=A2+A2-A3;B1=B2+B2-B3;
+      R23=SQRT(A2**2+B2**2); R34=SQRT(A3**2+B3**2);
+
+   "FIGURE SLOPE FOR FIRST REAL POINT"
+      IRTRN=0; GOTO :FIND SLOPE:;:RETURN:IRTRN=1;
+
+   "NOW LOOP OVER ALL INTERVALS"
+   <LOOP> <
+	"SHIFT 1 <-- 2 <-- 3 <-- 4 <-- 5 "
+	 X2=X3;X3=X4;X4=X5;Y2=Y3;Y3=Y4;Y4=Y5;
+	 A1=A2;A2=A3;A3=A4;B1=B2;B2=B3;B3=B4;
+	 COS2=COS3;SIN2=SIN3;R12=R23;R23=R34;
+	"FIND NEXT NON-DEGENERATE POINT"
+	 <LOOP> <
+	    IF (K5.EQ.N0) THEN;   "ESTIMATE SLOPES BEYONE THE END"
+	       B4=B3+B3-B2;
+	       <EXIT>;
+	    ENDIF;
+	    K5=K5+M0;
+	    X5=U(1,K5); Y5=V(1,K5); A4=X5-X4; B4=Y5-Y4;
+	 >
+	 <WHILE> (A4.EQ.0.0 .AND. B4.EQ.0.0);
+	"FILL IN BETWEEN DEGENERATE POINTS"
+	 <LOOP> <  "UNTIL I FIND A NON-DEGENRATE PAIR"
+	    J=K2+M0;
+	    IF (X2.NE.U(1,J).OR.Y2.NE.V(1,J)) <EXIT>;
+	    <J=1,MM1;K2=K2+1;U(1,K2)=X2;V(1,K2)=Y2;>
+	    K2=K2+1; IF(K2.GE.N0) RETURN;  "ALL DONE"
+	 >
+
+	"FIND TANGENT (SIN3 AND COS3) AT POINT 3"
+	 :FIND SLOPE: "START OF :FIND SLOPE: 'SUBROUTINE'"
+	    W2=ABS(A3*B4-A4*B3); W3=ABS(A1*B2-B1*A2);
+	    IF ((W3+W2).EQ.0.0) THEN;
+	       W2=SQRT(A3**2+B3**2);
+	       W3=SQRT(A2**2+B2**2);
+	    ENDIF;
+	    COS3=W2*A2+W3*A3; SIN3=W2*B2+W3*B3;
+	    R3=COS3**2+SIN3**2;
+	    IF (R3.NE.0.0) THEN;
+	       R3=SQRT(R3);COS3=COS3/R3;SIN3=SIN3/R3;
+	    ENDIF;
+	    IF (IRTRN.EQ.0) GOTO :RETURN:; "RETURN OR FALL THROUGH"
+	 "END OF :FIND SLOPE: SUBROUTINE"
+	"MAKE MAGNITUDE FOR TANGENT VECTORS AT POINTS 2 AND 3"
+	 "AKIMA USES T2=T3=R23.  FOLLOWING IS FROM J.R. MANNING,
+	  'CONTINUITY CONDITIONS FOR SPLINE CURVES',
+	  COMPUTER JOURNAL 17,2 P 181"
+	  "EXTRA FACTORS (1+DOT2) & (1+DOT3) ARE AN ATTEMPT TO
+	   INHIBIT CURVING WHEN A SPIKE IS PRESENT IN
+	   THE POINTS TO BE PLOTTED, BY REDUCING THE MAGNITUDES
+	   OF THE TANGENT VECTORS.
+				    -RBC 8/79
+	  "
+	  R34=SQRT(A3**2+B3**2);
+	  IF (R12.EQ.0.0 .OR. R23.EQ.0.0 .OR. R34.EQ.0.0) THEN;
+	     T2=R23; T3=R23;
+	  ELSE;
+	     CT2 = (A2*COS2+B2*SIN2)/R23;
+	     CT3 = (A2*COS3+B2*SIN3)/R23;
+	     DOT2 = A1*A2+B1*B2;
+	     DOT3 = A2*A3+B2*B3;
+	     R3 = 2.0*R23;
+	     IF (DOT2.LT.0.0) R3=R3*(1.0+DOT2/(R12*R23));
+	     IF (DOT3.LT.0.0) R3=R3*(1.0+DOT3/(R23*R34));
+	     T2=R3/(1.0+0.667*CT3+0.333*CT2);
+	     T3=R3/(1.0+0.667*CT2+0.333*CT3);
+	  ENDIF;
+	"FIND COEFFS FOR POLYNOMIAL FIT TO CURVE BETWEEN POINTS 2 & 3"
+	  P1=T2*COS2; P2=3.0*A2-2.0*P1-T3*COS3; P3=A2-P1-P2;
+	  Q1=T2*SIN2; Q2=3.0*B2-2.0*Q1-T3*SIN3; Q3=B2-Q1-Q2;
+	"COMPUTE VALUES AT SUB-INTERVAL POINTS BETWEEN 2 & 3"
+	  R=0.0;
+	  <J=1,MM1;
+	     K2=K2+1;R=R+RM;
+	     U(1,K2)=X2+R*(P1+R*(P2+R*P3));
+	     V(1,K2)=Y2+R*(Q1+R*(Q2+R*Q3));
+	  >
+	  K2=K2+1;
+  > <UNTIL> (K2.GE.N0);
+END;
+%E  SUBROUTINE T2SPLN
+%F
+C SPLINE FITTER FROM FXB$CG.  I THINK THIS IS FROM THE STANFORD
+C SPSS PACKAGE.
+      SUBROUTINE  T2SPLN (NN, N, X, Y, NN2, B, C, D)
+      INTEGER  N,NN
+      REAL  X(NN,N), Y(NN,N), B(NN2,N), C(NN2,N), D(NN2,N)
+C
+C  THE COEFFICIENTS B(I), C(I), AND D(I), I=1,2,...,N-1 ARE COMPUTED
+C  FOR THE NATURAL CUBIC INTERPOLATING SPLINE
+C
+C     Y(1,X) = Y(1,I) + B(I)*(X-X(I)) + C(I)*(X-X(I))**2 + D(I)*(X-X(I))**3
+C
+C  FOR X(I) .LE. X .LE. X(I+1) .
+C
+C  INPUT..
+C
+C     N  THE NUMBER OF DATA POINTS OR KNOTS  (N.GE.4)
+C     X  THE ABSCISSAS OF THE KNOTS IN STRICTLY INCREASING ORDER
+C     Y  THE ORDINATES OF THE KNOTS
+C
+C  OUTPUT..
+C
+C     B, C, D  ARRAYS OF SPLINE COEFFICIENTS AS DEFINED ABOVE.
+C     B(N)  HAS THE APPROPRIATE VALUE TO DEFINE
+C     THE SPLINE FOR  X .GT. X(N) .
+C
+C  USING  P  TO DENOTE DIFFERENTIATION,
+C
+C     Y(1,I) = S(X(1,I))
+C     B(I) = SP(X(1,I))
+C     C(I) = SPP(X(1,I))/2
+C     D(I) = SPPP(X(1,I))/6
+C
+      INTEGER  NM1, NM2, IB, I
+      REAL T
+      NM1 = N-1
+      NM2 = N-2
+C
+C  SET UP TRIDIAGONAL SYSTEM
+C
+C  B = DIAGONAL, D = OFFDIAGONAL, C = RIGHT HAND SIDE.
+C
+      D(1,1) = X(1,2) - X(1,1)
+      C(1,2) = (Y(1,2) - Y(1,1))/D(1,1)
+      DO 10 I = 2,NM1
+	D(1,I) = X(1,I+1) - X(1,I)
+	B(1,I) = 2.*(D(1,I-1) + D(1,I))
+	C(1,I+1) = (Y(1,I+1) - Y(1,I))/D(1,I)
+	C(1,I) = C(1,I+1) - C(1,I)
+10    CONTINUE
+C
+C  NATURAL SPLINE END CONDITIONS
+C
+      C(1,1) = 0.
+      C(1,N) = 0.
+C
+C  FORWARD ELIMINATION
+C
+      DO 20 I = 3,NM1
+	T = D(1,I-1)/B(1,I-1)
+	B(1,I) = B(1,I) - T*D(1,I-1)
+	C(1,I) = C(1,I) - T*C(1,I-1)
+20    CONTINUE
+C
+C  BACK SUBSTITUTION
+C
+      C(1,NM1) = C(1,NM1)/B(1,NM1)
+      DO 30 IB = 2,NM2
+	I = N-IB
+	C(1,I) = (C(1,I) - D(1,I)*C(1,I+1))/B(1,I)
+30    CONTINUE
+C
+C  C(I) IS NOW THE SIGMA(I) OF THE TEXT
+C
+C  COMPUTE POLYNOMIAL COEFFICIENTS
+C
+      B(1,N) = (Y(1,N) - Y(1,NM1))/D(1,NM1) + D(1,NM1)*C(1,NM1)
+      DO 40 I = 1,NM1
+	B(1,I) = (Y(1,I+1) - Y(1,I))/D(1,I)
+     *		- D(1,I)*(C(1,I+1) + 2.*C(1,I))
+	D(1,I) = (C(1,I+1) - C(1,I))/D(1,I)
+	C(1,I) = 3.*C(1,I)
+40    CONTINUE
+      RETURN
+      END
+%M
+" ----------- END OF 'T2PLOT' PACKAGE ----------"

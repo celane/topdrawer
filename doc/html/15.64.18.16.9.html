@@ -1,0 +1,27 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.18.16.9</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.18.16.9  Hints</H4></B>  - Some terminals such as the KERMIT emulation do not
+support simultaneous display of graphics and text.  This may be  fixed  in
+several  ways.   You  can specify the "RSEGM" option, and do a SHOW CURSOR
+whenever you wish to look at the graphics page.
+
+     Some  terminals such as the CIT328 , and the VT-240 clear the display
+when switching from graphics  to  text.   For  such  devices  the  "NSEGM"
+options  should be specified.  This returns to terminal mode only when the
+device is closed, or when the screen is erased.
+
+     You may modify the actual color mapping by specifying the appropriate
+escape sequences.  For example for KERMIT you may  draw  black  against  a
+white backround by specifying:
+     SET DEVICE TEKTR "KERMIT,COLOR=01243567,POSTCOL=';7m'"
+You  may  modify  the  color  mapping for TEK4027 to substitute Violet for
+blue.
+     SET DEVICE "COLOR=' &lt;'
+
+
+</PRE>
+</BODY>

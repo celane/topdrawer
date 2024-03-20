@@ -1,0 +1,24 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 18.3</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>18.3  UNIT_NUMBERS</H4></B> 
+
+The following logical unit numbers are used:
+     <U>Unit</U> <U>Routine</U>   <U>Usage</U>
+     1    T2SETH    Histogram input
+     6    All       Error message/Information output
+     7    TDMAIN    Journal file output
+     8    All       Listing output
+     9-19 TDMAIN    Input
+     86   All       Error message for deferred errors
+The  journal  file,  and  listing  are not output unless the following set
+commands are used:
+     TD:<U>SET</U> <U>FILE</U> <U>LOG</U> <U>filename</U>
+     TD:<U>SET</U> <U>FILE</U> <U>LIST</U> <U>filename</U>
+
+
+</PRE>
+</BODY>

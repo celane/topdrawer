@@ -1,0 +1,41 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.40.15.3</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.40.15.3  Example</H4></B>  - 
+                                2-d Example
+You read in a mesh of data x,y vs Z.  X ranges from 0.0 to 1.0 in steps of
+0.1 and Y from 100 to 200 in steps of 1.  Then you:
+     TD:<U>SET</U> <U>THREE</U> <U>OFF</U>
+You  wish  to view a histogram of x vs Z for Y=140 and expand the scale so
+that the final plot fills the window.
+     TD:<U>HISTOGRAM</U> <U>SLICE</U> <U>Y=140</U> <U>EXPAND</U>
+
+You now wish to view y vs z for values Y=.2 to .5:
+     TD:<U>HISTOGRAM</U> <U>SLICE</U> <U>X</U> <U>FROM</U> <U>.2</U> <U>to</U> <U>0.5</U>
+     (This plots 4 histograms)
+
+Now you wish to view all slices along the X axis:
+     TD:<U>HISTOGRAM</U> <U>SLICES</U> <U>Y</U>
+     (This plots 100 histograms!)
+     TD:<U>HISTOGRAM</U> <U>SLICE</U> <U>X</U> <U>FROM</U> <U>0</U> <U>to</U> <U>0.5</U> <U>Y</U> <U>FROM</U> <U>105.5</U> <U>to</U> <U>110.0</U>
+Plots  the  mesh data as a series of slices looking along the X axis for a
+limited range of Y.
+     TD:<U>HISTOGRAM</U> <U>SLICE</U> <U>Y=105</U> <U>X</U> <U>FROM</U> <U>.25</U> <U>TO</U> <U>.5</U>
+Plots  the  mesh  data  as  a  single slice looking along the Y axis for a
+limited range of X.
+
+                                3-d Example
+You enter mesh data in steps of 1 for Y=1 to 10, X=0 to 20.
+     TD:<U>HIST</U> <U>SLICE</U> <U>X=10.</U>
+You are looking at X=10.
+     TD:<U>HIST</U> <U>SLICE</U> <U>X=10.</U>  <U>TO</U> <U>20</U>
+You are looking at X=10 to 20.
+     TD:<U>HIST</U> <U>SLICE</U> <U>X=10.</U>  <U>TO</U> <U>20</U> <U>Y=5</U> <U>TO</U> <U>7</U>
+You are looking at X=10 to 20, Y=5 to 7.
+
+
+</PRE>
+</BODY>

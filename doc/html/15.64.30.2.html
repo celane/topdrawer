@@ -1,0 +1,27 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.30.2</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.30.2  Example</H4></B>  - 
+     TD:<U>SET</U> <U>GRID</U> <U>DOTS</U> <U>VERT</U> <U>SYM=1O</U>
+When  the  axes are plotted, a grid is drawn consisting of vertical dotted
+lines at each large X tick, and symbols at the intersection of large X and
+Y ticks.
+     TD:<U>SET</U> <U>GRID</U> <U>DOTS</U> <U>VERT</U> <U>HORIZ</U>
+          is the same as ...
+     TD:<U>SET</U> <U>GRID</U> <U>DOTS</U> <U>ON</U>
+
+     TD:<U>SET</U> <U>GRID</U> <U>RED</U> <U>ON</U> <U>PERMANENT</U>
+All subsequent plots with axes have red grids.
+
+     TD:<U>SET</U> <U>GRID</U> <U>SYM=0O</U> <U>THETA=90</U> <U>PHI=90</U>
+The  grid will be plotted with crosses as the grid symbol, oriented normal
+to the Y axis.  The symbol lies in the XZ plane.
+
+     TD:<U>SET</U> <U>GRID</U> <U>X</U> <U>Y</U> <U>Z</U> <U>YZ</U> <U>ZX</U> <U>DOTS</U> <U>OUTLINE</U> <U>PERM</U>
+Plots  grids only on the YZ and ZX planes.  Since only the XY plane exists
+for normal plots, TD will only put grids on 3-D plots.
+</PRE>
+</BODY>

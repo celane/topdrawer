@@ -1,0 +1,22 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.24.4</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.24.4  Filename</H4></B>   - The  file  specification  may  include device and
+directory.  If the filename contains a semicolon ";", or begins with  "V_"
+or  "S_"  or  a  special  character  such  as a dollar sign "$" it must be
+enclosed in quotes or apostrophes "'".  For example you may get the sample
+input file.
+     TD:<U>SET</U> <U>FILE</U> <U>INPUT</U> <U>TOPDRAWER_ROOT:[EXAMPLES]TDINTRO</U>
+
+This  is  a  modification  of the original Topdrawer syntax.  The original
+required a Fortran unit number.  By performing a  logical  assignment  you
+may simulate the original syntax.  For example:
+     $ <U>ASSIGN</U> <U>FOR009.DAT</U> <U>"9"</U>
+defines 9 as the usual input on unit 9.
+
+
+</PRE>
+</BODY>

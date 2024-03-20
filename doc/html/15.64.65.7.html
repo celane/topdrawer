@@ -1,0 +1,38 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.65.7</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.65.7  3-d</H4></B>   - When  setting  the  windows  for  3-d  plots  there is
+compensation for the viewing distance from the object if SCRD is negative.
+For the same DISTANCE and positive SCRD a window which is half the size of
+a normal window will only show half of the view.  You may  compensate  for
+this  effect  by changing DISTANCE or SCRD.  The effect is similar to what
+you would see if you, and the window remained in  the  same  position  and
+only  the  window size changed.  The following will plot approximately the
+data with the same view.
+     TD:<U>SET</U> <U>THREE</U> <U>DISTANCE</U> <U>100</U> <U>SCRD</U> <U>50</U>
+     TD:<U>SET</U> <U>WINDOW</U> <U>X</U> <U>1</U> <U>of</U> <U>1</U> <U>Y</U> <U>1</U> <U>of</U> <U>1</U>
+     TD:<U>HISTOGRAM</U>
+          or ...
+     TD:<U>SET</U> <U>THREE</U> <U>DISTANCE</U> <U>100</U> <U>SCRD</U> <U>-50</U>
+     TD:<U>SET</U> <U>WINDOW</U> <U>X</U> <U>1</U> <U>of</U> <U>2</U> <U>Y</U> <U>1</U> <U>of</U> <U>2</U>
+     TD:<U>HISTOGRAM</U>
+          or ...
+     TD:<U>SET</U> <U>THREE</U> <U>DISTANCE</U> <U>100</U> <U>SCRD</U> <U>25</U>
+     TD:<U>SET</U> <U>WINDOW</U> <U>X</U> <U>1</U> <U>of</U> <U>2</U> <U>Y</U> <U>1</U> <U>of</U> <U>2</U>
+     TD:<U>HISTOGRAM</U>
+<A NAME="192"> </A>
+The  following  will  show  a  similar  view,  but  from  a  more  distant
+perspective:
+     TD:<U>SET</U> <U>THREE</U> <U>DISTANCE</U> <U>200</U> <U>SCRD</U> <U>50</U>
+     TD:<U>SET</U> <U>WINDOW</U> <U>X</U> <U>1</U> <U>of</U> <U>2</U> <U>Y</U> <U>1</U> <U>of</U> <U>2</U>
+     TD:<U>HISTOGRAM</U>
+
+Since  the  size  of  2  windows  is less than half of a single window the
+example with 2 windows shows slightly less than 1 window.
+
+
+</PRE>
+</BODY>

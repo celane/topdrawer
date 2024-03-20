@@ -1,0 +1,28 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 18.37</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>18.37  T2MAIN</H4></B> 
+
+     CALL T2MAIN(IARG,string)
+
+This calls the TOPDRAWER main program.
+     INPUT:  string
+This  is  a command to perform.  If it is blank then TOPDRAWER will prompt
+you until either a RETURN,STOP, or NEW PLOT command is typed.
+     OUTPUT:  IARG
+          = 1 if a CLEAR command was typed.
+          = 2 if a STOP command was typed.
+
+
+                                   NOTE
+
+     This  subroutine  calls all other TOPDRAWER subroutines.  If you
+     call it then all other subroutines  will  be  included  in  your
+     program.
+
+
+</PRE>
+</BODY>

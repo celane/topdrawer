@@ -1,0 +1,27 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.18.25</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.18.25  INTERACTIVE</H4></B>   - This  plots  on  your  terminal.  INTERACTIVE
+turns on both PAUSE and FLUSH.  When  this  is  selected  TOPDRAWER  stops
+after each plot and waits for you to hit the "Return" key.  If you wish to
+stop you type STOP, EXIT, QUIT, HALT, or END.  In addition data is flushed
+after  each  line of interactive input.  INTERACTIVE devices support extra
+features such as cursor input.   INTERACTIVE  devices  produce  output  on
+device  TT:.   If you attempt interactive output to TT:  in a batch queue,
+your output will vanish, as TT is assigned to NLA0:.
+
+SEQUENTIAL - Produces plots in an output file
+
+SLAVE  -  Produces  the  plots  at  another  device.   This  is similar to
+INTERACTIVE, but the CURSOR is not supported for a slave device.
+
+The default is:
+     INTERACTIVE if you are running interactively
+     SEQUENTIAL in BATCH mode
+
+
+</PRE>
+</BODY>

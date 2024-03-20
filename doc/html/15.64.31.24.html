@@ -1,0 +1,33 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.31.24</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.31.24  Examples</H4></B>   - The  following  sequence  will  plot a histogram
+stored by HSTORE.
+     TD:<U>RESTORE</U> <U>HIST</U> <U>FETCH</U> <U>FILE=filename</U> <U>(Get</U> <U>the</U> <U>hists)</U>
+     TD:<U>SET</U> <U>HIST</U> <U>ID=5;HIST</U>
+          or...
+     TD:<U>SET</U> <U>HIST</U> <U>NAME='title</U> <U>of</U> <U>hist</U> <U>5'</U>
+     TD:<U>HISTOGRAM</U>
+
+          or...
+     TD:<U>SET</U> <U>HIST</U> <U>HBOOK</U> <U>FILE=filename</U> <U>ID=5</U>
+     TD:<U>HISTOGRAM</U>
+
+     TD:<U>SET</U> <U>HIST</U> <U>NAME='ENERGY'</U>
+sets the first histogram named "ENERGY...." into the data array.
+     TD:<U>SET</U> <U>HIST</U> <U>NEXT</U> <U>NAME="*ENERGY"</U>
+sets the next histogram with a title containing the word "ENERGY".
+     TD:<U>SET</U> <U>HIST</U> <U>NEXT</U> <U>NAME='*ENERGY'</U> <U>CONFIRM</U>
+<A NAME="153">types  the  name  of each histogram containing the word "ENERGY", then you </A>
+are asked if it is acceptable.  You type "Y" if it is, and press  "Return"
+if it is not.
+     TD:<U>SET</U> <U>HIST</U> <U>LAST</U> <U>HIST</U> <U>NAME='ENERGY'</U>
+sets  the  last  1  dimensional histogram named "ENERGY...." into the data
+array.
+
+
+</PRE>
+</BODY>

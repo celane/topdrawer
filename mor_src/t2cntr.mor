@@ -1,0 +1,1028 @@
+%N
+%U+ TDMACROS.MOR
+%L
+%E  SUBROUTINE T2CNTR
+"
+This is a program to perform contour plots from MESH data.
+Most of the subroutines were lifted from routines in the
+unified graphics package by:
+     Robert C. Beach - Stanford Linear Accelerator Center
+The modifications and additions are by
+     J. Clement - William Marsh Rice University, Houston Tx
+"
+<TOKEN USING INFOIN,CARDIN>;
+%'$INLABEL'='1';		"Put labels inside data (closed contours)"
+%'$PARLABEL'='2';		"Labels are parallel to contour lines"
+%'$PERPLABEL'='4';		"Lables are perpendicular to contours"
+%'$OUTLABEL'='32';		"Put labels at end of contours"
+%'$BOTHLABEL'='64';		"Put labels at both ends of contour"
+%';SUBROUTINE'=';<RESET> <SET> ;"SUBROUTINE"'
+<SET>;				"Ready for reset"
+SUBROUTINE T2CNTR($INFO,$CARD);
+   IMPLICIT NONE;
+   INTEGER $INFO(10);		"Card pointers"
+   CHARACTER*(*) $CARD;		"Input string with options "
+   $BOOLEAN LLAB,LDLAB,LEXPAN, LIN, LOUT, LPARAL, LPERP, LDOUBL;
+   $BOOLEAN LCYCLE, LFILL, LTITLE;
+   $BOOLEAN LSAVE, T2_VIRT;
+   INTEGER I,J,K,IMAX,IDUM, ISEGMN;
+   INTEGER ITXTUR,INTEN,NUM,IPRI,IFMT,ITXSAV,ISET,ICYCLE;
+   INTEGER NBUFSIZ,NCOL(2,2),N1MAX,N2MAX,ICOL;
+   REAL SIZE,TEMP,SSAV;
+   PARAMETER (NBUFSIZ=$BUFSIZ/2);
+   REAL FRTO(4);
+   INTEGER EFLG,BDFG,NLIM, IBUFFER, NBUFFER, JINDEX, JDIM, M1, M2, M3;
+   $SPECIFICATION;
+   $SELECTSPEC;
+   $SPECIFYNONE;
+   $MAINSPEC;
+   $POINT ARRAYS($NPOINTS);
+   ITXTUR=0; INTEN=0; ICOL=0;
+   NUM=0; LLAB=.false.; LDLAB=.true.; IPRI=1; IFMT=9;
+   LOUT=.true.; LIN=.true.; LPERP=.FALSE.; LPARAL=.FALSE.; LDOUBL=.FALSE.;
+   SIZE=0;
+   LSAVE=.false.;
+   LEXPAN=$MODE EXPAND;			"Default expansion"
+   LCYCLE=.false.;
+   <J=1,2; <I=1,2; NCOL(I,J)=0; > >
+   C_NAME='Contour %%';
+   N_NAME=9;
+   LTITLE=$TITLE;			"Title output ?"
+   LFILL=.false.;			"Fill the contour?"
+   ISEGMN=1;				"Number of segments/point"
+   
+   <TOKEN LOOP> <
+      KEY:: <
+         EXPAND:Y       < LEXPAN=LTOKEN; >
+         FILL:T          < LFILL=LTOKEN; >
+         FROM,TO,BY,N <
+            <READ SAME TOKEN>;
+            CALL T2FTBY(INFOIN,CARDIN,FRTO,0);
+            IF ($ERROR) RETURN;
+            IMAX=NINT(FRTO(4));		"Number of contours"
+            <I=1,IMAX;
+               NUM=NUM+1;
+               IF (NUM.gt.NBUFSIZ) GOTO :TOOMANY:;
+               TEMP=FRTO(1)+(I-1)*FRTO(3);
+               BUFFER(NUM)=TEMP;
+               IF (LLAB) THEN; IBUFFR(NUM)=IFMT;		"Select type"
+                         ELSE; IBUFFR(NUM)=1; ENDIF;
+               IBUFFR(NUM)=IPRI*ABS(IBUFFR(NUM));		"Select type"
+            >
+         >
+         JOIN:1:20:5     < ISEGMN=INTEG; >
+         LINES,ROWS      < CALL T2ROWS($INFO,$CARD,N3,N4); >
+         POINTS,COLUMNS  < CALL T2PNTS($INFO,$CARD,N1,N2); >
+	 SAVE:Y          < LSAVE=LTOKEN; >
+         SETS            < CALL T2NSET($INFO,$CARD,NS1,NS2); >
+         SELECT:S        < C_SELECT=STRNG; N_SELECT=MAX(1,NSTRNG); >
+         DO:1,DOT:1,DOTS:1,DOTTED:1,DASHES:2,DA:2,
+         DOT-DASH:3,DOTDASHED:3,
+         SOLID:4,FUNNY:5,PATTERNED:6,DAASHES:7
+                         < CALL T2GTEX(ITXTUR);>
+         INTENSITY:1:5:2,WIDTH:1:5:2 < INTEN=INTEG; >
+         CYCLE:Y         < LCYCLE=LTOKEN; >
+         WHITE:1,RED:2,GREEN:3,BLUE:4,YELLOW:5,MAGENTA:6,CYAN:7 <ICOL=INTEG;>
+         LABEL:Y         < LLAB=LTOKEN; LDLAB=LLAB; >
+         LIMITED         < CALL T2XYZC($INFO,$CARD,TLIM,2,NLIM); >
+         INSIDE:Y        < LIN=LTOKEN; >       "LAbel contours on inside ?"
+         NAME:S          < C_NAME=STRNG; N_NAME=MAX(1,NSTRNG); >
+         OUTSIDE:Y       < LOUT=LTOKEN; >      "On outside ??"
+         PARALLEL:Y      < LPARAL=LTOKEN; >    "Parallel to contour lines ?"
+         PERPENDICULAR:Y < LPERP=LTOKEN; >     "Parallel to contour lines ?"
+         DOUBLE:Y        < LDOUBL=LTOKEN; >    "Double label (Both ends?)"
+         PRIMARY:3,SECONDARY:1 < IPRI=INTEG-2; >
+         SIZE            < <TOKEN NUMBER> <SIZE=FLOTNG; > >
+         TITLE:T         < LTITLE=LTOKEN; >
+      >
+      NUMBER:: <
+         IF (NUM.lt.NBUFSIZ) THEN;
+            NUM=NUM+1;
+            BUFFER(NUM)=FLOTNG;
+            IF (LLAB) THEN; IBUFFR(NUM)=IFMT;		"Label ?"
+                      ELSE; IBUFFR(NUM)=1; ENDIF;
+            IBUFFR(NUM)=IPRI*ABS(IBUFFR(NUM));		"Select type"
+         ELSE;
+:TOOMANY:
+            ERROR OUT;('*** ERROR *** Too many contours');
+            RETURN;
+         ENDIF;
+      >
+   >
+   IF($ERROR.and.$ABORT) RETURN;			"no errors"
+   IF (.not. LCYCLE) THEN;
+      IF (ITXTUR.eq.0) ITXTUR=LINTEX;
+      IF (ICOL.eq.0) ICOL=LINCOL;
+      IF (INTEN.eq.0) INTEN=LINWID;
+   ENDIF;
+   ITXTUR=8*INTEN+64*ITXTUR+512*ICOL;
+   CALL T2CWTS(ITXTUR,ITXSAV);			"Set color, inten, texture"
+   IF (FLAGS(121)) CALL TXXMT;			"New segment ?"
+   SSAV=LBLSIZ; IF (SIZE.ne.0) LBLSIZ=SIZE;
+   IF (LEXPAN) THEN;
+      <I=1,2; <J=1,3; EXYZLIM(J,I)=TLIM(J,I); > >
+   ENDIF;
+   <ISET=NS1,NS2;
+      CALL T2GDSET(ISET,N1,N2,N1,N2,ISETD,TLIM,C_SELECT(:N_SELECT));
+      IF (NP .lt. N1) <NEXT>;
+      IF (IBTYPE.eq.2) THEN;
+	M1=MESH1;
+	M2=MESH2;
+	M3=MESH3;
+         NCOL(1,1)=(I1-IM)/NINCR0;
+         NCOL(1,2)=NP-N1+NCOL(1,1);
+         NCOL(2,1)=(I2-IM)/(NINCR0*NINCR1);
+         NCOL(2,2)=NL-N3+NCOL(2,1);
+         IF (NCOL(1,1) .GT. NCOL(1,2) .OR. NCOL(2,1) .GT. NCOL(2,2)) <NEXT>;
+         FLAGS(28) = .TRUE.;			"Points have been treated"
+         IF (.NOT.$DEF DATA) THEN;		"Frame not defined ?"
+            $3D=NDIMNS(1).eq.3;
+            IF(MESH2D.eq.0)MESH2D=MESH3;
+            IF (LEXPAN) THEN;
+               NXYLIM(1,1)=NCOL(1,1); NXYLIM(1,2)=NCOL(1,2);
+               NXYLIM(2,1)=NCOL(2,1); NXYLIM(2,2)=NCOL(2,2);
+               NXYLIM(3,1)=NS1; NXYLIM(3,2)=NS2;
+            ENDIF;
+            CALL T23LIM(DATBUF(IM),NINCR0,NINCR1,NINCR2);
+         ENDIF;
+         CALL T2CWTS(ITXSAV,IDUM);		"Set color, inten, texture"
+
+	 IF (.not. LSAVE) THEN;
+	    CALL T2AXES;		"Make outline if not already done"
+	    CALL TXSCIS(2);			"Scissored at window"
+	 ELSE;
+	    LTITLE=.false.;
+	 ENDIF;
+					"Get values for tick positions"
+         IF (NUM.eq.0) THEN;
+            CALL T2STCK(NONLIN(MESH3),		"ISCAL"
+               XYZLIM(MESH3,1),XYZLIM(MESH3,2),	"MIN,MAX"
+               NXYZ1(MESH3),NXYZ2(MESH3),	"N1,N2"
+               SCLPRM(1,MESH3),			"BASE, ETC."
+               NBUFSIZ,				"ARRAY SIZ"
+               NUM,BUFFER,IBUFFR);		"OUTPUT"
+            IF (.not.LDLAB) THEN;
+               <I=1,NUM; IBUFFR(I)=ISIGN(1,IBUFFR(I)); >
+            ENDIF;
+         ENDIF;
+         IF ($TRAP) RETURN;
+         IF($ERROR.and.$ABORT) RETURN;		"no errors"
+	 JDIM=((NINCR1-1)*(NINCR2-1)+15)/16;
+"
+	 IF (LSAVE) ISAVE=IOR(ISAVE,1)
+	 IF (ISEGMN .gt. 1) ISAVE=IOR(ISAVE,1)
+	 IF (LFILL) ISAVE=IOR(ISAVE,4);
+	 IF (LFILL .or. ISEGMN .GT. 1) THEN;
+"
+	 IF (LSAVE) THEN;			"Must save data array"
+	    J=IM;
+	    CALL T2_GET_MEMORY(DATBUF,NINCR1*NINCR2,IM);
+	    IF (IM .eq. 0) RETURN;
+	    <I=IM,IM+NINCR1*NINCR2-1;
+		DATBUF(I)=DATBUF(J);
+		J=J+NINCR0; >
+	    NINCR0=1;
+	    CALL T2_GET_MEMORY(DATBUF,JDIM,JINDEX);
+	    IF (JINDEX .eq. 0) THEN;
+		CALL T2_FREE_MEMORY(DATBUF,IM,NINCR1*NINCR2);
+		RETURN;
+	    ENDIF;
+	 ELSE IF (.not. T2_VIRT(JDIM)) THEN;
+		"Make room for scratch"
+	    ERROR OUT;'*** ERROR *** Not enough storage';
+	    RETURN;
+	 ELSE;
+		CALL T2GDSET(ISET,N1,N2,N1,N2,ISETD,TLIM,C_SELECT(:N_SELECT));
+		JINDEX=$INEXTPTR;
+	 ENDIF;
+"
+	 NBUFFER=0;
+	 IF (LFILL .or. ISEGMN .GT. 1) THEN;
+		NBUFFER=(NINCR1-1)*(NINCR2)-1);
+		CALL T2_GET_MEMORY(BUFFER,NUFFER,IBUFFER)
+		IF (IBUFFER .eq. 0) THEN;
+			LFILL=.false.;
+			ISEGMN=1;
+		ENDIF;
+	 ENDIF;	
+"
+						"Loop for each contour."
+         CALL T2CNT5(0,0,0,0,0,0,0,0,0);
+         ICYCLE=1;
+         IF (LCYCLE) THEN;
+            CALL T2CWTS(ITX_CYCLE(ICYCLE),IDUM);
+         ENDIF;
+         <J=1,NUM;
+            IF ($TRAP .or. EFLG.ne.0) <EXIT>;
+            IF (IBUFFR(J).gt.0) THEN;
+               IF (LCYCLE) THEN;
+                  CALL T2CWTS(ITX_CYCLE(ICYCLE),IDUM);
+               ENDIF;
+               CALL T2CWTS(ITXTUR,IDUM);
+               ICYCLE=ICYCLE+1;
+               IF (ICYCLE .gt. N_CYCLE) ICYCLE=1;
+            ELSE;
+               IF (LCYCLE) THEN;
+                  CALL T2CWTS(ITX_CYCLE(ICYCLE),IDUM);
+               ENDIF;
+               CALL T2CWTS(ITXSEC,IDUM);
+            ENDIF;
+            CALL TXSDEF;
+            BDFG=0;
+	    IF (.not. LSAVE) THEN;
+		IF (LOUT) BDFG=BDFG+$OUTLABEL;
+		IF (LIN) BDFG=BDFG+$INLABEL;
+		IF (LDOUBL) BDFG=BDFG+$BOTHLABEL;
+		IF (LPERP) BDFG=BDFG+$PERPLABEL;
+		IF (LPARAL) BDFG=BDFG+$PARLABEL;
+	    ENDIF;
+	    CALL T2CNT0(DATBUF(IM),NINCR0,NINCR1,NINCR2
+			,IBUFFR(J),BUFFER(J)
+			,DATBUF(JINDEX),JDIM,EFLG,NCOL,BDFG,LSAVE,M1,M2,M3);
+            IF (EFLG.ne.0) THEN;
+               ERROR$MESSAGE '*** ERROR ***',EFLG,' in T2CNT0';
+            ENDIF;
+         >
+	 CALL T2CWTS(ITXSAV,IDUM);
+	 IF (LTITLE) CALL T2_PLOT_TITLE(ISET,.false.);	"Put up title"
+	C_NAME='Contour %%';
+	N_NAME=9;
+	IF (LSAVE) THEN;
+	    CALL T2_FREE_MEMORY(DATBUF,JINDEX,JDIM);
+	    CALL T2_FREE_MEMORY(DATBUF,IM,NINCR1*NINCR2);
+	ENDIF;
+      ELSE;
+         ERROR OUT;'*** WARNING *** Non mesh data skipped';
+      ENDIF;
+   >
+   LBLSIZ=SSAV;
+   IF (FLAGS(121)) CALL TXXMT;			"New segment ?"
+   CALL T2CWTS(ITXSAV,IDUM);
+   if ($DEF DATA) CALL TXSCIS(1);		"Reset scaling to full screen"
+   IF ($TRAP) RETURN;
+						"Plot ticks if 2-d"
+   IF (.not. LSAVE .and. $DEF DATA) CALL T2TCKS(8);
+	"And ticks"
+END;
+%E  SUBROUTINE T2CNT0  -- Draw contour lines
+SUBROUTINE T2CNT0(ARAY,LDIM,MDIM,NDIM,MCNT,ZCNT,
+	WKAR,JDIM,EFLG,NCOL,BDFG,LSAVE,M1,M2,M3);
+"
+C
+C *******************  THE UNIFIED GRAPHICS SYSTEM  *******************
+C *                      CONTOUR PLOT SUBROUTINE                      *
+C *                                                                   *
+C *  THIS SUBROUTINE MAY BE USED TO GENERATE A DESCRIPTION OF A       *
+C *  CONTOUR PLOT.  A PAIR OF USER SUPPLIED SUBROUTINES ARE CALLED    *
+C *  TO PROCESS THE LINE SEGMENT END POINTS AND THE TEXT.             *
+C *                                                                   *
+C *                                                                   *
+C *  THE PARAMETERS IN THE CALLING SEQUENCE ARE:                      *
+C *	ARAY	The array defining the contour data.			*
+C *	LDIM	The first dimension in ARAY				*
+C *    MDIM  THE EXTENT OF THE CONTOUR DATA IN THE X DIRECTION.       *
+C *    NDIM  THE EXTENT OF THE CONTOUR DATA IN THE Y DIRECTION.       *
+C *    MCNT  Type of contour (Primary, secondary etc.)			*
+C *    ZCNT  Contour value						*
+C *    WKAR  A WORK ARRAY.                                            *
+C *    JDIM  THE NUMBER OF WORDS IN WKAR.                             *
+C *    EFLG  The error flag (Non zero if error)				*
+C *	NCOL	Is the first, last column number			*	
+C *	BDFG	Has bits determining what is labeled			*
+C *	LSAVE	Is true if contours are saved rather than plotted	*
+C *	M1	Is the X index (1-3)					*
+C *	M2	Is the Y index						*
+C *	M3	Is the Z index						*
+C *                                                                   *
+c   Modified from a set of routines by:
+C *                          ROBERT C. BEACH                          *
+C *                    COMPUTATION RESEARCH GROUP                     *
+C *                STANFORD LINEAR ACCELERATOR CENTER                 *
+C	Modified by:	J. Clement
+C			Rice University
+C			Houston Tx
+C *                                                                   *
+C *********************************************************************
+C
+"
+   IMPLICIT NONE;
+   $SPECIFICATION;
+   $BOOLEAN LSAVE;
+   REAL CNTR;
+   INTEGER       LDIM,MDIM,NDIM;
+   REAL          ARAY(LDIM,MDIM,NDIM+1);
+   INTEGER*4     WKAR(*);
+   INTEGER       JDIM,KDIM, EFLG, M1, M2, M3;
+   INTEGER       NCNT,ICNT,MCNT,IROW,ICOL;
+   INTEGER       MINCOL,MINROW,MAXCOL,MAXROW,NCOL(2,2);
+   REAL          ZCNT;
+   INTEGER       BDFG;
+   INTEGER	I,J;
+   IF ($TRAP) RETURN;
+   EFLG=0;
+   IF (MDIM.lt.3 .or. NDIM.lt.3) THEN;
+      EFLG=2;
+      RETURN;
+   ENDIF;
+   IF ((MDIM-1)*(NDIM-1).gt.16*JDIM) THEN;
+      EFLG=3;
+      RETURN;
+   ENDIF;
+   IF ($TRAP) RETURN;
+"Clear segment bit map.;"
+   KDIM=MIN(((MDIM-1)*(NDIM-1)+16)/16,JDIM);
+   <I=1,KDIM; WKAR(I)=0;>
+"Find min,max columns"
+"
+   MINCOL=NDIM ;MAXCOL=0;
+   X0=ARAY(1,1,NDIM+1);
+   <I=2,NDIM; X1=ARAY(1,1,I);
+      IF (X1.ge.XYZLIM(MESH2,1).and.X1.le.XYZLIM(MESH2,2))THEN;
+         MAXCOL=MAX(I+1,MAXCOL); MINCOL=MIN(I,MINCOL);
+      ENDIF;
+   >
+"
+"Find min,max rows"
+"
+   MINROW=MDIM; MAXROW=0;
+   X0=ARAY(1,3,NDIM+1);
+   <I=2,MDIM; X1=ARAY(1,I,1);
+      IF (X1.ge.XYZLIM(M1,1).and.X1.le.XYZLIM(M1,2))THEN;
+         MAXROW=MAX(I+1,MAXROW); MINROW=MIN(I,MINROW);
+      ENDIF;
+   >
+"
+   MINROW=NCOL(1,1)+2;
+   MAXROW=NCOL(1,2)+1;
+   MINCOL=NCOL(2,1)+2;
+   MAXCOL=NCOL(2,2)+1;
+   MINCOL=MAX(MINCOL,3); MAXCOL=MIN(NDIM,MAXCOL);
+   MINROW=MAX(MINROW,3); MAXROW=MIN(MDIM,MAXROW);
+"Process lower and upper boundary.;"
+   <ICOL=MINCOL,MAXCOL;
+     IF ($TRAP.or.EFLG.ne.0) RETURN;
+     CALL T2CNT1(1,MINROW,ICOL,ARAY,LDIM,MDIM,MAXCOL,ZCNT,WKAR,BDFG,MCNT,EFLG,
+        MINROW,MINCOL,MAXROW,LSAVE,M1,M2,M3);
+     IF ($TRAP.or.EFLG.ne.0) RETURN;
+     CALL T2CNT1(3,MAXROW,ICOL,ARAY,LDIM,MDIM,MAXCOL,ZCNT,WKAR,BDFG,MCNT,EFLG,
+        MINROW,MINCOL,MAXROW,LSAVE,M1,M2,M3);
+   >
+"Process left and right boundary.;"
+   <IROW=MINROW,MAXROW;
+     IF ($TRAP.or.EFLG.ne.0) RETURN;
+     CALL T2CNT1(0,IROW,MINCOL,ARAY,LDIM,MDIM,MAXCOL,ZCNT,WKAR,BDFG,MCNT,EFLG,
+        MINROW,MINCOL,MAXROW,LSAVE,M1,M2,M3);
+     IF ($TRAP.or.EFLG.ne.0) RETURN;
+     CALL T2CNT1(2,IROW,MAXCOL,ARAY,LDIM,MDIM,MAXCOL,ZCNT,WKAR,BDFG,MCNT,EFLG,
+        MINROW,MINCOL,MAXROW,LSAVE,M1,M2,M3);
+   >
+"Process interior sides of surface patches.;"
+"
+   MINCOL=MIN(4,MINCOL);
+"
+   <ICOL=MINCOL,MAXCOL;
+      <IROW=MINROW,MAXROW;
+         IF ($TRAP.or.EFLG.ne.0) RETURN;
+         CALL T2CNT1(0,IROW,ICOL,ARAY,LDIM,MDIM,MAXCOL,
+            ZCNT,WKAR,-BDFG,MCNT,EFLG,
+            MINROW,MINCOL,MAXROW,LSAVE,M1,M2,M3);
+      >
+   >
+END;
+%E  SUBROUTINE T2CNT1
+SUBROUTINE T2CNT1(ISID,IROW,ICOL,ARAY,LDIM,MDIM,NDIM,ZCNT,WKAR,BDFG,MCNT,EFLG,
+        MINROW,MINCOL,MAXROW,LSAVE,M1,M2,M3);
+"
+C
+C *******************  THE UNIFIED GRAPHICS SYSTEM  *******************
+C *                  PROCESS A SIDE OF A SURFACE PATCH                *
+C *                                                                   *
+C *  THIS SUBROUTINE IS USED BY T2CNTR TO PROCESS A SIDE OF A         *
+C *  SURFACE PATCH.  IF THE SIDE HAS NOT BEEN CHECKED BEFORE, THEN    *
+C *  THE CONTOUR IS EXAMINED TO SEE IF IT CROSSES THE SIDE.  IF IT    *
+C *  DOES NOT, THE SIDE IS MARKED AS HAVING BEEN CHECKED.  IF THE     *
+C *  CONTOUR CROSSES THE SIDE, THE CONTOUR IS FOLLOWED UNTIL IT IS    *
+C *  COMPLETE AND ALL AFFECTED SIDES ARE MARKED AS HAVING BEEN        *
+C *  CHECKED.                                                         *
+C *                                                                   *
+C *  THE CALLING SEQUENCE IS:                                         *
+C *    CALL T2CNT1(ISID,IROW,ICOL,ARAY,LDIM,MDIM,NDIM,                *
+C *                ZCNT,WKAR,BDFG,MCNT,EFLG,M1,M2,M3)                 *
+C *                                                                   *
+C *  THE PARAMETERS IN THE CALLING SEQUENCE ARE:                      *
+C *    ISID  INDEX OF THE SIDE BEING PROCESSED.                       *
+C *    IROW  INDEX OF THE ROW BEING PROCESSED.                        *
+C *    ICOL  INDEX OF THE COLUMN BEING PROCESSED.                     *
+C *    ARRY  THE ARRAY DEFINING THE CONTOUR DATA.                     *
+C *    MDIM  THE EXTENT OF THE CONTOUR DATA IN THE X DIRECTION.       *
+C *    NDIM  THE EXTENT OF THE CONTOUR DATA IN THE Y DIRECTION.       *
+C *    ZCNT  VALUE OF THE CONTOUR LINE.                               *
+C *    WKAR  A WORK ARRAY.                                            *
+C *    BDFG  A FLAG INDICATING IF A BOUNDARY IS BEING PROCESSED.      *
+C *    MCNT  A FLAG INDICATING IF A PRIMARY CONTOUR IS BEING          *
+C *          PROCESSED.                                               *
+C *    EFLG  AN ERROR FLAG.                                           *
+C *	LSAVE	Is true if contours are saved rather than plotted	*
+C *	M1	Is the X index (1-3)					*
+C *	M2	Is the Y index						*
+C *	M3	Is the Z index						*
+C *                                                                   *
+C *                                                                   *
+C *********************************************************************
+C
+"
+	IMPLICIT NONE;
+	$BOOLEAN LSAVE;
+	INTEGER I;
+      $SPECIFICATION;
+      $SPECIFYNONE;
+      CHARACTER*20 TEXT,CASE;
+      INTEGER       NTEXT,NCASE;
+      REAL          HEIGHT,WIDTH;
+      $BOOLEAN      LBDONE,LTEST,T2CNT5;
+      INTEGER       ISID,IROW,ICOL;
+      INTEGER       LDIM,MDIM,NDIM, M1, M2, M3;
+      REAL          ARAY(LDIM,MDIM,NDIM+1);
+      REAL          ZCNT;
+      INTEGER*4     WKAR(*);
+      INTEGER       BDFG,MCNT;
+      INTEGER       EFLG;
+      INTEGER       JROW,JCOL,JSID,KSID,MINROW,MINCOL,MAXROW,MAXCOL;
+      REAL          SLOP,XSAVE,YSAVE,XYZ2(3,4);
+      REAL	XYZ(3);
+      INTEGER       INFG,MKFG;
+"Initialize the internal counter.;"
+      MAXCOL=NDIM;
+      EFLG=0;
+      JROW=IROW;
+      JCOL=ICOL;
+      JSID=ISID;
+	XYZ(M3)=ZCNT;					"Save 'Z' coordinate"
+"Do any contours begin at this side?;"
+      CALL T2CNT3(1,JSID,JROW,JCOL,MDIM,WKAR,MKFG);
+      IF (MKFG.ne.0) RETURN;                              "Already processed?"
+          "Start drawing the contour curve.;"
+      <I=1,4; XYZ2(1,I)=HNONE; >                     "Locations invalid!"
+      LBDONE=.true.;
+      IF (ABS(MCNT).gt.1 .and. 
+          IAND($BOTHLABEL+$INLABEL+$OUTLABEL,ABS(BDFG)) .ne. 0) THEN;
+         CALL T2CNT7(ZCNT,MCNT,TEXT,NTEXT,CASE,NCASE,HEIGHT,WIDTH,M3);
+         LBDONE=.false.;
+      ENDIF;
+      CALL T2CNT2(JSID,JROW,JCOL,ZCNT
+		,XYZ(M2),XYZ(M1),ARAY,LDIM,MDIM,NDIM,INFG);
+      IF (INFG.NE.0) THEN;
+	CALL T2CNT4(XYZ,0,XYZ2(1,2),LSAVE);		"Draw it"
+        IF (.not. LBDONE .and. BDFG.GE.$OUTLABEL) THEN;
+           LBDONE=T2CNT5(XYZ2(1,2),ZCNT,JSID,MCNT,1,M1,M2,M3);  "draw label"
+        ENDIF;
+"Save coordinate for label for later"
+        IF (.not. LBDONE)
+        CALL T2CNT6(XYZ2,HEIGHT,WIDTH,JSID,JROW,JCOL,ARAY,
+           LDIM,MDIM,NDIM,BDFG,M1,M2,M3);
+"Find the other side of the patch.;"
+  101   JSID=MOD(JSID+2,4);
+        IF ($TRAP) RETURN;
+        CALL T2CNT3(0,JSID,JROW,JCOL,MDIM,WKAR,MKFG);
+        IF (MKFG.eq.0) THEN;
+          CALL T2CNT2(JSID,JROW,JCOL,ZCNT
+		,XYZ(M2),XYZ(M1),ARAY,LDIM,MDIM,NDIM,INFG);
+          IF (INFG.NE.0) GO TO 102;
+        END IF;
+        JSID=MOD(JSID+1,4);
+        CALL T2CNT3(0,JSID,JROW,JCOL,MDIM,WKAR,MKFG);
+        IF (MKFG.eq.0) THEN;
+          CALL T2CNT2(JSID,JROW,JCOL,ZCNT
+		,XYZ(M2),XYZ(M1),ARAY,LDIM,MDIM,NDIM,INFG);
+          IF (INFG.NE.0) GO TO 102;
+        END IF;
+        JSID=MOD(JSID+2,4);
+        CALL T2CNT3(0,JSID,JROW,JCOL,MDIM,WKAR,MKFG);
+        IF (MKFG.ne.0) GO TO 202;
+        CALL T2CNT2(JSID,JROW,JCOL,ZCNT
+		,XYZ(M2),XYZ(M1),ARAY,LDIM,MDIM,NDIM,INFG);
+        IF (INFG.EQ.0) GO TO 202;
+           "DRAW CURRENT PART OF THE CONTOUR.;"
+  102	CONTINUE;
+	CALL T2CNT4(XYZ,1,XYZ2(1,2),LSAVE);
+        KSID=JSID;
+        IF (.not. LBDONE)
+           CALL T2CNT6(XYZ2,HEIGHT,WIDTH,
+                     JSID,JROW,JCOL,ARAY,LDIM,MDIM,NDIM,BDFG,M1,M2,M3);
+"FIND THE ADJACENT SURFACE PATCH.;"
+        IF (JSID.EQ.3) THEN;
+          IF (JROW.GE.MAXROW) GO TO 103;
+          JROW=JROW+1;
+          JSID=1;
+        ELSE IF (JSID.EQ.2) THEN;
+          IF (JCOL.GE.MAXCOL) GO TO 103;
+          JCOL=JCOL+1;
+          JSID=0;
+        ELSE IF (JSID.EQ.1) THEN;
+          IF (JROW.LE.MINROW) GO TO 103;
+          JROW=JROW-1;
+          JSID=3;
+        ELSE;
+          IF (JCOL.LE.MINCOL) GO TO 103;
+          JCOL=JCOL-1;
+          JSID=2;
+        END IF;
+"CHECK FOR CLOSURE OF THE CONTOUR LINE.;"
+        IF ((JROW.EQ.IROW).AND.(JCOL.EQ.ICOL).AND.(JSID.EQ.ISID))
+          GO TO 201;
+        GO TO 101;
+"FINISH AN OPEN CURVE.;"
+  103   CONTINUE;
+        IF ((.NOT. LBDONE .or. BDFG.gt.$BOTHLABEL) .AND. BDFG.ge.$OUTLABEL)
+           LBDONE=T2CNT5(XYZ2(1,2),ZCNT,KSID,MCNT,1,M1,M2,M3);	"Boundary?"
+        JROW=IROW;
+        JCOL=ICOL;
+        JSID=ISID;
+      END IF;
+      CALL T2CNT3(0,JSID,JROW,JCOL,MDIM,WKAR,MKFG);	"Mark this done"
+		"RETURN TO CALLING SUBROUTINE.;"
+		"Try to print label if on edge using edge data"
+  201 IF ( .not. LBDONE) THEN;			"Label data avail ?"
+         IF (IAND(ABS(BDFG),1) .NE. 0) THEN;
+            LBDONE=T2CNT5(XYZ2,ZCNT,0,MCNT,0,M1,M2,M3);	"Min slope x,y"
+         ENDIF;
+      ENDIF;
+      RETURN;
+"SET ERROR FLAG.;"
+  202 EFLG=1;
+      END;
+%E  SUBROUTINE T2CNT6
+SUBROUTINE T2CNT6(XYZ2,HEIGHT,WIDTH,
+       JSID,JROW,JCOL,ARAY,LDIM,MDIM,NDIM,BDFG,M1,M2,M3);
+"
+This routine finds the optimal point for a label.  It tries to put a label
+at the location of the lowest gradient.  In other words where there is
+the most room for 1.  For 3-d plots it puts labels to the right of the contour.
+     XYZ2(IXY,J) contains the coordinates of
+     IXY=1  X position
+     IXY=2  Y position
+     IXY=3  Angle in degrees
+     J=1    Current label location
+     J=2    Current point on the contour
+     J=3    Previous point on the contour
+     J=4    Possible label location
+     HEIGHT,WIDTH is the size of the label
+     BDFG   Controls the type of label (parallel to contour ??)
+"
+   IMPLICIT NONE;
+   $BOOLEAN LTEST;
+   $SPECIFICATION;
+   $TXCOM;
+   $SPECIFYNONE;
+   INTEGER       ISID,JSID,BDFG, M1, M2, M3;
+   REAL          SLSAVE,ZCNT,SLOPE;
+   SAVE          SLSAVE;
+   REAL          DX,DY,DENOM;
+   INTEGER       LDIM,MDIM,NDIM,JROW,JCOL,I,J;
+   REAL          ARAY(LDIM,MDIM,NDIM+1),FMIN,FMAX;
+   REAL XYZ2(3,4),T1,T2,TEMP,HEIGHT,WIDTH,XYZ3(3),XYZ4(3,2,2);
+   REAL TOLR,DX1,DY1,DX2,DY2;
+   IF (XYZ2(1,2) .ne. HNONE) THEN;		"Have location ?"
+      IF (XYZ2(1,3) .ne. HNONE) THEN;
+         XYZ2(1,4)=XYZ2(1,2);
+         XYZ2(2,4)=XYZ2(2,2);
+         IF ($3D) THEN;
+            SLOPE=-XYZ2(1,2);			"Move labels to right"
+            DX=1; DY=0;
+            XYZ2(1,4)=XYZ2(1,4)+WIDTH;
+         ELSE;
+		"Find coordinates of points at edges of the cell"
+            <J=1,2; <I=1,2;
+               XYZ3(M1)=ARAY(1,JROW+I-2,1);
+               XYZ3(M2)=ARAY(1,1,JCOL+J-2);
+               XYZ3(M3)=ARAY(1,JROW+I-2,JCOL+J-2);
+               CALL T2XFRM(3,1,XYZ3,NONLIN,XFRM12,3,XYZ4(1,I,J));
+            >  >
+		"Now find the slopes"
+            DX=XYZ4(1,2,2)-XYZ4(1,1,1);
+            DY=XYZ4(2,2,2)-XYZ4(2,1,1);
+            IF (DX*DY .EQ. 0) RETURN;
+            IF (M1.eq.1) THEN;
+               DX=(XYZ4(3,2,1)-XYZ4(3,1,1))/DX;
+               DY=(XYZ4(3,1,2)-XYZ4(3,1,1))/DY;
+            ELSE;
+               DY=(XYZ4(3,2,1)-XYZ4(3,1,1))/DY;
+               DX=(XYZ4(3,1,2)-XYZ4(3,1,1))/DX;
+            ENDIF;
+            SLOPE=DX**2+DY**2;			"Gradient!"
+            DX=XYZ2(1,2)-XYZ2(1,3);		"Direction of the contour"
+            DY=XYZ2(2,2)-XYZ2(2,3);
+            DENOM=DX**2+DY**2;
+            IF (DENOM .LT. $DELTX**2) RETURN;
+		"Normalize the direction vector"
+            DENOM=SQRT(DENOM); DX=DX/DENOM; DY=DY/DENOM;
+		"Put label to right of contour"
+            IF (DY .LT. 0) THEN; DX=-DX; DY=-DY; ENDIF;
+		"Move label over by offset"
+            XYZ2(1,4)=XYZ2(1,2)+DY*0.6*HEIGHT;
+            XYZ2(2,4)=XYZ2(2,2)+DX*0.6*HEIGHT;
+         ENDIF;
+         IF (SLSAVE.gt.SLOPE) THEN;		"Not at minimum gradient ?"
+            XYZ2(3,4)=0;
+            IF(IAND(ABS(BDFG),$PERPLABEL).ne.0)  THEN;
+               DX1=DX; DX=-DY; DY=DX1;
+            ELSEIF (IAND(ABS(BDFG),$PARLABEL).EQ.0) THEN; "Not parallel ??"
+               DX=1; DY=0;			"Do label horizontal"
+            ENDIF;
+		"Make sure label is not upside down"
+            IF (DX .LT. 0) THEN; DX=-DX; DY=-DY; ENDIF;
+		"Check to see if label is inside frame"
+            LTEST=XYZ2(1,4)-DX*WIDTH-DY*HEIGHT .ge.CCSCIS(1) .and.
+                  XYZ2(1,4)+DX*WIDTH+DY*HEIGHT .le.CCSCIS(2) .and.
+                  XYZ2(2,4)-DY*WIDTH-DX*HEIGHT .ge.CCSCIS(3) .and.
+                  XYZ2(2,4)+DY*WIDTH+DX*HEIGHT .le.CCSCIS(4) ;
+		"search for overlapping titles"
+            <I=1+$BUFSIZ/2,$BUFSIZ-3,4;
+               IF (.not. LTEST) <EXIT>
+               IF (BUFFER(I) .eq. HNONE) <EXIT>;
+		"Vector perp. to current title pointing to last title"
+               DX1=BUFFER(I)-XYZ2(1,4)-DX*WIDTH/2;
+               DY1=BUFFER(I+1)-XYZ2(2,4)-DY*WIDTH/2;
+		"Vector parallel to current title pointing to last title"
+               DX2=BUFFER(I)-XYZ2(1,4)-DX1;
+               DY2=BUFFER(I+1)-XYZ2(2,4)-DY1;
+               DX2=DX2*DX+DY2*DY; "Now dot with vector along current title"
+		"Previous value off the line of the current one"
+               LTEST=LTEST.and.(DX1**2+DY1**2.gt.HEIGHT**2 .or.
+                     DX2.gt.WIDTH+2*HEIGHT .or.
+                     DX2.lt.-2*HEIGHT);
+            >
+            IF (LTEST) THEN;		"Inside frame, and not overlapping ?"
+               XYZ2(3,4)=ATAN2D(DY,DX);
+               SLSAVE=SLOPE;
+               <I=1,3; XYZ2(I,1)=XYZ2(I,4); >
+            ENDIF;
+         ENDIF;
+     ELSE;
+        SLSAVE=$LARGE REAL;
+        <I=1,3; XYZ2(I,1)=XYZ2(I,2); >
+        XYZ2(3,1)=0;
+     ENDIF;
+     <I=1,3; XYZ2(I,3)=XYZ2(I,2); >
+     XYZ2(1,2)=HNONE;
+   ENDIF;
+END;
+SUBROUTINE T2CNT7(ZCNT,MCNT,TEXT,NTEXT,CASE,NCASE,HEIGHT,WIDTH, M3);
+"
+	Find contour labels for plot
+"
+   IMPLICIT NONE;
+   $SPECIFICATION;
+   CHARACTER*20 TEXT,CASE;
+   INTEGER MCNT,II,IWID,IFIRST, M3;
+   REAL ZCNT,TXXCSZ,HEIGHT,WIDTH;
+   INTEGER NTEXT,NCASE;
+   REAL VM;
+   IF ($TRAP) RETURN;
+   II=IABS(MCNT);
+   NTEXT=0;
+   IF (II.gt.1) THEN;
+      VM = AMAX1(ABS(XYZLIM(M3,1)),ABS(XYZLIM(M3,2)));
+      VM = AMAX1(VM,$SMALL REAL);
+      IF (II.eq.2) THEN;
+         IWID=ALOG10(VM); IWID=5-IWID;
+         IWID=MIN(MAX(IWID,0),9);
+      ELSE; IWID=6; ENDIF;
+      CALL T2TLAB(II,ZCNT,SCLPRM(1,M3),IWID,1,TEXT,NTEXT,CASE,NCASE,IFIRST);
+      HEIGHT=ABS(0.1*REDUCE(2)*LBLSIZ);
+      WIDTH=TXXCSZ(TEXT(1:NTEXT),CASE(1:NCASE),HEIGHT);
+      IF (WIDTH.eq.0) WIDTH=HEIGHT;
+   ENDIF;
+END;
+%E  SUBROUTINE T2_CNT_SAVE - Saves contour lines as data
+SUBROUTINE T2_CNT_SAVE(XYZ,BBIT,NAME);
+   IMPLICIT NONE;
+   CHARACTER*(*) NAME;
+   $SPECIFICATION;
+   $SPECIFYNONE;
+   $POINT ARRAYS($NPOINTS);
+   REAL		XYZ(3);
+   REAL		XYZDAT($MAXCOR)/$MAXCOR*0.0/;
+   INTEGER	BBIT,I,J;
+   IF( $TRAP ) RETURN;
+   IF (BBIT .eq. 0) THEN;			"New data set"
+	CALL T2NEWS(1,NAME);			"With 1 data point"
+	XYZDAT(1)=SYMBOL;
+   ELSE;
+	IF ($PFREE.le.0) THEN;
+		CALL T2_VIRT(500*NINCR);
+		IF ($PFREE.le.0) CALL T2_VIRT(100*NINCR);
+		IF ($PFREE.le.0) CALL T2_VIRT(512);
+		IF ($PFREE.le.0) THEN;
+		    ERROR STRING;'*** ERROR *** Not enough storage';
+		    $TRAP=.true.; RETURN;
+		ENDIF;
+	ENDIF;
+	$INEXTPTR=$INEXTPTR+NINCR;		"Update total data size"
+	DATBUF($ILASTPTR+2)=DATBUF($ILASTPTR+2)+NINCR;	"Set size"
+   ENDIF;
+   <I=1,3; XYZDAT(2*I)=XYZ(I); >
+   <I=1,$MAXCOR;
+	IF (IVRPTR(I) .gt. 1) THEN;
+	    DATBUF(IVRPTR(I))=XYZDAT(I);
+	    IVRPTR(I)=IVRPTR(I)+NINCR;
+	ENDIF;
+   >
+END;
+%E  SUBROUTINE T2CNT4
+SUBROUTINE T2CNT4(XYZ1,BBIT,XYZ2,LSAVE);
+"
+C
+C *******************  THE UNIFIED GRAPHICS SYSTEM  *******************
+C *                 DRAW A LINE TO THE CURRENT POINT                  *
+C *                                                                   *
+C *  THIS SUBROUTINE IS USED BY T2CNTR TO DRAW A LINE TO THE CURRENT  *
+C *  POSITION.                                                        *
+C *                                                                   *
+C *  THE CALLING SEQUENCE IS:                                         *
+C *    CALL T2CNT4(XCRD,YCRD,ZCRD,BBIT)                               *
+C *                                                                   *
+C *  THE PARAMETERS IN THE CALLING SEQUENCE ARE:                      *
+C *    XYZ1 The X,Y,Z coordinates					*
+C *    BBIT  THE BLANKING BIT.                                        *
+c *	XYZ2	The location of X,Y,Z
+C *                                                                   *
+C *                                                                   *
+C *********************************************************************
+C
+"
+   IMPLICIT NONE;
+   REAL TOLR;
+   PARAMETER (TOLR=$DELTX);
+   $SPECIFICATION;
+   $BOOLEAN LSAVE;
+   REAL XYZ1(3),XYZ2(3);
+   REAL          XCRD,YCRD,ZCRD;
+   INTEGER       BBIT,LBIT,LPEN;
+   SAVE          XSAV,YSAV;
+   REAL          XSAV,YSAV,TEMP;
+   IF( $TRAP ) RETURN;
+   IF (LSAVE) THEN;
+	CALL T2_CNT_SAVE(XYZ1,BBIT,C_NAME(:ABS(N_NAME)));	"Save it"
+	IF (BBIT .eq. 0) THEN;
+	    C_NAME='%'; N_NAME=1;
+	ENDIF;
+	RETURN;
+   ENDIF;
+   CALL T2XFRM(3,1,XYZ1,NONLIN,XFRM14,2,XYZ2);
+   IF (BBIT.eq.0 .or. LBIT.eq.0 .or.
+      (ABS(XYZ2(1)-XSAV)+ABS(XYZ2(2)-YSAV)).GE.TOLR) THEN;
+      IF (BBIT.ne.0) THEN; LPEN=-1;
+                     ELSE; LPEN= 1; ENDIF;
+      CALL TXLINE(XYZ2(1),XYZ2(2),LPEN,LINTEX);
+      XSAV=XYZ2(1);
+      YSAV=XYZ2(2);
+   ENDIF;
+   LBIT=BBIT;
+END;
+%E  LOGICAL FUNCTION T2CNT5
+LOGICAL FUNCTION T2CNT5(XYZ2,ZC,ISIDE,MCNT,BDFG,M1,M2,M3);
+"
+	Put contour labels on plot
+	ISIDE=0,1,2,3 LEFT, Bottom, Top, Right
+"
+   IMPLICIT NONE;
+   CHARACTER*20 TEXT,CASE;
+   $SPECIFICATION;
+   $SPECIFYNONE;
+   $TXCOM;
+   INTEGER ISIDE,BDFG,MCNT, M1, M2, M3;
+   REAL ZC,TEMP,TEMP1,TXXCSZ;
+   INTEGER NTEXT,NCASE,IAXSAV,IDUM;
+   REAL VM,CHSIZ,DY,DX,XS,YS;
+   INTEGER I,II,NBUFFR,IWID,IFIRST;
+   SAVE NBUFFR;
+   REAL XYZ2(3);
+   T2CNT5=.FALSE.;
+   IF (XYZ2(1) .eq. HNONE) RETURN;
+   IF (MCNT.eq.0) THEN;
+      NBUFFR=1+$BUFSIZ/2;
+      <I=NBUFFR,$BUFSIZ; BUFFER(I)=HNONE; >
+      RETURN;
+   ENDIF;
+   IF( $TRAP ) RETURN;
+   II=IABS(MCNT);
+   IF (II.gt.1) THEN;
+      VM = AMAX1(ABS(XYZLIM(M3,1)),ABS(XYZLIM(M3,2)));
+      VM = AMAX1(VM,$SMALL REAL);
+      IF (II.eq.2) THEN;
+	IWID=ALOG10(VM); IWID=5-IWID;
+	IWID=MIN(MAX(IWID,0),9);
+      ELSE;
+	IWID=6;
+      ENDIF;
+      CALL T2TLAB(II,ZC,SCLPRM(1,M3),IWID,1,TEXT,NTEXT,CASE,NCASE,IFIRST);
+      CHSIZ=ABS(0.1*REDUCE(2)*LBLSIZ);
+      TEMP=CHSIZ/2;
+      TEMP1=TXXCSZ(TEXT(1:NTEXT),CASE(1:NCASE),0.1*REDUCE(2)*LBLSIZ);
+      IF (TEMP1.eq.0) TEMP1=TEMP;
+      DX=0; DY=0;
+      IF (BDFG .NE.0) THEN;
+         IF (1+IAND(ISIDE,1).eq.M1) THEN;
+            DX=-TEMP1/2;
+            DY=1.1*TEMP;
+            IF (ISIDE.le.1) DY=-DY;
+         ELSE;
+            DX=TEMP;
+            IF (ISIDE.le.1) DX=-TEMP1;
+         ENDIF;
+         IF (XYZ2(1)+DX-TEMP .lt. CCSCIS(1)) DX=CCSCIS(1)-XYZ2(1)+TEMP;
+         IF (ABS(DX) .gt. TEMP1+TEMP) RETURN;
+         IF (XYZ2(1)+DX+TEMP1.gt. CCSCIS(2)) DX=CCSCIS(2)-XYZ2(1)-TEMP1;
+         IF (ABS(DX) .gt. TEMP1+TEMP) RETURN;
+         IF (XYZ2(2)+DY-TEMP .lt. CCSCIS(3)) DY=0;
+         IF (XYZ2(2)+DY-TEMP .lt. CCSCIS(3)) DY=2*TEMP;
+         IF (XYZ2(2)+DY+TEMP .gt. CCSCIS(4)) DY=0;
+         IF (XYZ2(2)+DY+TEMP .gt. CCSCIS(4)) DY=-2*TEMP;
+         IF (XYZ2(1)+DX-TEMP .lt. CCSCIS(1) .or.
+             XYZ2(1)+DX+TEMP1.gt. CCSCIS(2)) RETURN;
+         IF (XYZ2(2)+DY-TEMP .lt. CCSCIS(3) .or.
+             XYZ2(2)+DY+TEMP .gt. CCSCIS(4)) RETURN;
+         XYZ2(1)=XYZ2(1)+DX;
+	 XYZ2(2)=XYZ2(2)+DY;
+         <I=1+$BUFSIZ/2,$BUFSIZ-3,4;
+            IF (BUFFER(I) .eq. HNONE) <EXIT>;
+            IF (XYZ2(1)+TEMP1 .gt. BUFFER(I) .and.
+                XYZ2(1).lt. BUFFER(I)+BUFFER(I+3) .and.
+                XYZ2(2)-2*TEMP  .lt. BUFFER(I+1) .and.
+                XYZ2(2)+2*TEMP  .gt. BUFFER(I+1)) RETURN;
+         >
+      ENDIF;
+      IF (XYZ2(1)-TEMP  .ge.CCSCIS(1) .and.	"Inside window?"
+          XYZ2(1)+TEMP  .le.CCSCIS(2) .and.
+          XYZ2(2)-TEMP  .ge.CCSCIS(3) .and.
+          XYZ2(2)+TEMP  .le.CCSCIS(4)) THEN;
+         BUFFER(NBUFFR)=XYZ2(1); BUFFER(NBUFFR+1)=XYZ2(2); "Save current coord"
+         BUFFER(NBUFFR+3)=TEMP1; BUFFER(NBUFFR+2)=XYZ2(3);
+         NBUFFR=NBUFFR+4;
+         IF (NBUFFR+3.gt.$BUFSIZ) NBUFFR=1+$BUFSIZ/2;
+         CALL T2CWTS(IAXTEX,IAXSAV);		"Save old color..."
+         CALL T2CWTS(LABTEX,IDUM);		"set color width texture"
+         CALL TXSDEF;
+         T2CNT5=.TRUE.;				"Yes output label"
+         IF (FLAGS(123)) CALL TXXMT;  		"New segment ?"
+         CALL TXTEXT(XYZ2(1),XYZ2(2),LBLSIZ,XYZ2(3)
+            ,TEXT(1:NTEXT),CASE(1:NCASE));
+         IF (FLAGS(123)) CALL TXXMT;  		"New segment ?"
+         CALL T2CWTS(IAXSAV,IDUM);
+         CALL TXSDEF;
+      ENDIF;
+   ENDIF;
+END;
+%FORTRAN
+%E  SUBROUTINE T2CNT2
+      SUBROUTINE T2CNT2(ISID,IROW,ICOL,ZCNT,XCRD,YCRD,
+     X                  ARAY,LDIM,MDIM,NDIM,OFLG)
+C
+C *******************  THE UNIFIED GRAPHICS SYSTEM  *******************
+C *                DETERMINE CONTOUR-SIDE INTERSECTION                *
+C *                                                                   *
+C *  THIS SUBROUTINE IS USED BY T2CNTR TO DETERMINE IF A SIDE IS      *
+C *  INTERSECTED BY A CONTOUR LINE.                                   *
+C *                                                                   *
+C *  THE CALLING SEQUENCE IS:                                         *
+C *    CALL T2CNT2(ISID,IROW,ICOL,ZCNT,XCRD,YCRD,                     *
+C *                ARAY,LDIM,MDIM,NDIM,OFLG)                               *
+C *                                                                   *
+C *  THE PARAMETERS IN THE CALLING SEQUENCE ARE:                      *
+C *    ISID  INDEX OF THE SIDE BEING PROCESSED.                       *
+C *    IROW  INDEX OF THE ROW BEING PROCESSED.                        *
+C *    ICOL  INDEX OF THE COLUMN BEING PROCESSED.                     *
+C *    ZCNT  VALUE OF THE CONTOUR LINE.                               *
+C *    XCRD  X COORDINATE OF THE INTERSECTION.                        *
+C *    YCRD  Y COORDINATE OF THE INTERSECTION.                        *
+C *    ARAY  THE ARRAY DEFINING THE CONTOUR DATA.                     *
+C *    MDIM  THE EXTENT OF THE CONTOUR DATA IN THE X DIRECTION.       *
+C *    NDIM  THE EXTENT OF THE CONTOUR DATA IN THE Y DIRECTION.       *
+C *    OFLG  AN OUTPUT FLAG INDICATING IF AN INTERSECTION WAS FOUND.  *
+C *                                                                   *
+C *                                                                   *
+C *********************************************************************
+C
+      IMPLICIT      NONE
+      INTEGER       ISID
+      REAL          ZCNT
+      REAL          XCRD,YCRD
+      INTEGER       LDIM,MDIM,NDIM,IROW,ICOL
+      REAL          ARAY(LDIM,MDIM,NDIM+1)
+      INTEGER       OFLG
+C
+      REAL          IVR1,IVR2,DVR1,DVR2
+      LOGICAL       VFLG
+C
+      REAL          FLT1
+C
+C  OBTAIN THE INDEPENDENT AND DEPENDENT VARIABLES.
+      IF (ISID.EQ.0) THEN
+        DVR1=ARAY(1,IROW-1,ICOL-1)
+        DVR2=ARAY(1,IROW,ICOL-1)
+        XCRD=ARAY(1,1,ICOL-1)
+        VFLG=.TRUE.
+      ELSE IF (ISID.EQ.1) THEN
+        DVR1=ARAY(1,IROW-1,ICOL-1)
+        DVR2=ARAY(1,IROW-1,ICOL)
+        YCRD=ARAY(1,IROW-1,1)
+        VFLG=.FALSE.
+      ELSE IF (ISID.EQ.2) THEN
+        DVR1=ARAY(1,IROW-1,ICOL)
+        DVR2=ARAY(1,IROW,ICOL)
+        XCRD=ARAY(1,1,ICOL)
+        VFLG=.TRUE.
+      ELSE
+        DVR1=ARAY(1,IROW,ICOL-1)
+        DVR2=ARAY(1,IROW,ICOL)
+        YCRD=ARAY(1,IROW,1)
+        VFLG=.FALSE.
+      END IF
+      IF (VFLG) THEN
+        IVR1=ARAY(1,IROW-1,1)
+        IVR2=ARAY(1,IROW,1)
+      ELSE
+        IVR1=ARAY(1,1,ICOL-1)
+        IVR2=ARAY(1,1,ICOL)
+      END IF
+C
+C  CHECK FOR AN INTERSECTION.
+      IF (((DVR1.LT.ZCNT).AND.(DVR2.LT.ZCNT)).OR.
+     X  ((DVR1.GE.ZCNT).AND.(DVR2.GE.ZCNT))) GO TO 101
+C  COMPUTE THE OTHER COORDINATE.
+
+      FLT1=IVR1+(ZCNT-DVR1)*(IVR2-IVR1)/(DVR2-DVR1)
+      IF (VFLG) THEN
+        YCRD=FLT1
+      ELSE
+        XCRD=FLT1
+      END IF
+C
+C  RETURN WITH INTERSECTION.
+      OFLG=1
+      GO TO 102
+C  RETURN WITHOUT INTERSECTION.
+  101 OFLG=0
+  102 RETURN
+C
+      END
+%E  SUBROUTINE T2CNT3
+      SUBROUTINE T2CNT3(FLAG,ISID,IROW,ICOL,MDIM,WKAR,OFLG)
+C
+C *******************  THE UNIFIED GRAPHICS SYSTEM  *******************
+C *                   MARK/CHECK SIDES AS PROCESSED                   *
+C *                                                                   *
+C *  THIS SUBROUTINE IS USED BY T2CNTR TO MARK A GIVEN SIDE AS        *
+C *  PROCESSED OR CHECK IF THE SIDE HAS BEEN PROCESSED.               *
+C *                                                                   *
+C *  THE CALLING SEQUENCE IS:                                         *
+C *    CALL T2CNT3(FLAG,ISID,IROW,ICOL,MDIM,WKAR,OFLG)                *
+C *                                                                   *
+C *  THE PARAMETERS IN THE CALLING SEQUENCE ARE:                      *
+C *    FLAG  0 MEANS MARK, 1 MEANS CHECK.                             *
+C *    ISID  INDEX OF THE SIDE BEING PROCESSED.                       *
+C *    IROW  INDEX OF THE ROW BEING PROCESSED. (Y)                    *
+C *    ICOL  INDEX OF THE COLUMN BEING PROCESSED. (X)                 *
+C *    MDIM  THE EXTENT OF THE CONTOUR DATA IN THE X DIRECTION.       *
+C *    WKAR  A WORK ARRAY.                                            *
+C *    OFLG  A RETURN VALUE INDICATING IF THE SIDE HAS BEEN           *
+C *          PROCESSED.                                               *
+C *                                                                   *
+C *                                                                   *
+C *********************************************************************
+C
+      INTEGER       FLAG,ISID,IROW,ICOL,MDIM
+      INTEGER*4     WKAR(*)
+      INTEGER       OFLG
+C
+      INTEGER       KROW,KCOL,KSID
+      INTEGER*4     XMNB,XMNW,XMNO,XMWD,XMLP,XMUP,XMP0,XMP1
+C
+C  PERFORM THE REQUIRED OPERATION.
+      KROW=IROW
+      KCOL=ICOL
+      KSID=ISID
+      IF (KSID.EQ.2) THEN
+        KSID=0
+        KCOL=KCOL+1
+      ELSE IF (KSID.EQ.3) THEN
+        KSID=1
+        KROW=KROW+1
+      END IF
+      XMNB=2*((KROW-3)+(MDIM-1)*(KCOL-3))+KSID
+      XMNW=1+XMNB/32
+      XMNO=  MOD(XMNB,32)
+      XMP0=ISHFT(1,XMNO)
+      XMWD=WKAR(XMNW)
+      IF (IAND(XMP0,XMWD).eq.0) THEN
+         OFLG=0
+         IF (FLAG.EQ.0) WKAR(XMNW)=IOR(XMWD,XMP0)
+      ELSE
+         OFLG=1
+      ENDIF
+C
+C  RETURN TO CALLING SUBROUTINE.
+      RETURN
+C
+      END

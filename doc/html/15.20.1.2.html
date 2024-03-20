@@ -1,0 +1,24 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.20.1.2</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.20.1.2  Examples</H4></B>   - For  example  you wish to define some DCL commands
+such as DIRECTORY for convenience.
+     TD:<U>DEFINE</U> <U>COMMAND</U> <U>DIR</U> <U>"SPAWN</U> <U>DIR"</U>
+          or...
+     TD:<U>DEFINE</U> <U>COMMAND</U> <U>"DIR*ECTORY"</U> <U>"SPAWN</U> <U>DIR"</U>
+These  both  define  the  command  DIR.   The second definition allows any
+abbreviation from DIR to DIRECTORY to be used.
+     TD:<U>DEFINE</U> <U>COMMAND</U> <U>SC</U> <U>"SHOW</U> <U>HIST</U> <U>CURRENT</U> <U>FULL"</U>
+Defines  the  command  SC  to  show  you  the  full  status of the current
+histogram.  (See:Command SET HIST and SHOW HIST)
+     TD:<U>DEFINE</U> <U>COMMAND</U> <U>SD</U> <U>"SHOW</U> <U>DATA</U> <U>STATISTICS"</U>
+Defines a command to show you the statistics of the data set.
+     TD:<U>DEFINE</U> <U>COMMAND</U> <U>SD1</U> <U>"SHOW</U> <U>DATA</U> <U>STATISTICS</U> <U>SET=1"</U>
+Defines a command to show you the statistics of the data set number 1.
+
+
+</PRE>
+</BODY>

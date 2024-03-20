@@ -1,0 +1,15 @@
+LIB = ../../ugs.a
+
+.f.o:;\
+	f77  -c         $*.f  ;\
+	ar   rvs $(LIB) $*.o
+
+$(LIB): \
+iand.o   \
+ior.o    \
+ishft.o  \
+ibclr.o  \
+ibset.o  \
+btest.o  \
+; \
+	ls -l  $(LIB)

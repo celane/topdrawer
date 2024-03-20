@@ -1,0 +1,32 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.20.2.19</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.20.2.19  X|Y...</H4></B>        - If you specify X|Y FROM,TO and BY or N= then a
+new histogram is created, or an  existing  histogram  is  rescaled.   When
+rescaled  it is recreated, and the existing scales, and title are kept, if
+not respecified.  If you specify  this  for  both  X  and  Y  then  a  3-d
+histrogram  is  created.   If unspecified FROM/TO=0 and N=100.  The option
+PROFILE creates a profile histogram using the specified X,Y limits.
+
+                                 examples
+     TD:<U>DEFINE</U> <U>HIST</U> <U>ID=5</U> <U>X</U> <U>FROM</U> <U>10</U> <U>TO</U> <U>20</U> <U>BY</U> <U>0.5</U> <U>DEFNAME='test'</U>
+     TD:<U>DEFINE</U> <U>HIST</U> <U>ID=5</U> <U>FROM</U> <U>10</U> <U>TO</U> <U>20</U> <U>BY</U> <U>0.5</U> <U>DEFNAME='test'</U>
+     TD:<U>DEFINE</U> <U>HIST</U> <U>ID=5</U> <U>FROM</U> <U>10</U> <U>TO</U> <U>20</U> <U>N=20</U> <U>DEFNAME='test'</U>
+all create a histogram with 20 bins from 10 to 20 in steps 0f 0.5
+     TD:<U>DEFINE</U>  <U>HIST</U>  <U>NEXT</U>  <U>X</U>  <U>FROM</U>  <U>10</U>  <U>to</U>  <U>20</U>  <U>BY</U>  <U>.5</U> <U>Y</U> <U>FROM</U> <U>1</U> <U>TO</U> <U>5</U> <U>BY</U> <U>1</U>
+<U>DEFNAME='3-d</U> <U>test'</U>
+Creates a 3-d histogram of size 5 by 20.
+     TD:<U>DEFINE</U> <U>HIST</U> <U>NEXT</U> <U>X</U> <U>N=50</U>
+Creates a histogram with 50 bins.
+     TD:<U>DEFINE</U> <U>HIST</U> <U>NEXT</U> <U>X</U>
+Creates a histogram with 100 bins.
+     TD:<U>DEFINE</U> <U>HIST</U> <U>IDENT=2</U> <U>X</U> <U>FROM</U> <U>1</U> <U>TO</U> <U>100</U> <U>Y</U> <U>FROM</U> <U>0</U> <U>TO</U> <U>1.5</U> <U>PROFILE</U>
+Creates  a profile histogram with 100 bins from 1 to 100 for Y values from
+0 to 1.5.
+
+
+</PRE>
+</BODY>

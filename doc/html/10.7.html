@@ -1,0 +1,41 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 10.7</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>10.7  TYPES</H4></B> 
+
+Data  may  either  be  X,Y,Z  points or mesh data.  A point consists of an
+X,Y,[Z] value with optional errors DX,DY,[DZ],[NDX], [NDY],[NDZ] Z and  DZ
+are  optional and may not necessarily be present.  MESH data is a data set
+consisting of Z values as a function of X and Y.  A mesh is essentially  a
+square  grid of data with X,Y vs Z.  A mesh may also have optional DX, DY,
+and DZ values attached to it.
+
+Data  may  be  subdivided  into  data  sets.   Each  data  set is numbered
+consecutively starting with 1.   Within  each  data  set  the  points  are
+numbered  from 1 to n.  To create a new data set use the DATA SET command.
+Some commands such as FIT allow automatic creation of a new  data  set  if
+the option APPEND is used.
+
+When  plotting  you  may  specify which data set you wish to plot with the
+option SET=n.  For example PLOT SET=1 plots the first data set.   You  may
+also  use  FIRST,LAST,NEXT,PREVIOUS,  or  CURRENT  to  specify a data set.
+FIRST is always set number 1 while  LAST  is  the  number  of  data  sets.
+CURRENT is the last set specified.  NEXT is the current data set +1, while
+PREVIOUS is the current set -1.
+<A NAME="18"> </A>
+For example you may plot 2 sets by:
+     TD:<U>PLOT</U> <U>SET=FIRST</U>
+     TD:<U>PLOT</U> <U>SET=NEXT</U>
+You may also specify a range of sets.
+     TD:<U>PLOT</U> <U>SET=2</U> <U>TO</U> <U>LAST</U>
+plots all data sets except for number 1.
+                                  Warning
+When plotting multiple data sets, the format of the plot is taken from the
+first data set.  If the first set is a mesh, the plot will be 3-D.
+
+
+</PRE>
+</BODY>

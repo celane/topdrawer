@@ -1,0 +1,23 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.52</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.52  SIZE</H4></B> 
+
+This sets the physical size of the plot.  Once set it remains the same
+until a new SET SIZE command is issued.  This command should only be used
+immediately after a NEW PLOT command or a SET DEVICE command.  It may not
+be used after any commands that plot data.
+<U>SE</U>T <U>SI</U>ZE [[<U>X</U>=]x [<U>BY</U>|<U>Y</U>=] y]
+     [<U>UN</U>ITS=units] [<U>CM</U>|<U>CE</U>NTIMETERS|<U>MM</U>|<U>MI</U>LLIMTERS|<U>ME</U>TERS|<U>IN</U>CHES]
+     [<U>MA</U>GNIFY|<U>RE</U>DUCE=factor]
+     [<U>SI</U>DEWAYS|<U>RO</U>TATED|<U>NO</U>RMAL|<U>OR</U>IENTATION=n]
+     [<U>MA</U>RGINS=[nl,[nr,[nb,[nt]]]]] [<U>LE</U>FT=n] [<U>RI</U>GHT=n] [<U>BO</U>TTOM=n] [<U>TO</U>P=n]
+If no options are specified the sizes are reset to the defaults.
+(Default:NORMAL 13 by 10 inches MARGINS=0)
+
+
+</PRE>
+</BODY>

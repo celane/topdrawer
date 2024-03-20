@@ -1,0 +1,24 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.18.20</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.18.20  String</H4></B>  - This is passed to UGOPEN.  This selects options for
+the selected device.  The options  are  separated  by  commas.   For  more
+information see:UGSYS.  An example of using the string is:
+     TD:<U>SET</U> <U>DEVICE</U> <U>SIXELS</U> <U>"LN03HI,NOCLEAR,NORESET,LENGTH=n,inches"</U>
+
+This  selects  output  for  the  LN-03 with no imbedded formfeeds or reset
+commands.  You might produce a plot in this form so you can add it  to  an
+existing text file.  The result is a plot imbedded in the text.
+
+LENGTH=n  adjusts  the  page  length where n is the length of the paper in
+inches.  Shortening the plot size is useful for imbedded plots.   You  may
+also lengthen the page length on the LA50 and LA100 printers.
+
+If the option inches is omitted the length is in centimeters.
+
+
+</PRE>
+</BODY>

@@ -1,0 +1,30 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.43</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.43  INTERPOLATE</H4></B> 
+
+<U>IN</U>TERPOLATE [<U>LE</U>VEL=n] [{<U>SP</U>LINE|<U>GE</U>NERAL}] [<U>CL</U>OSED[=<U>ON</U>|<U>OF</U>F]]
+     [<U>PO</U>INTS|<U>CO</U>LUMNS=[<U>FR</U>OM] n1 [<U>TO</U>] [n2]]
+     [<U>SET</U>S=[<U>FR</U>OM] n1 [<U>TO</U>] [n2]]
+     [<U>SEL</U>ECT="name"]
+     [<U>LIM</U>ITED [<U>VL</U>OG[=<U>ON</U>|<U>OF</U>F]] [[<U>FR</U>OM]|<U>TO</U> [[<U>X</U>=]nx,[[<U>Y</U>=]ny[,[<U>Z</U>=]nz]]]
+          [<U>RE</U>CURSOR] [<U>CU</U>RSOR] ]
+     [<U>AP</U>PEND[=<U>ON</U>|<U>OF</U>F]] [<U>NA</U>ME="name"] [<U>LO</U>G[=<U>ON</U>|<U>OF</U>F]]
+Interpolates a data set and puts the result into a new data set.  LEVEL is
+the number of intervals per pair of  points.   If  2  a  single  point  is
+interpolated in between each existing point.  If it is 5 then 4 points are
+interpolated.  X, Y, and Z if available are all interpolated.
+
+The  data  must  be  strictly  monotonic  in  either  Y  or X for a SPLINE
+interplation.
+
+If the first and last points of a curve are the same, the curve is assumed
+to be closed, and the interpolation is done accordingly.  If the  data  is
+POLAR or SPHERICAL then the angles must vary smoothly for proper closure.
+
+
+</PRE>
+</BODY>

@@ -1,0 +1,37 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 18.15</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>18.15  TDARRO</H4></B> 
+
+This draws an arrow from XYZ(1:3,1) to XYZ(1:3,2)
+     CALL TDARRO(XYZ,[DXYZ,[IMODE,[ITYPE]]])
+     1.  XYZ(3,2)  is  the array of XYZ to specify the arrow.  XYZ(*,1) is
+         the tail while XYZ(*,2) is the head.  For 2-d plots the  z  value
+         is ignored.
+     2.  DXYZ(4) specifies the offsets and size.
+         A.  DXYZ(1) - The offset for the tail of arrow
+         B.  DXYZ(2) - The offset for the head of the arrow
+         C.  DXYZ(3) - Size of arrow if zero the default is used.
+         D.  DXYZ(4) - Flare of arrow if zero the default is used.
+     3.  IMODE(2)  -  Specifies the frame.  DATA=0, TEXT=1 IMODE(1) is for
+         tail of arrow.
+     4.  ITYPE - Specifies the Texture,color,intensity
+For  more  information  see  TOPDRAWER COMMAND ARROW.   This is similar to
+giving the command.
+     TD:<U>ARROW</U>    <U>FROM</U>    <U>XYZ(1,1),XYZ(2,1),XYZ(3,1)</U>    <U>LESS</U>   <U>DXYZ(1)</U>   <U>TO</U>
+<U>XYZ(1,2),XYZ(2,2),XYZ(3,2)</U>  <U>LESS</U>  <U>DXYZ(2)</U>   <U>SIZE=DXYZ(3),DXYZ(4)</U>   Outputs
+extended titles with case formatting.
+This  routine  is  not recommended.  It is provided for compatability with
+older versions of TOPDRAWER.  Use TDTEXT instead.
+     CALL TDCASE('title','case'[,x,y])
+     CALL TDCASE('title','case','position')
+     CALL TDCASE('title')
+
+See TDTITL for more information
+
+
+</PRE>
+</BODY>

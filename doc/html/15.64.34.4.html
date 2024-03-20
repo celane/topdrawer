@@ -1,0 +1,25 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.34.4</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.34.4  INSIDE</H4></B>   - INSIDE=OFF  turns  off  labels for adjacent axes of
+negative windows.  If you wish to plot data in a set of windows  with  the
+same scales and limits, you may want to have each window flush against the
+next one.  This is achieved by using negative windows.  Unfortunately when
+plotting  the  axes,  you  will  get  labels  inside  the  windows.   With
+INSIDE=OFF you will only get labels on the perimeter.
+
+                                  Example
+Assume you have 6 data sets to plot in separate windows.
+     TD:<U>SET</U> <U>LABELS</U> <U>INDIDE=OFF</U>
+     TD:<U>SET</U> <U>WINDOW</U> <U>X</U> <U>1.2</U> <U>OF</U> <U>-3.5</U> <U>Y</U> <U>1.2</U> <U>OF</U> <U>-2.5</U>
+     <U>SET</U> <U>WINDOW</U> <U>1;PLOT</U> <U>SET=1</U>
+     <U>SET</U> <U>WINDOW</U> <U>2;PLOT</U> <U>SET=2</U>
+     <U>SET</U> <U>WINDOW</U> <U>3;PLOT</U> <U>SET=3</U>
+     ....
+
+
+</PRE>
+</BODY>

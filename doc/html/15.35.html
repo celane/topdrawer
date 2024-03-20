@@ -1,0 +1,36 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.35</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.35  FFT</H4></B> 
+
+<U>FF</U>T [<U>SET</U>S=[<U>FR</U>OM] n1 [<U>TO</U>] [n2]] [<U>SEL</U>ECT="name"] [<U>CH</U>ECK[=<U>ON</U>|<U>OF</U>F]] [<U>LO</U>G[=<U>ON</U>|
+          <U>OF</U>F]] [<U>IN</U>VERT[=<U>ON</U>|<U>OF</U>F]] [<U>AP</U>PEND[=<U>ON</U>|<U>OF</U>F]] [<U>NAM</U>E="name"]
+          [<U>PO</U>LAR[=<U>ON</U>|<U>OF</U>F]] [<U>MO</U>NITOR[=<U>ON</U>|<U>OF</U>F]]
+This command produces a complex fast fourier transformation of the
+selected data sets.  For 2-d data the real part of the coefficients is
+stored in Y, and the imaginary part in Z if it exists.  If not then DY
+contains the imaginary part.  X contains the frequency value.  No error
+analysis is performed by this operation.  For mesh data the real part is
+stored in Z and the imaginary part in DZ.
+     1.  APPEND=ON Creates a new data set containing the result.
+     2.  CHECK=OFF Turns off the checking to see if data is a histogram.
+     3.  INVERT=ON inverts the forier series contained in Y,Z/DY.
+     4.  SETS selects the data sets to to transform.
+     5.  LOG=ON Logs the operation on your terminal.
+     6.  MONITOR If selected it histograms the original data set and the
+         result.
+         See:  SET MODE MONITOR
+     7.  POLAR=ON selects polar coordinate output where Y is the magnitude
+         and Z/DY is the angle.  The angle units is selected by the SET
+         POLAR command.
+
+The selected data must be a histogram, that is the X values must be
+equally spaced and strictly monotonic, and there must be at least 2 points
+in each data set.
+
+
+</PRE>
+</BODY>

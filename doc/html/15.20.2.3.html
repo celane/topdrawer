@@ -1,0 +1,40 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.20.2.3</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.20.2.3  ADD...</H4></B>        - ADD,SUBTRACT,MULTIPLY,DIVIDE    [IDENT=n1[,n2]]
+[<U>FA</U>CTOR=f1[,f2] [CYCLE=[ON|OFF]
+Takes  histograms  IDENT=n1  and  n2 and combines them into the previously
+specified histograms n3=nmin to nmax.  The number of  channels  in  n1,n2,
+and n3 must all be the same.
+     n3=n2*f2 operation n1*f1
+If n1 or n2 are omitted they are assumed to be n3.  If f1 or is omitted it
+is assumed to be 1.0.  If n2 is specified and n3 does  not  exist,  it  is
+created.  CYCLE increments N1,N2 each time.  This combines n1,n2 into nmin
+and n1+1,n2+1 into nmin+1 and so on.  Only histograms  of  the  same  type
+with the same number of channels can be added.
+
+If n1 is an NTUPL then it  is  binned  into  n3=nmin  to  nmax  using  the
+parameters  specified  in  previous  SET HISTOGRAM commands.  The possible
+options the may be set are X,DX,...,EVENTS,NLIMIT,NMASK.   If  the  target
+histogram  does  not  exist  it is automatically created with 100 channels
+using the NTUPL name.  If CYCLE is selected then the  X  specification  is
+incremented.
+                                  example
+     TD:<U>DEFINE</U> <U>HISTOGRAM</U> <U>IDENT=25</U> <U>DIVIDE</U> <U>IDENT=1,2</U> <U>FACTOR=.25,.75</U>
+HIST(25)=HIST(1)*0.25 / HIST(2)*0.75
+     TD:<U>DEFINE</U> <U>HISTOGRAM</U> <U>IDENT=25</U> <U>ADD</U> <U>IDENT=1,2</U>
+HIST(25)=HIST(1)+HIST(2)
+     TD:<U>DEFINE</U> <U>HISTOGRAM</U> <U>IDENT=25</U> <U>ADD</U> <U>IDENT=1</U> <U>FACTOR=0.5</U>
+HIST(25)=HIST(1)*0.5
+     TD:<U>DEFINE</U> <U>HISTOGRAM</U> <U>IDENT</U> <U>25</U> <U>TO</U> <U>30</U> <U>ADD</U> <U>IDENT=1</U> <U>CYCLE</U>
+N-tupl value 1 is added to histogram 25
+N-tupl value 2 is added to histogram 26
+...
+N-tupl value 6 is added to histogram 30
+
+
+</PRE>
+</BODY>

@@ -1,0 +1,39 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 20.6</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>20.6  90</H4></B> 
+
+     1.  Jan-1990  -  Optimized expression evaluation to achieve a 30 fold
+         speedup.  Added  error  handling  to  smoothing  routine.   Added
+         support for a postscript printer.
+     2.  Feb-1990  -  Added  EQUATION  option  to FIT.  For general linear
+         fits.  Optimized the auto label generation for logarithmic  axes.
+         Removed  restrictions  on  order  of DECADES, SUBTICKS in the SET
+         SCALE command.  Added device UIS to be able  to  dump  screen  of
+         Vaxstation  to  disk  in full resolution.  Made VAXstation driver
+         work for color station.  Added color mappings for DECGIGI driver.
+     3.  July-1990  -  Fixed PROJECT command in TOPDRAWER.  It was correct
+         in NTOPDRAWER.  It would sometimes  give  incorrect  results  for
+         HBOOK histograms.
+         Added  options  FETCH and READ to TOPDRAWER command RESTORE HIST.
+         (Version 3.5)
+
+<A NAME="243">         Note:   some  versions  may  have  had  problems with the fitting </A>
+         lexicals.  VCOEFFICIENT...  as some modules  were  compiled  with
+         /Gfloat  and  some  were  not.   The  standard is /GFLOAT for all
+         double precision operations if it is  supported  by  the  machine
+         that it is compiled on.
+
+         Fixed  lexicals V...  inside expressions.  Y="VXVALUE**2" yielded
+         incorrect results while Y="XVALUE**2" was correct.  This  problem
+         dated from Jan-1990 when optimization was introduced.
+     4.  Dec-1990     -     Added     options     WEIGHT,    EWEIGHT    to
+         ADD,SUBTRACT,MULTIPLY,DIVIDE commands.  These allow weighting  of
+         data when doing the operation.
+
+
+</PRE>
+</BODY>

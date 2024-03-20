@@ -1,0 +1,2017 @@
+%U+ TDMACROS.MOR
+
+%FORTRAN
+*.
+*.	Package of utilities written by:
+*.		J.Clement, Rice University, Houston, Tx.
+*.
+*.	These supplement normal HBOOK4 routines, or replace some routines
+*.	Such as HCDIR.  Modified routines have been changed purely
+*.	to suppress error messages, so I may handle the errors myself.
+*.	In addition some routines have outrageous errors in them, such as
+*.	HRESET, which resets NTUPLES incorrectly.
+*.	There is a bad error in HBOOK4 with respect to ARRAYS.  The first
+*.	element should never be used, as it is the flag word for histogram
+*.	type.
+*.
+*.	These are designed to make navigating a DIR tree easy.
+*.	And to give the user more info about HBOOK hists.
+*.	Essentially they handle Common resident, global sections, and HRZ files
+*.	in nearly identical fashion.
+*.
+*.
+*.	This has been made CNL196-CNL198 compatible
+*.	Further work needs to be done for CNL200
+*.
+      SUBROUTINE HB_SEARCH_DIR(CHPATH,LEVEL,LEVEL0)
+*.==========>
+*.      To get subdir names.
+*. Input:
+*.	CHPATH	Character  variable  specifying  the  last dir name.
+*.		(if CHPATH=' ') start new search
+*.	LEVEL	LEVEL=0 start new search
+*.      LEVEL0  Starting level in DIR tree
+*.		If CHPATH/LEVEL0 are modified during the search
+*.		The result will be unpredictable.
+*. Output:
+*.	CHPATH	Character variable specifying the next subdir
+*.	LEVEL	Current Level in DIR tree
+*.      LEVEL0  Starting level in DIR tree
+*.
+*.	This works with disk and memory resident histograms
+*.	Whether in a shared section or regular common
+*.
+*..=========> ( J.Clement )
+      COMMON/PAWC/NWPAW,IXPAWC,IHDIV,IXHIGZ,IXKU,FENC(5),LMAIN,HCV(9989)
+      DIMENSION IQ(1),Q(1),LQ(8000)
+      EQUIVALENCE (LQ(1),LMAIN),(IQ(1),LQ(9)),(Q(1),IQ(1))
+      COMMON/HCBOOK/HVERSN,IHWORK,LHBOOK,LHPLOT,LGTIT,LHWORK,
+     +LCDIR,LSDIR,LIDS,LTAB,LCID,LCONT,LSCAT,LPROX,LPROY,LSLIX,
+     +LSLIY,LBANX,LBANY,LPRX,LPRY,LFIX,LLID,LR1,LR2,LCIDN
+*
+      PARAMETER(KNCX=3,KXMIN=4,KXMAX=5,KBWIDX=6,KMIN=7,KMAX=8,KNORM=9,
+     +          KTIT1=10,KNCY=7,KYMIN=8,KYMAX=9,KBWIDY=10,KSCAL2=11,
+     +          KTIT2=12,KNBIT=1,KNOENT=2,KSTAT1=3,KNSDIR=5,KNRH=6,
+     +          KCON1=9,KCON2=3,KBITS=1,KNTOT=2)
+*
+      COMMON/HCFLAG/ID    ,IDBADD,LID   ,IDLAST,IDHOLD,NBIT  ,NBITCH,
+     +       NCHAR ,NRHIST,IERR  ,NV
+*
+      COMMON/HCUNIT/LOUT,LERR,LDISC
+*
+      PARAMETER (NLPATM=100)
+      COMMON /HCDIRN/NLCDIR,NLNDIR,NLPAT,ICDIR,NCHTOP,ICHTOP(NLPATM)
+      COMMON /HCDIRC/CHCDIR(NLPATM)
+      CHARACTER*16   CHCDIR
+*
+      COMMON/QUEST/IQUEST(100)
+      CHARACTER*(*) CHPATH
+      CHARACTER*128 CHWOLD
+      INTEGER LEVEL,NLPAT0
+      DIMENSION LCUR(15)
+      CHARACTER*128 CHLAST
+*.___________________________________________
+C
+C	Now check if current dir is same as previous time
+C
+      IQUEST(1)=0
+C	First time through
+      IF (LEVEL.ne.0 .AND. CHPATH(1:1).NE.' ' ) THEN
+C	Get current dir
+         CALL HPAFF(CHCDIR,NLCDIR,CHLAST)
+C	If not same set to new
+         IF ( CHLAST .NE. CHPATH ) CALL HCDIR(CHPATH,' ')
+      ENDIF
+C
+C	No hists ??
+C
+      IF(LHBOOK.EQ.0.OR.IQUEST(1).NE.0) THEN
+         CHPATH=' '
+         LEVEL=0
+C
+C      RZ dir
+C
+      ELSEIF (ICHTOP(ICDIR).GT.0)THEN
+         CALL HRZ_SEARCH_DIR(CHPATH,LEVEL,LEVEL0)
+         GOTO 99
+C
+C	Global section
+C
+      ELSEIF (ICHTOP(ICDIR) .lt. 0) THEN
+         LOCQ=1-LOCF(IQUEST(1))-ICHTOP(ICDIR)
+         CALL GS_SEARCH_DIR(CHPATH,LEVEL,LEVEL0,IQUEST(LOCQ))
+         GOTO 99
+C
+C	Memory resident directory
+C
+      ELSE
+         CALL GS_SEARCH_DIR(CHPATH,LEVEL,LEVEL0,NWPAW)
+      ENDIF
+  99  RETURN
+      END
+      SUBROUTINE GS_SEARCH_DIR(CHPATH,LEVEL,LEVEL0,IPAWD)
+*.==========>
+*.      To get subdir names.
+*. Input:
+*.   CHPATH Character  variable  specifying  the  last dir name.
+*.   IPAWD  Virtual memory array containing the hists
+*.            (if CHPATH=' ') start new search
+*.
+*. Output:
+*.   CHPATH  Character variable specifying the next subdir
+*..=========> ( J.Clement )
+      PARAMETER (NLPATM=100)
+      COMMON /HCDIRN/NLCDIR,NLNDIR,NLPAT,ICDIR,NCHTOP,ICHTOP(NLPATM)
+      COMMON /HCDIRC/CHCDIR(NLPATM)
+      CHARACTER*16   CHCDIR
+      COMMON /HCFILE/HFNAME(NLPATM)
+      CHARACTER*80 HFNAME
+*
+      COMMON/QUEST/IQUEST(100)
+      DIMENSION IHDIR(4)
+      DIMENSION IPAWD(*)
+*.___________________________________________
+      CHARACTER*(*) CHPATH
+      INTEGER LEVEL
+      INTEGER NLEVEL /0/
+      INTEGER LEVEL0,IDIR(NLPATM),I,IL,JR1
+      CHARACTER*128 CURDIR/' '/
+      IF (LEVEL.eq.0 .or. CHPATH(1:1).eq.' ') THEN
+         LEVEL=0
+         IF (IPAWD(1) .le.0) GOTO 90
+         IF (NLCDIR.le.0 .or. NLCDIR.gt.20) GOTO 90
+         NSIZE=IPAWD(1)-23
+         IF (NSIZE.le.0) GOTO 90		! Error ?
+         LEVEL0=NLCDIR
+*
+*          Search levels down for current one
+*
+         JR1=IPAWD(11)				! Start here
+         IF (JR1.le.0 .or. JR1 .gt. IPAWD(1)) GOTO 90
+      ELSE
+         IF (NSIZE.ne.IPAWD(1)-23) GOTO 90	! Changed ?
+      ENDIF
+      NLEVEL=NLCDIR
+      JR1=IPAWD(11)				! Start here
+      IDIR(1)=JR1				! Save it
+      DO 50 IL=2,NLCDIR				! Search all levels
+         CALL UCTOH(CHCDIR(IL),IHDIR,4,16)	! Current subdir
+         JR1=IPAWD(JR1+9)			! Get next
+         ILOOP=1000
+  30     IF (JR1.le.0 .or. JR1 .gt. NSIZE) GOTO 90
+         ILOOP=ILOOP-1
+         IF (ILOOP.eq.0) GOTO 90		! Max number of loops
+         DO 40 I=1,4				! Check that it matches
+            IF(IHDIR(I).NE.IPAWD(JR1+I+18))THEN	! Not match ?
+               JR1=IPAWD(JR1+10)		! Check next
+               GO TO 30
+            ENDIF
+  40     CONTINUE
+         IDIR(IL)=JR1				! SAve it
+  50  CONTINUE
+      IF (LEVEL.ne.0) THEN
+         LEVEL=NLCDIR
+         JR1=IPAWD(JR1+9)			! Move up 1 level ?
+         IF (JR1.ne.0 ) THEN			! Subdir exists ?
+            NLEVEL=NLEVEL+1			! Bump level
+            IDIR(NLEVEL)=JR1			! Save location
+         ELSE
+  70        IF (NLEVEL.lt.LEVEL0) GOTO 85	! Done ?
+            JR1=IDIR(NLEVEL)			! Current locatin
+            JR1=IPAWD(JR1+10)			! Next dir same level
+            IDIR(NLEVEL)=JR1			! Save it
+            IF (JR1.eq.0) THEN			! It does not exist ?
+               NLEVEL=NLEVEL-1			! Move down 1 level
+               GOTO 70				! And try again
+            ENDIF
+         ENDIF
+         IF (JR1.le.0 .or. JR1 .gt. NSIZE) GOTO 85
+         NLCDIR=NLEVEL				! Save level
+         CALL UHTOC(IPAWD(JR1+19),4,CHCDIR(NLCDIR),16)	! Get string
+       ENDIF
+*
+*	OK return
+*
+  80  CONTINUE
+      LEVEL=NLEVEL
+      CALL HPAFF(CHCDIR,NLCDIR,CHPATH)
+      CALL HCDIR(CHPATH,' ')
+      IF (IQUEST(1).ne.0) GOTO 85		! Error ?
+      GOTO 99
+*
+*	Done return
+*
+  85  CONTINUE
+      CALL HPAFF(CHCDIR,LEVEL0,CURDIR)
+      CALL HCDIR(CURDIR,' ')
+*
+*	Error return
+*
+  90  CHPATH=' '
+      LEVEL=0
+      NLEVEL=0
+  99  RETURN
+      END
+      SUBROUTINE HB_HCDIR(CHPATH,CHOPT)
+*.==========>
+*.      To set,read or print the Current Working Directory
+*. Input:
+*.   *CHPATH* Character  variable  specifying  the  pathname  of  the  CWD
+*.            (default option).
+*.            The top level directory is //PAWC.  When  the pathname does
+*.            not start with a '/', the pathname is prefixed with the path
+*.            of the CWD.
+*.   CHOPT    Character variable specifying the option
+*.            'R'   Read the CWD pathname into CHPATH
+*.            'P'   Print the CWD
+*.            ' '   Set the CWD
+*. Output:
+*.   *CHPATH* Character variable  containing the complete pathname  of the
+*.            current working directory (with 'R' option only).
+*..=========> ( R.Brun )
+      COMMON/PAWC/NWPAW,IXPAWC,IHDIV,IXHIGZ,IXKU,FENC(5),LMAIN,HCV(9989)
+      DIMENSION IQ(1),Q(1),LQ(8000)
+      EQUIVALENCE (LQ(1),LMAIN),(IQ(1),LQ(9)),(Q(1),IQ(1))
+      COMMON/HCBOOK/HVERSN,IHWORK,LHBOOK,LHPLOT,LGTIT,LHWORK,
+     +LCDIR,LSDIR,LIDS,LTAB,LCID,LCONT,LSCAT,LPROX,LPROY,LSLIX,
+     +LSLIY,LBANX,LBANY,LPRX,LPRY,LFIX,LLID,LR1,LR2,LCIDN
+*
+      PARAMETER(KNCX=3,KXMIN=4,KXMAX=5,KBWIDX=6,KMIN=7,KMAX=8,KNORM=9,
+     +          KTIT1=10,KNCY=7,KYMIN=8,KYMAX=9,KBWIDY=10,KSCAL2=11,
+     +          KTIT2=12,KNBIT=1,KNOENT=2,KSTAT1=3,KNSDIR=5,KNRH=6,
+     +          KCON1=9,KCON2=3,KBITS=1,KNTOT=2)
+*
+      COMMON/HCFLAG/ID    ,IDBADD,LID   ,IDLAST,IDHOLD,NBIT  ,NBITCH,
+     +       NCHAR ,NRHIST,IERR  ,NV
+*
+      COMMON/HCUNIT/LOUT,LERR,LDISC
+*
+      PARAMETER (NLPATM=100)
+      COMMON /HCDIRN/NLCDIR,NLNDIR,NLPAT,ICDIR,NCHTOP,ICHTOP(NLPATM)
+      COMMON /HCDIRC/CHCDIR(20),CHNDIR(20),CHPAT(20),CHTOP(20)
+      CHARACTER*16   CHCDIR,    CHNDIR,    CHPAT    ,CHTOP
+*
+      COMMON /HCMAIL/CHMAIL
+      CHARACTER*128  CHMAIL
+*
+      COMMON/QUEST/IQUEST(100)
+      DIMENSION    IOPTV(2),IHDIR(4)
+      EQUIVALENCE (IOPTR,IOPTV(1)), (IOPTP,IOPTV(2))
+      CHARACTER*(*) CHPATH,CHOPT
+*.___________________________________________
+      IF(LHBOOK.EQ.0)GO TO 99
+      CALL HUOPTC (CHOPT,'RP',IOPTV)
+*
+*             Read Working directory
+*
+      IF(IOPTR.NE.0)THEN
+         CALL HPAFF(CHCDIR,NLCDIR,CHPATH)
+         GO TO 99
+      ENDIF
+*
+*             Print Working directory
+*
+      IF(IOPTP.NE.0)THEN
+         CALL HPAFF(CHCDIR,NLCDIR,CHMAIL)
+         WRITE(LOUT,1000)CHMAIL(1:90)
+ 1000 FORMAT(' Current Working Directory = ',A)
+         GO TO 99
+      ENDIF
+*
+*             Set Working directory
+*
+      IQUEST(1)=1
+      IF(CHPATH(1:1).EQ.'.')THEN
+         CALL HPATH(' ')
+      ELSE
+         CALL HPATH(CHPATH)
+      ENDIF
+*
+      IF(NLPAT.LE.0)GO TO 99
+*
+      ICDOLD=ICDIR
+      ICDIR=1
+      DO 10 I=1,NCHTOP
+         IF(CHPAT(1).EQ.CHTOP(I))THEN
+            ICDIR=I
+            IF(ICHTOP(I).GT.0)THEN
+               IF(CHPATH(1:1).EQ.'.')THEN
+                  CALL HRZCD(' ',CHOPT)
+               ELSE
+                  CALL HRZCD(CHPATH,CHOPT)
+               ENDIF
+               IF(IQUEST(1).NE.0)THEN
+                  ICDIR=ICDOLD
+                  GO TO 90
+               ELSE
+                  GO TO 60
+               ENDIF
+            ELSEIF(ICHTOP(I).LT.0)THEN
+               GO TO 60
+            ELSE
+               GO TO 20
+            ENDIF
+         ENDIF
+  10  CONTINUE
+      ICDIR=ICDOLD
+      GO TO 90
+*
+  20  LR1 = LHBOOK
+*
+*          Search levels down
+*
+      IF(NLPAT.GT.1)THEN
+         DO 50 IL=2,NLPAT
+            CALL UCTOH(CHPAT(IL),IHDIR,4,16)
+            LR1=LQ(LR1-1)
+  30        IF(LR1.EQ.0)GO TO 90
+            DO 40 I=1,4
+               IF(IHDIR(I).NE.IQ(LR1+I))THEN
+                  LR1=LQ(LR1)
+                  GO TO 30
+               ENDIF
+  40        CONTINUE
+  50     CONTINUE
+      ENDIF
+*
+  60  NLCDIR= NLPAT
+      DO 70 I=1,NLPAT
+         CHCDIR(I)=CHPAT(I)
+  70  CONTINUE
+      IF(ICHTOP(ICDIR).EQ.0)THEN
+         LCDIR = LR1
+         LID   = 0
+         IDLAST= 0
+         IDHOLD= 0
+         LIDS  = LQ(LCDIR-2)
+         LTAB  = LQ(LCDIR-3)
+      ENDIF
+      IQUEST(1)=0
+      GO TO 99
+*
+*          Error
+*
+  90  CALL HPAFF(CHPAT,NLPAT,CHMAIL)
+C      WRITE(LOUT,2000)CHMAIL(1:90)		! JMC Suppress message
+C 2000 FORMAT(' HCDIR. UNKNOWN DIRECTORY ',A)
+*
+  99  RETURN
+      END
+      SUBROUTINE HRZ_SEARCH_DIR(CHDIR,LEVEL,LEVEL0)
+*.==========>
+*.        to Search the Current Directory tree of an RZ file
+*..=========> ( R.Brun )
+      PARAMETER (NLPATM=100)
+      COMMON /HCFILE/HFNAME(NLPATM)
+      COMMON /HCDIRN/NLCDIR,NLNDIR,NLPAT,ICDIR,NCHTOP,ICHTOP(NLPATM)
+      COMMON /HCDIRC/CHCDIR(NLPATM)
+      CHARACTER*16   CHCDIR
+      CHARACTER*80 HFNAME
+*
+      COMMON /HCMAIL/CHMAIL
+      CHARACTER*128  CHMAIL
+*
+      COMMON/QUEST/IQUEST(100)
+      CHARACTER*(*)CHDIR
+      COMMON/CZSOCK/LUNCZ,IAD,LBUF,ISKIN,ISKOUT
+*.___________________________________________
+*
+      IF(ICHTOP(ICDIR).GT.1000)THEN
+*
+         ISKIN =MOD(ICHTOP(ICDIR),10000)
+         ISKOUT=(ICHTOP(ICDIR)-ISKIN)/10000
+         RETURN
+      ENDIF
+*
+      CALL RZ_SEARCH_DIR(CHDIR,LEVEL,LEVEL0)
+*
+      END
+      INTEGER FUNCTION hb_search_id(I)
+*.==========>
+*.
+*.    This function makes it easy to find the ID's in the current dir.
+*.       Input:   I - The index number of the ID
+*.       Output:  The ID specified
+*.
+*.           HB_SEARCH_ID=maximum number of ID's if I=0
+*.           HB_SEARCH_ID=ID for I=1 to max number
+*.           HB_SEARCH_ID=0 otherwise
+*.
+*..=========> ( J.Clement )
+      COMMON/PAWC/NWPAW,IXPAWC,IHDIV,IXHIGZ,IXKU,FENC(5),LMAIN,HCV(9989)
+      DIMENSION IQ(1),Q(1),LQ(8000)
+      EQUIVALENCE (LQ(1),LMAIN),(IQ(1),LQ(9)),(Q(1),IQ(1))
+      COMMON/HCBOOK/HVERSN,IHWORK,LHBOOK,LHPLOT,LGTIT,LHWORK,
+     +LCDIR,LSDIR,LIDS,LTAB,LCID,LCONT,LSCAT,LPROX,LPROY,LSLIX,
+     +LSLIY,LBANX,LBANY,LPRX,LPRY,LFIX,LLID,LR1,LR2,LCIDN
+*
+      PARAMETER(KNCX=3,KXMIN=4,KXMAX=5,KBWIDX=6,KMIN=7,KMAX=8,KNORM=9,
+     +          KTIT1=10,KNCY=7,KYMIN=8,KYMAX=9,KBWIDY=10,KSCAL2=11,
+     +          KTIT2=12,KNBIT=1,KNOENT=2,KSTAT1=3,KNSDIR=5,KNRH=6,
+     +          KCON1=9,KCON2=3,KBITS=1,KNTOT=2)
+*
+      PARAMETER (NLPATM=100)
+      COMMON /HCDIRN/NLCDIR,NLNDIR,NLPAT,ICDIR,NCHTOP,ICHTOP(NLPATM)
+      COMMON/QUEST/IQUEST(100)
+*.___________________________________________
+      INTEGER GS_SEARCH_ID
+C
+C	No hists ??
+C
+      IF(LHBOOK.EQ.0) THEN
+***         CHPATH=' '
+***         LEVEL=0
+C
+C      RZ dir
+C
+      ELSEIF (ICHTOP(ICDIR).GT.0)THEN
+         HB_SEARCH_ID=0
+C
+C	Global section
+C
+      ELSEIF (ICHTOP(ICDIR) .lt. 0) THEN
+         LOCQ=1-LOCF(IQUEST(1))-ICHTOP(ICDIR)
+         HB_SEARCH_ID=GS_SEARCH_ID(I,IQUEST(LOCQ))
+C
+C	Memory resident directory
+C
+      ELSE
+C         Get max number of hists
+         N=IQ(LCDIR+KNRH)
+         IF (I.eq.0) THEN
+C         max number of hists
+            HB_SEARCH_ID=N
+         ELSEIF (I.gt.0 .and. I.le.N) THEN
+C         Id of selected hist
+            HB_SEARCH_ID=IQ(LTAB+I)
+         ELSE
+C         Zero for undefined
+            HB_SEARCH_ID=0
+         ENDIF
+      ENDIF
+      END
+      INTEGER FUNCTION GS_SEARCH_ID(LEVEL,IPAWD)
+*.==========>
+*.
+*.    This function makes it easy to find the ID's in A GLOBAL section
+*.       Input:   I - The index number of the ID
+*.       Output:  The ID specified
+*.
+*.           GS_SEARCH_ID=maximum number of ID's if LEVEL=0
+*.           GS_SEARCH_ID=ID for LEVEL=1 to max number
+*.           GS_SEARCH_ID=0 otherwise
+*.
+*..=========> ( J.Clement )
+      PARAMETER (NLPATM=100)
+      COMMON /HCDIRN/NLCDIR,NLNDIR,NLPAT,ICDIR,NCHTOP,ICHTOP(NLPATM)
+      COMMON /HCDIRC/CHCDIR(NLPATM)
+      CHARACTER*16   CHCDIR
+      COMMON /HCFILE/HFNAME(NLPATM)
+      CHARACTER*80 HFNAME
+*
+      PARAMETER(KNCX=3,KXMIN=4,KXMAX=5,KBWIDX=6,KMIN=7,KMAX=8,KNORM=9,
+     +          KTIT1=10,KNCY=7,KYMIN=8,KYMAX=9,KBWIDY=10,KSCAL2=11,
+     +          KTIT2=12,KNBIT=1,KNOENT=2,KSTAT1=3,KNSDIR=5,KNRH=6,
+     +          KCON1=9,KCON2=3,KBITS=1,KNTOT=2)
+*
+      COMMON/QUEST/IQUEST(100)
+      DIMENSION IHDIR(4)
+      DIMENSION IPAWD(*)
+*.___________________________________________
+      INTEGER LEVEL
+      INTEGER I,IL,JR1,JR2
+      IF (IPAWD(1) .le.0) GOTO 90
+      IF (NLCDIR.le.0 .or. NLCDIR.gt.20) GOTO 90
+      NSIZE=IPAWD(1)
+      IF (NSIZE.le.0) GOTO 90		! Error ?
+*
+*          Search levels down for current one
+*
+         JR1=IPAWD(11)				! Start here
+         IF (JR1.le.0 .or. JR1 .gt. IPAWD(1)) GOTO 90
+         DO 50 IL=2,NLCDIR			! Search all levels
+            CALL UCTOH(CHCDIR(IL),IHDIR,4,16)	! Current subdir
+            JR1=IPAWD(JR1+9)			! Get next
+            JR2=JR1
+  30        IF (JR1.le.0 .or. JR1 .gt. IPAWD(1)) GOTO 90
+            DO 40 I=1,4				! Check it it matches
+               IF(IHDIR(I).NE.IPAWD(JR1+I+18))THEN	! Not match ?
+                  JR1=IPAWD(JR1+10)		! Check next
+                  IF (JR1.eq.JR2) GOTO 90	! Circular loop
+                  GO TO 30
+               ENDIF
+  40        CONTINUE
+  50     CONTINUE
+         GOTO 80
+*
+*	OK return
+*
+  80  CONTINUE
+      JTAB=IPAWD(JR1+10-3)+18			! Points to Table of IDS
+C         Get max number of hists
+      N=IPAWD(JR1+KNRH+18)
+      IF (LEVEL.eq.0) THEN
+C         max number of hists
+         GS_SEARCH_ID=N
+      ELSEIF (LEVEL.gt.0 .and. LEVEL.le.N) THEN
+C         Id of selected hist
+         GS_SEARCH_ID=IPAWD(JTAB+LEVEL)
+      ELSE
+C         Zero for undefined
+         GS_SEARCH_ID=0
+      ENDIF
+      GOTO 99
+*
+*	Error return
+*
+  90  GS_SEARCH_ID=0
+  99  RETURN
+      END
+      SUBROUTINE HB_RZCDIR(CHPATH,CHOPT)
+*
+************************************************************************
+*
+*      To set,read or print the Current Working Directory
+* Input:
+*   *CHPATH* Character  variable  specifying  the  pathname  of  the  CWD
+*            (default option).
+*            Unless several RZ files are open at the same time,  the path
+*            name can  be specified  either as a  path starting  with the
+*            character  '/',   in  which case  an  absolute  pathname  is
+*            intended for the given top directory.  When several RZ files
+*            are open,   an absolute  pathname must  start with  a double
+*            slash '//' and  the top directory.   When  the pathname does
+*            not start with a '/', the pathname is prefixed with the path
+*            of the CWD.
+*            CHPATH = ' ' means the CWD (useful with the 'U' option)
+*   CHOPT    Character variable specifying the option
+*            'R'   Read the CWD pathname into CHPATH
+*            'P'   Print the CWD
+*            ' '   Set the CWD
+*            'U'   The same  as the  default but  the time  stamp in  the
+*                  directory in memory is checked  against the one on the
+*                  file and if needed the  directory in memory is brought
+*                  up  to date. This option  should be  used when the user
+*                  expects that  directories can be  changed concurrently
+*                  by another user and he wants to use the latest version
+*            'K'   Keep current directory in memory. Do not drop
+* Output:
+*   *CHPATH* Character variable  containing the complete pathname  of the
+*            current working directory (with 'R' option only).
+*
+* Called by <USER>,RZINPA,RZLDIR
+*
+*  Author  : R.Brun DD/US/PD
+*  Written : 02.04.86
+*  Last mod: 10.01.89
+*
+************************************************************************
+      COMMON /ZUNIT/ IQREAD,IQPRNT,IQPR2,IQLOG,IQPNCH,IQTTIN,IQTYPE
+      COMMON /ZUNITZ/IQDLUN,IQFLUN,IQHLUN,  NQUSED
+      PARAMETER      (IQDROP=25, IQMARK=26, IQCRIT=27, IQSYSX=28)
+      COMMON /QUEST/ IQUEST(100)
+      COMMON /ZEBQ/  IQFENC(4), LQ(100)
+                              DIMENSION    IQ(92),        Q(92)
+                              EQUIVALENCE (IQ(1),LQ(9)), (Q(1),IQ(1))
+      COMMON /MZCA/  NQSTOR,NQOFFT(16),NQOFFS(16),NQALLO(16), NQIAM
+     +,              LQATAB,LQASTO,LQBTIS, LQWKTB,NQWKTB,NQWKTT,LQWKFZ
+     +,              MQKEYS(3),NQINIT,NQTSYS,NQM99,NQPERM,NQFATA,NQCASE
+     +,              NQTRAC,MQTRAC(48)
+                                       EQUIVALENCE (KQSP,NQOFFS(1))
+      COMMON /MZCB/  JQSTOR,KQT,KQS,  JQDIVI,JQDIVR
+     +,              JQKIND,JQMODE,JQDIVN,JQSHAR,JQSHR1,JQSHR2,NQRESV
+     +,              LQSTOR,NQFEND,NQSTRU,NQREF,NQLINK,NQMINR,LQ2END
+     +,              JQDVLL,JQDVSY,NQLOGL,NQSNAM(6)
+                                       DIMENSION    IQCUR(16)
+                                       EQUIVALENCE (IQCUR(1),LQSTOR)
+      COMMON /MZCC/  LQPSTO,NQPFEN,NQPSTR,NQPREF,NQPLK,NQPMIN,LQP2E
+     +,              JQPDVL,JQPDVS,NQPLOG,NQPNAM(6)
+     +,              LQSYSS(10), LQSYSR(10), IQTDUM(22)
+     +,              LQSTA(21), LQEND(20), NQDMAX(20),IQMODE(20)
+     +,              IQKIND(20),IQRTO(20), IQRNO(20), NQDINI(20)
+     +,              NQDWIP(20),NQDGAU(20),NQDGAF(20),NQDPSH(20)
+     +,              NQDRED(20),NQDSIZ(20),IQDN1(20), IQDN2(20)
+     +,              KQFT, LQFSTA(21)
+                                       DIMENSION    IQTABV(16)
+                                       EQUIVALENCE (IQTABV(1),LQPSTO)
+C
+      COMMON /RZCL/  LTOP,LRZ0,LCDIR,LRIN,LROUT,LFREE,LUSED,LPURG
+     +,              LTEMP,LCORD,LFROM
+                   EQUIVALENCE (LQRS,LQSYSS(7))
+C
+      COMMON /RZDIRN/NLCDIR,NLNDIR,NLPAT
+      COMMON /RZDIRC/CHCDIR(20),CHNDIR(20),CHPAT(20)
+      CHARACTER*16   CHCDIR,    CHNDIR,    CHPAT
+C
+      COMMON /RZCH/  CHWOLD,CHL
+      CHARACTER*128  CHWOLD,CHL
+C
+      COMMON /RZCLUN/LUN,LREC,ISAVE,IMODEX,IRELAT,NHPWD,IHPWD(2)
+C
+      PARAMETER (KUP=5,KPW1=7,KNCH=9,KDATEC=10,KDATEM=11,KQUOTA=12,
+     +           KRUSED=13,KWUSED=14,KMEGA=15,KIRIN=17,KIROUT=18,
+     +           KRLOUT=19,KIP1=20,KNFREE=22,KNSD=23,KLD=24,KLB=25,
+     +           KLS=26,KLK=27,KLF=28,KLC=29,KLE=30,KNKEYS=31,
+     +           KNWKEY=32,KKDES=33,KNSIZE=253,KEX=6,KNMAX=100)
+C
+      DIMENSION    IOPTV(4)
+      EQUIVALENCE (IOPTR,IOPTV(1)), (IOPTP,IOPTV(2)), (IOPTU,IOPTV(3))
+      EQUIVALENCE (IOPTK,IOPTV(4))
+      CHARACTER*(*) CHPATH,CHOPT
+*
+*-----------------------------------------------------------------------
+*
+      IQUEST(1)=0
+      IF(LQRS.EQ.0)GO TO 99
+      CALL UOPTC (CHOPT,'RPUK',IOPTV)
+      IF(IOPTK.NE.0)IOPTU=0
+*
+*             Read Working directory
+*
+      IF(IOPTR.NE.0)THEN
+         CALL RZPAFF(CHCDIR,NLCDIR,CHPATH)
+         GO TO 99
+      ENDIF
+*
+*             Print Working directory
+*
+      IF(IOPTP.NE.0)THEN
+         CALL RZPAFF(CHCDIR,NLCDIR,CHL)
+         WRITE(IQPRNT,1000)CHL(1:LENOCC(CHL))
+ 1000 FORMAT(' Current Working Directory = ',A)
+         GO TO 99
+      ENDIF
+*
+*             Set Working directory
+*             Mark old working directory to be dropped
+*             Write current directory if modified
+*
+      IF(LCDIR.NE.0.AND.ISAVE.NE.0.AND.IOPTK.EQ.0)THEN
+         LBANK=LCDIR
+  10     IF(LBANK.NE.LTOP)THEN
+            LUP=LQ(KQSP+LBANK+1)
+            IF(IOPTU.EQ.0)THEN
+               CALL SBIT1(IQ(KQSP+LBANK),IQDROP)
+            ELSE
+               CALL MZDROP(JQPDVS,LBANK,' ')
+               IQ(KQSP+LTOP+KIRIN)=0
+            ENDIF
+            LBANK=LUP
+            IF(LBANK.NE.0)GO TO 10
+         ENDIF
+      ENDIF
+*
+      IF(ISAVE.NE.0)THEN
+         CALL RZSAVE
+      ENDIF
+*
+* Read Top Dir In Case Of U Option
+*
+      IF(IOPTU.NE.0)CALL RZRTOP
+*
+*             Set new directory
+*
+      CALL RZPATH(CHPATH)
+      CALL RZFDIR(LT,LDIR)
+      IF(LDIR.NE.0)THEN
+         NLCDIR= NLPAT
+         LCDIR = LDIR
+         LTOP  = LT
+         DO 20 I=1,NLPAT
+            CHCDIR(I)=CHPAT(I)
+  20     CONTINUE
+      ELSE
+         IQUEST(1)=1
+         IF(LCDIR.NE.0)CALL SBIT0(IQ(KQSP+LCDIR),IQDROP)
+         GO TO 99
+      ENDIF
+      LFREE = LQ(KQSP+LTOP-2)
+      LUSED = LQ(KQSP+LTOP-3)
+      LPURG = LQ(KQSP+LTOP-5)
+      LROUT = LQ(KQSP+LTOP-6)
+      LRIN  = LQ(KQSP+LTOP-7)
+      LB    = IQ(KQSP+LTOP+KLB)
+      LREC  = IQ(KQSP+LTOP+LB+1)
+      LUN   = IQ(KQSP+LTOP-5)
+      IMODEX= IQ(KQSP+LTOP+KEX)
+      IQUEST(7)=IQ(KQSP+LCDIR+KNKEYS)
+      IQUEST(8)=IQ(KQSP+LCDIR+KNWKEY)
+      IQUEST(9)=IQ(KQSP+LCDIR+KNSD)
+      IQUEST(10)=IQ(KQSP+LCDIR+KQUOTA)
+      IQUEST(11)=LCDIR
+      IQUEST(12)=LTOP
+      IQUEST(13)=IQ(KQSP+LCDIR+KLK)
+      CALL RZDATE(IQ(KQSP+LCDIR+KDATEC),IDATEC,ITIMEC,1)
+      CALL RZDATE(IQ(KQSP+LCDIR+KDATEM),IDATEM,ITIMEM,1)
+      IQUEST(14)=IDATEC
+      IQUEST(15)=ITIMEC
+      IQUEST(16)=IDATEM
+      IQUEST(17)=ITIMEM
+      IQUEST(18)=IQ(KQSP+LCDIR+KRUSED)
+      IQUEST(19)=IQ(KQSP+LCDIR+KMEGA)
+      IQUEST(20)=IQ(KQSP+LCDIR+KWUSED)
+      IRELAT= JBIT(IQ(KQSP+LTOP),4)
+*
+*             Check password
+*
+      IF(JBYT(IQ(KQSP+LCDIR+KPW1+2),6,5).NE.0)THEN
+         IF(IQ(KQSP+LCDIR+KPW1).NE.IHPWD(1).OR.
+     +      IQ(KQSP+LCDIR+KPW1+1).NE.IHPWD(2))THEN
+            CALL SBIT1(IQ(KQSP+LCDIR),1)
+         ELSE
+            CALL SBIT0(IQ(KQSP+LCDIR),1)
+         ENDIF
+      ENDIF
+      IF(JBIT(IQ(KQSP+LTOP),1).NE.0)CALL SBIT1(IQ(KQSP+LCDIR),1)
+*
+  99  RETURN
+      END
+      SUBROUTINE HB_RZFDIR(LT,LDIR)
+*
+************************************************************************
+*
+*        Check if Pathname stored in CHPAT is a valid directory
+*        If YES then LT points to the TOP directory
+*                    LDIR points to the directory
+*
+* Called by RZCDIR,RZCOPY
+*
+*  Author  : R.Brun DD/US/PD
+*  Written : 03.04.86
+*  Last mod: 19.11.87
+*
+************************************************************************
+      COMMON /ZUNIT/ IQREAD,IQPRNT,IQPR2,IQLOG,IQPNCH,IQTTIN,IQTYPE
+      COMMON /ZUNITZ/IQDLUN,IQFLUN,IQHLUN,  NQUSED
+      PARAMETER      (IQDROP=25, IQMARK=26, IQCRIT=27, IQSYSX=28)
+      COMMON /QUEST/ IQUEST(100)
+      COMMON /ZEBQ/  IQFENC(4), LQ(100)
+                              DIMENSION    IQ(92),        Q(92)
+                              EQUIVALENCE (IQ(1),LQ(9)), (Q(1),IQ(1))
+      COMMON /MZCA/  NQSTOR,NQOFFT(16),NQOFFS(16),NQALLO(16), NQIAM
+     +,              LQATAB,LQASTO,LQBTIS, LQWKTB,NQWKTB,NQWKTT,LQWKFZ
+     +,              MQKEYS(3),NQINIT,NQTSYS,NQM99,NQPERM,NQFATA,NQCASE
+     +,              NQTRAC,MQTRAC(48)
+                                       EQUIVALENCE (KQSP,NQOFFS(1))
+      COMMON /MZCB/  JQSTOR,KQT,KQS,  JQDIVI,JQDIVR
+     +,              JQKIND,JQMODE,JQDIVN,JQSHAR,JQSHR1,JQSHR2,NQRESV
+     +,              LQSTOR,NQFEND,NQSTRU,NQREF,NQLINK,NQMINR,LQ2END
+     +,              JQDVLL,JQDVSY,NQLOGL,NQSNAM(6)
+                                       DIMENSION    IQCUR(16)
+                                       EQUIVALENCE (IQCUR(1),LQSTOR)
+      COMMON /MZCC/  LQPSTO,NQPFEN,NQPSTR,NQPREF,NQPLK,NQPMIN,LQP2E
+     +,              JQPDVL,JQPDVS,NQPLOG,NQPNAM(6)
+     +,              LQSYSS(10), LQSYSR(10), IQTDUM(22)
+     +,              LQSTA(21), LQEND(20), NQDMAX(20),IQMODE(20)
+     +,              IQKIND(20),IQRTO(20), IQRNO(20), NQDINI(20)
+     +,              NQDWIP(20),NQDGAU(20),NQDGAF(20),NQDPSH(20)
+     +,              NQDRED(20),NQDSIZ(20),IQDN1(20), IQDN2(20)
+     +,              KQFT, LQFSTA(21)
+                                       DIMENSION    IQTABV(16)
+                                       EQUIVALENCE (IQTABV(1),LQPSTO)
+C
+      COMMON /RZCL/  LTOP,LRZ0,LCDIR,LRIN,LROUT,LFREE,LUSED,LPURG
+     +,              LTEMP,LCORD,LFROM
+                   EQUIVALENCE (LQRS,LQSYSS(7))
+C
+      COMMON /RZDIRN/NLCDIR,NLNDIR,NLPAT
+      COMMON /RZDIRC/CHCDIR(20),CHNDIR(20),CHPAT(20)
+      CHARACTER*16   CHCDIR,    CHNDIR,    CHPAT
+C
+      COMMON /RZCH/  CHWOLD,CHL
+      CHARACTER*128  CHWOLD,CHL
+C
+      PARAMETER (KUP=5,KPW1=7,KNCH=9,KDATEC=10,KDATEM=11,KQUOTA=12,
+     +           KRUSED=13,KWUSED=14,KMEGA=15,KIRIN=17,KIROUT=18,
+     +           KRLOUT=19,KIP1=20,KNFREE=22,KNSD=23,KLD=24,KLB=25,
+     +           KLS=26,KLK=27,KLF=28,KLC=29,KLE=30,KNKEYS=31,
+     +           KNWKEY=32,KKDES=33,KNSIZE=253,KEX=6,KNMAX=100)
+C
+      COMMON /RZCLUN/LUN,LREC,ISAVE,IMODEX,IRELAT,NHPWD,IHPWD(2)
+C
+      DIMENSION IHDIR(4)
+      LOGICAL RZSAME
+*
+*-----------------------------------------------------------------------
+*
+      LT=0
+      LDIR=0
+      IF(NLPAT.LE.0)GO TO 99
+      IF(LQRS.EQ.0)GO TO 90
+*
+*            Find LT
+*
+      CALL VBLANK(IHDIR,4)
+      CALL UCTOH(CHPAT(1),IHDIR,4,16)
+      CALL ZHTOI(IHDIR,IHDIR,4)
+      LRZ=LQRS
+  10  IF(.NOT.RZSAME(IHDIR,IQ(KQSP+LRZ+1),4))THEN
+         LRZ  = LQ(KQSP+LRZ)
+         IF(LRZ.GT.0)GO TO 10
+         GO TO 90
+      ENDIF
+      LTEMP= LRZ
+      LT   = LRZ
+      LDIR = LRZ
+      IF(NLPAT.LT.2)GO TO 99
+      LBT  = IQ(KQSP+LRZ+KLB)
+      LREF = IQ(KQSP+LRZ+LBT+1)
+      LUNF = IQ(KQSP+LRZ-5)
+*
+*          Search levels down
+*
+      DO 50 IL=2,NLPAT
+         CALL VBLANK(IHDIR,4)
+         CALL UCTOH(CHPAT(IL),IHDIR,4,16)
+         CALL ZHTOI(IHDIR,IHDIR,4)
+         CALL SBIT0(IQ(KQSP+LRZ),IQDROP)
+         NSDIR=IQ(KQSP+LRZ+KNSD)
+         LD   =IQ(KQSP+LRZ+KLD)
+         LS   =IQ(KQSP+LRZ+KLS)
+         IF(NSDIR.LE.0)GO TO 90
+*
+*              Check if element in list of subdirectories
+*
+         DO 40 I=1,NSDIR
+            IH=LS+7*(I-1)
+            IF(RZSAME(IHDIR,IQ(KQSP+LRZ+IH),4))THEN
+               IRS  = JBYT(IQ(KQSP+LRZ+IH+5),1,18)
+               LRN  = LQ(KQSP+LRZ-1)
+  15           IF(LRN.EQ.0)THEN
+                  CALL MZBOOK(JQPDVS,LDIR,LRZ,-1,'RZ  ',6,6,LREF,2,-1)
+                  LRZ=LDIR
+                  CALL RZIODO(LUNF,LREF,IRS,IQ(KQSP+LRZ+1),1)
+                  LDS=IQ(KQSP+LRZ+KLD)
+                  NRDS=IQ(KQSP+LRZ+LDS)
+                  IF(NRDS.GT.1)THEN
+                     CALL MZPUSH(JQPDVS,LRZ,0,LREF*(NRDS-1),' ')
+                     LDIR=LRZ
+                     DO 20 IR=2,NRDS
+                        IRS=IQ(KQSP+LRZ+LDS+IR)
+                        CALL RZIODO(LUNF,LREF,IRS,
+     +                              IQ(KQSP+LRZ+(IR-1)*LREF+1),1)
+  20                 CONTINUE
+                  ENDIF
+               ELSE
+  30              IF(RZSAME(IHDIR,IQ(KQSP+LRN+1),4))THEN
+                     LRZ = LRN
+                     LDIR= LRN
+                     GO TO 50
+                  ELSE
+                     LRN=LQ(KQSP+LRN)
+                     GO TO 15
+                  ENDIF
+               ENDIF
+               GO TO 50
+            ENDIF
+  40     CONTINUE
+         GO TO 90
+  50  CONTINUE
+      CALL SBIT0(IQ(KQSP+LDIR),IQDROP)
+      LT=LTEMP
+***      IF(IRELAT.NE.0)UNLOCK(UNIT=LUNF)
+      GO TO 99
+*
+*          Error
+*
+  90  CALL RZPAFF(CHPAT,NLPAT,CHL)
+***      IF(IRELAT.NE.0)UNLOCK(UNIT=LUNF)
+      LDIR=0
+C      WRITE(IQPRNT,1000)CHL(1:90)		! JMC Suppress message
+C 1000 FORMAT(' RZFDIR. UNKNOWN DIRECTORY ',A)
+*
+  99  RETURN
+      END
+      SUBROUTINE RZ_SEARCH_DIR(CHDIR,LEVEL,LEVEL0)
+*
+************************************************************************
+*
+*	Do a scan of RZ directory tree
+*	Input:	CHDIR	It must be set to ' ' the first time throug
+*	Output:	CHDIR	The current directory
+*		LEVEL	The current level
+*
+*
+*  Author  : John Clement
+*  Written : Oct 1989
+*  Last mod:
+*
+************************************************************************
+      COMMON /ZUNIT/ IQREAD,IQPRNT,IQPR2,IQLOG,IQPNCH,IQTTIN,IQTYPE
+      COMMON /ZUNITZ/IQDLUN,IQFLUN,IQHLUN,  NQUSED
+      PARAMETER      (IQDROP=25, IQMARK=26, IQCRIT=27, IQSYSX=28)
+      COMMON /QUEST/ IQUEST(100)
+      COMMON /ZEBQ/  IQFENC(4), LQ(100)
+                              DIMENSION    IQ(92),        Q(92)
+                              EQUIVALENCE (IQ(1),LQ(9)), (Q(1),IQ(1))
+      COMMON /MZCA/  NQSTOR,NQOFFT(16),NQOFFS(16),NQALLO(16), NQIAM
+     +,              LQATAB,LQASTO,LQBTIS, LQWKTB,NQWKTB,NQWKTT,LQWKFZ
+     +,              MQKEYS(3),NQINIT,NQTSYS,NQM99,NQPERM,NQFATA,NQCASE
+     +,              NQTRAC,MQTRAC(48)
+                                       EQUIVALENCE (KQSP,NQOFFS(1))
+      COMMON /MZCB/  JQSTOR,KQT,KQS,  JQDIVI,JQDIVR
+     +,              JQKIND,JQMODE,JQDIVN,JQSHAR,JQSHR1,JQSHR2,NQRESV
+     +,              LQSTOR,NQFEND,NQSTRU,NQREF,NQLINK,NQMINR,LQ2END
+     +,              JQDVLL,JQDVSY,NQLOGL,NQSNAM(6)
+                                       DIMENSION    IQCUR(16)
+                                       EQUIVALENCE (IQCUR(1),LQSTOR)
+      COMMON /MZCC/  LQPSTO,NQPFEN,NQPSTR,NQPREF,NQPLK,NQPMIN,LQP2E
+     +,              JQPDVL,JQPDVS,NQPLOG,NQPNAM(6)
+     +,              LQSYSS(10), LQSYSR(10), IQTDUM(22)
+     +,              LQSTA(21), LQEND(20), NQDMAX(20),IQMODE(20)
+     +,              IQKIND(20),IQRTO(20), IQRNO(20), NQDINI(20)
+     +,              NQDWIP(20),NQDGAU(20),NQDGAF(20),NQDPSH(20)
+     +,              NQDRED(20),NQDSIZ(20),IQDN1(20), IQDN2(20)
+     +,              KQFT, LQFSTA(21)
+                                       DIMENSION    IQTABV(16)
+                                       EQUIVALENCE (IQTABV(1),LQPSTO)
+C
+      COMMON /RZCL/  LTOP,LRZ0,LCDIR,LRIN,LROUT,LFREE,LUSED,LPURG
+     +,              LTEMP,LCORD,LFROM
+                   EQUIVALENCE (LQRS,LQSYSS(7))
+C
+      COMMON /RZDIRN/NLCDIR,NLNDIR,NLPAT
+      PARAMETER (NLPATM=100)
+      COMMON /RZDIRC/CHCDIR(NLPATM)
+      CHARACTER*16   CHCDIR
+C
+      COMMON /RZCH/  CHWOLD,CHL
+      CHARACTER*128  CHWOLD,CHL
+C
+      PARAMETER (KUP=5,KPW1=7,KNCH=9,KDATEC=10,KDATEM=11,KQUOTA=12,
+     +           KRUSED=13,KWUSED=14,KMEGA=15,KIRIN=17,KIROUT=18,
+     +           KRLOUT=19,KIP1=20,KNFREE=22,KNSD=23,KLD=24,KLB=25,
+     +           KLS=26,KLK=27,KLF=28,KLC=29,KLE=30,KNKEYS=31,
+     +           KNWKEY=32,KKDES=33,KNSIZE=253,KEX=6,KNMAX=100)
+C
+      COMMON /RZCLUN/LUN,LREC,ISAVE,IMODEX,IRELAT,NHPWD,IHPWD(2)
+C
+      DIMENSION IHDIR(4)
+      LOGICAL RZSAME
+*
+*-----------------------------------------------------------------------
+*
+      CHARACTER*(*) CHDIR
+      INTEGER I,J,LEVEL,LEVEL0,NLEVEL,IDIR(NLPATM),JDIR(NLPATM)
+      INTEGER ITEST(4)
+      CHARACTER*16  SAVPAT(NLPATM)
+      CHARACTER*128 CURDIR
+      DATA CURDIR/' '/
+      IF(LQRS.EQ.0)GO TO 90
+      IF(NLPAT.le.0) GOTO 90
+      IF (LEVEL.eq.0 .or. CHDIR(1:1).eq.' ' .or. NLEVEL.eq.0) THEN	! First time through ??
+         LEVEL0=NLPAT			! Old level
+         NLEVEL=NLPAT			! Current level
+         DO 4 I=1,20
+         JDIR(I)=0			! Current subdir index
+4        IDIR(I)=0			! Current LRZ
+         DO 5 I=1,NLPAT			! Save current pat
+ccc5        SAVPAT(I)=CHPAT(I)
+5        SAVPAT(I)=CHCDIR(I)
+         GOTO 80
+      ENDIF
+*
+*          Search levels down
+*
+      GOTO 14				! Start
+10    NLEVEL=NLEVEL-1			! Go down a level
+      IF (NLEVEL.lt.LEVEL0) GOTO 90	! Done ??
+14       LRZ  = IDIR(NLEVEL)		! Current dir
+         IF (LRZ.eq.0) GOTO 10		! Nothing at this level ?
+         JDIR(NLEVEL)=JDIR(NLEVEL)+1	! Next subdir
+         I=JDIR(NLEVEL)			! Sub Directory number
+         NSDIR=IQ(KQSP+LRZ+KNSD)	! Number of subdirectories
+         IF (I.gt.NSDIR) GOTO 10	! Last one ?
+            LS   =IQ(KQSP+LRZ+KLS)		! (POINTER in common MZCA)
+            IH=LS+7*(I-1)				! index of name
+            CALL ZITOH(IQ(KQSP+LRZ+IH),ITEST,4)		! Decode name
+            NLEVEL=NLEVEL+1				! Next level
+            IF (NLEVEL.gt.20) GOTO 10			! Level too high ? Go down
+            CALL UHTOC(ITEST,4,SAVPAT(NLEVEL),16)	! name-->char string
+            GOTO 80
+*
+*     Success
+*
+  80  CONTINUE
+      CURDIR='/'
+      LEVEL=NLEVEL
+      DO 81 I=1,NLEVEL
+         J=INDEX(CURDIR,' ')
+         IF (J.gt.0) CURDIR(J:)='/'//SAVPAT(I)
+  81  CONTINUE
+      CALL HCDIR(CURDIR,' ')
+      IF (IQUEST(1).ne.0) GOTO 10	! Bad directory ?
+      CHDIR=CURDIR
+      LRZ=LQRS
+      JDIR(NLEVEL)=0
+      DO 83 I=1,NLEVEL
+         IF (LRZ.eq.0) GOTO 10
+         IDIR(I)=LRZ
+         LRZ=LQ(KQSP+LRZ-1)
+  83  CONTINUE
+      GOTO 99
+*
+*          Error
+*
+  90  CHDIR=' '
+      LEVEL=0
+      NLEVEL=0
+      CALL HPAFF(CHCDIR,LEVEL0,CURDIR)
+      CALL HCDIR(CURDIR,' ')
+*
+  99  RETURN
+      END
+      SUBROUTINE HB_HGIVE(IDD,CHTITL,NCX,XMIN,XMAX,NCY,YMIN,YMAX,
+     +NWT,IDB)
+*.==========>
+*.           Histogram IDD parameter in a Global Section
+*.		Or in regular memory
+*.	Input:	IDD	Hist id desired
+*.	Output:	CHTITL	Histogram title
+*.		NCX	Number of X channels
+*.		XMAX	Min X value (Low edge of Lowest chan)
+*.		XMAX	Max X value
+*.		NCY	Number of Y channels
+*.		YMIN	Min Y value
+*.		YMAX	MAx Y value
+*.		NWT	Number of words in title
+*.		IDB	Address of hist id in table
+*.
+*.	This works with memory resident histograms
+*.	Whether in a shared section or regular common
+*.
+*..=========> ( J.Clement )
+      COMMON/PAWC/NWPAW,IXPAWC,IHDIV,IXHIGZ,IXKU,FENC(5),LMAIN,HCV(9989)
+      DIMENSION IQ(1),Q(1),LQ(8000)
+      EQUIVALENCE (LQ(1),LMAIN),(IQ(1),LQ(9)),(Q(1),IQ(1))
+*
+      COMMON/HCBOOK/HVERSN,IHWORK,LHBOOK,LHPLOT,LGTIT,LHWORK,
+     +LCDIR,LSDIR,LIDS,LTAB,LCID,LCONT,LSCAT,LPROX,LPROY,LSLIX,
+     +LSLIY,LBANX,LBANY,LPRX,LPRY,LFIX,LLID,LR1,LR2,LCIDN
+
+*
+      PARAMETER (NLPATM=100)
+      COMMON /HCDIRN/NLCDIR,NLNDIR,NLPAT,ICDIR,NCHTOP,ICHTOP(NLPATM)
+      COMMON /HCDIRC/CHCDIR(NLPATM)
+      CHARACTER*16   CHCDIR
+*
+      COMMON/QUEST/IQUEST(100)
+*.___________________________________________
+      CHARACTER*(*) CHTITL
+      NCX=0
+      NCY=0
+      NWT=0
+      IDB=0
+C
+C	No hists ??
+C
+      IF(LHBOOK.EQ.0) THEN
+C
+C      RZ dir
+C
+      ELSEIF (ICHTOP(ICDIR).GT.0)THEN
+C
+C	Global section
+C
+      ELSEIF (ICHTOP(ICDIR) .lt. 0) THEN
+         LOCQ=1-LOCF(IQUEST(1))-ICHTOP(ICDIR)
+         CALL GS_HGIVE(IDD,CHTITL,NCX,XMIN,XMAX,NCY,YMIN,YMAX,
+     +      NWT,IDB,IQUEST(LOCQ))
+C         IDB=IDB+LOCQ-17
+         IDB=0
+C
+C	Memory resident directory
+C
+      ELSE
+         CALL GS_HGIVE(IDD,CHTITL,NCX,XMIN,XMAX,NCY,YMIN,YMAX,
+     +      NWT,IDB,NWPAW)
+         IDB=IDB-18
+      ENDIF
+      RETURN
+      END
+
+      SUBROUTINE GS_HGIVE(IDD,CHTITL,NCX,XMIN,XMAX,NCY,YMIN,YMAX,
+     +NWT,IDB,IQ)
+*.==========>
+*.           Return booking parameters of IDD   for Global section
+*..=========> ( J.Clement )
+*
+      PARAMETER(KNCX=3,KXMIN=4,KXMAX=5,KBWIDX=6,KMIN=7,KMAX=8,KNORM=9,
+     +          KTIT1=10,KNCY=7,KYMIN=8,KYMAX=9,KBWIDY=10,KSCAL2=11,
+     +          KTIT2=12,KNBIT=1,KNOENT=2,KSTAT1=3,KNSDIR=5,KNRH=6,
+     +          KCON1=9,KCON2=3,KBITS=1,KNTOT=2)
+*
+      CHARACTER*(*) CHTITL
+      INTEGER IFLAG(32)
+*.___________________________________________
+      INTEGER GS_HFIND,IQ(*)
+      INTEGER LQ
+      REAL Q
+      EQUIVALENCE (LQ,Q)
+      NARG=11
+      NCX=0
+      NCY=0
+      NWT=0
+      IDB=0
+      LCID=GS_HFIND(IDD,IQ)
+*
+*             IDD DOES NOT EXIST
+*
+      IF(LCID.LE.0)GO TO 99
+*
+      DO 10 J=1,32
+  10  IFLAG(J)=JBIT(IQ(LCID+KBITS),J)
+*
+cc      I230=I2+I3
+cc      I123=   I1+I230
+cc      CALL HDCOFL
+cc      IF(I4.NE.0)GO TO 99
+      IDB=LCID
+      IF (IFLAG(4).ne.0) GOTO 99
+      IF (IFLAG(1)+IFLAG(2)+IFLAG(3).EQ.0) GOTO 99
+      NCX=IQ(LCID+KNCX)
+      IF (NCX.eq.0) GOTO 99
+      LQ=IQ(LCID+KXMIN)
+      XMIN=Q
+      LQ=IQ(LCID+KBWIDX)
+      XMIN=XMIN+0.000001/Q
+C     XMIN=Q(LCID+KXMIN)+0.000001/Q(LCID+KBWIDX)
+      LQ=IQ(LCID+KXMAX)
+      XMAX=Q
+      IWT=LCID+KTIT1
+      IF(IFLAG(2)+IFLAG(3).NE.0)THEN
+         NCY=IQ(LCID+KNCY)
+         LQ=IQ(LCID+KYMIN)
+         YMIN=Q
+         LQ=IQ(LCID+KYMAX)
+         YMAX=Q
+         IWT=LCID+KTIT2
+      ELSEIF(IFLAG(8).ne.0) THEN
+         LQ=IQ(LCID+KMIN)
+         YMIN=Q
+         LQ=IQ(LCID+KMAX)
+         YMAX=Q
+      ENDIF
+      NWTIT=IQ(LCID-1)-IWT+LCID+1
+      IF(NARG.LT.9)GO TO 99
+      NWT=NWTIT
+      IF(NWT.EQ.0)GO TO 99
+      NCH=LEN(CHTITL)
+      NWCH=MIN(NCH,4*NWT)
+      IF(NCH.GT.0)CHTITL=' '
+      CALL UHTOC(IQ(IWT),4,CHTITL,NWCH)
+*
+  99  RETURN
+      END
+*CMZ :          21/02/89  16.14.49  by  Unknown
+*-- Author :
+      SUBROUTINE HB_HGIVEN( IDD, CHTITL, NVAR, TAGS, RLOW, RHIGH )
+*.==========>
+*.           To give information about a N-tuple. On entry, NVAR
+*.           must specify the dimension of the TAGS, RLOW and RHIGH
+*.           arrays. On return, NVAR is overwritten by the actual
+*.           number of dimensions. If IDD does not exist or is not
+*.           an n-tuple, a value of 0 is returned
+*.		This works with Global sections, or memory resident
+*.
+*..=========> ( J.Clement )
+      COMMON/HCBOOK/HVERSN,IHWORK,LHBOOK,LHPLOT,LGTIT,LHWORK,
+     +LCDIR,LSDIR,LIDS,LTAB,LCID,LCONT,LSCAT,LPROX,LPROY,LSLIX,
+     +LSLIY,LBANX,LBANY,LPRX,LPRY,LFIX,LLID,LR1,LR2,LCIDN
+
+*
+      PARAMETER (NLPATM=100)
+      COMMON /HCDIRN/NLCDIR,NLNDIR,NLPAT,ICDIR,NCHTOP,ICHTOP(NLPATM)
+      COMMON /HCDIRC/CHCDIR(NLPATM)
+      CHARACTER*16   CHCDIR
+*
+      COMMON/QUEST/IQUEST(100)
+*.___________________________________________
+      CHARACTER*(*) CHTITL, TAGS(*)
+      REAL RLOW(*),RHIGH(*)
+C
+C	No hists ??
+C
+      IF(LHBOOK.EQ.0) THEN
+         NVAR=0
+C
+C      RZ dir
+C
+      ELSEIF (ICHTOP(ICDIR).GT.0)THEN
+         NVAR=0
+C
+C	Global section
+C
+      ELSEIF (ICHTOP(ICDIR) .lt. 0) THEN
+         LOCQ=1-LOCF(IQUEST(1))-ICHTOP(ICDIR)
+         CALL GS_HGIVEN( IDD, CHTITL, NVAR, TAGS, RLOW, RHIGH
+     +      ,IQUEST(LOCQ))
+C
+C	Memory resident directory
+C
+      ELSE
+         CALL HGIVEN( IDD, CHTITL, NVAR, TAGS, RLOW, RHIGH )
+      ENDIF
+      END
+      SUBROUTINE GS_HGIVEN( IDD, CHTITL, NVAR, TAGS, RLOW, RHIGH, IQ )
+*.==========>
+*.           To give information about a N-tuple. On entry, NVAR
+*.           must specify the dimension of the TAGS, RLOW and RHIGH
+*.           arrays. On return, NVAR is overwritten by the actual
+*.           number of dimensions. If IDD does not exist or is not
+*.           an n-tuple, a value of 0 is returned
+*.		This works with Global sections
+*.
+*..=========> ( J.Clement )
+      PARAMETER(KNCX=3,KXMIN=4,KXMAX=5,KBWIDX=6,KMIN=7,KMAX=8,KNORM=9,
+     +          KTIT1=10,KNCY=7,KYMIN=8,KYMAX=9,KBWIDY=10,KSCAL2=11,
+     +          KTIT2=12,KNBIT=1,KNOENT=2,KSTAT1=3,KNSDIR=5,KNRH=6,
+     +          KCON1=9,KCON2=3,KBITS=1,KNTOT=2)
+*
+*
+*
+      CHARACTER*(*) CHTITL, TAGS(*)
+      INTEGER       IDD, NVAR
+      REAL          RLOW(*), RHIGH(*)
+      INTEGER IQ(*)
+      INTEGER GS_HFIND
+      REAL Q
+      INTEGER LQ
+      EQUIVALENCE (LQ,Q)
+*.___________________________________________
+*
+      NMAX = NVAR
+      NVAR = 0
+      LCID=GS_HFIND(IDD,IQ)
+      IF (LCID.eq.0 ) RETURN
+      I4     = JBIT(IQ(LCID+KBITS),4)
+      IF( I4.EQ.0 ) RETURN
+*
+      NDIM  = IQ(LCID+2)
+      LLIMS = IQ(LCID-2-8)+18
+      ITAG1 = IQ(LCID+10)
+      ITIT1 = IQ(LCID+9)
+      NWTIT = IQ(LCID+8)
+*
+* Copy title
+*
+      NCH = LEN(CHTITL)
+      IF( NCH.GT.0 ) CHTITL = ' '
+      NCH = MIN( NCH, 4*NWTIT )
+      IF( NCH.GT.0 ) CALL UHTOC( IQ(LCID+ITIT1), 4, CHTITL, NCH )
+*
+* Copy tag names and current lower/upper range
+*
+      NCH = LEN( TAGS(1) )
+      NCH = MIN( NCH, 8 )
+      DO 10 I = 1, NMAX
+         IF( NCH.GT.0 ) TAGS(I) = ' '
+         IF( NCH.GT.0 )THEN
+            TAGS(I)=' '
+            CALL UHTOC( IQ(LCID+ITAG1+2*(I-1)), 4, TAGS(I), NCH )
+         ENDIF
+         LQ=IQ(LLIMS+2*I-1)
+         RLOW (I) = Q
+         LQ=IQ(LLIMS+2*I)
+         RHIGH(I) = Q
+  10  CONTINUE
+*
+      NVAR = NDIM
+*
+      RETURN
+      END
+*CMZ :          21/02/89  16.14.49  by  Unknown
+*-- Author :
+
+      SUBROUTINE HB_HNOENT(IDD,NUMB)
+*.==========>
+*.           RETURNS THE NUMBER OF ENTRIES OF IDD in a Global Section
+*.           Or in regular memory
+*..=========> ( J.Clement )
+*
+      COMMON/HCBOOK/HVERSN,IHWORK,LHBOOK,LHPLOT,LGTIT,LHWORK,
+     +LCDIR,LSDIR,LIDS,LTAB,LCID,LCONT,LSCAT,LPROX,LPROY,LSLIX,
+     +LSLIY,LBANX,LBANY,LPRX,LPRY,LFIX,LLID,LR1,LR2,LCIDN
+*
+      PARAMETER(KNCX=3,KXMIN=4,KXMAX=5,KBWIDX=6,KMIN=7,KMAX=8,KNORM=9,
+     +          KTIT1=10,KNCY=7,KYMIN=8,KYMAX=9,KBWIDY=10,KSCAL2=11,
+     +          KTIT2=12,KNBIT=1,KNOENT=2,KSTAT1=3,KNSDIR=5,KNRH=6,
+     +          KCON1=9,KCON2=3,KBITS=1,KNTOT=2)
+*
+      PARAMETER (NLPATM=100)
+      COMMON /HCDIRN/NLCDIR,NLNDIR,NLPAT,ICDIR,NCHTOP,ICHTOP(NLPATM)
+      COMMON /HCDIRC/CHCDIR(NLPATM)
+      CHARACTER*16   CHCDIR
+*
+      COMMON/PAWC/NWPAW,IXPAWC,IHDIV,IXHIGZ,IXKU,FENC(5),LMAIN,HCV(9989)
+*
+      COMMON/QUEST/IQUEST(100)
+*.___________________________________________
+C
+C	No hists ??
+C
+      NUMB=-1
+      IF(LHBOOK.EQ.0) THEN
+C
+C      RZ dir
+C
+      ELSEIF (ICHTOP(ICDIR).GT.0)THEN
+C
+C	Global section
+C
+      ELSEIF (ICHTOP(ICDIR) .lt. 0) THEN
+         LOCQ=1-LOCF(IQUEST(1))-ICHTOP(ICDIR)
+         CALL GS_HNOENT(IDD,NUMB,IQUEST(LOCQ))
+C
+C	Memory resident directory
+C
+      ELSE
+         CALL GS_HNOENT(IDD,NUMB,NPAWC)
+      ENDIF
+      END
+
+      LOGICAL FUNCTION HB_HEXIST(IDD)
+*.==========>
+*.           .true. if Hist IDD in a Global Section
+*.           Or in regular memory exists
+*..=========> ( J.Clement )
+*
+      COMMON/HCBOOK/HVERSN,IHWORK,LHBOOK,LHPLOT,LGTIT,LHWORK,
+     +LCDIR,LSDIR,LIDS,LTAB,LCID,LCONT,LSCAT,LPROX,LPROY,LSLIX,
+     +LSLIY,LBANX,LBANY,LPRX,LPRY,LFIX,LLID,LR1,LR2,LCIDN
+*
+      PARAMETER(KNCX=3,KXMIN=4,KXMAX=5,KBWIDX=6,KMIN=7,KMAX=8,KNORM=9,
+     +          KTIT1=10,KNCY=7,KYMIN=8,KYMAX=9,KBWIDY=10,KSCAL2=11,
+     +          KTIT2=12,KNBIT=1,KNOENT=2,KSTAT1=3,KNSDIR=5,KNRH=6,
+     +          KCON1=9,KCON2=3,KBITS=1,KNTOT=2)
+*
+      PARAMETER (NLPATM=100)
+      COMMON /HCDIRN/NLCDIR,NLNDIR,NLPAT,ICDIR,NCHTOP,ICHTOP(NLPATM)
+      COMMON /HCDIRC/CHCDIR(NLPATM)
+      CHARACTER*16   CHCDIR
+*
+      COMMON/QUEST/IQUEST(100)
+*.___________________________________________
+      INTEGER GS_HFIND
+      LOGICAL HEXIST
+C
+C	No hists ??
+C
+      IF(LHBOOK.EQ.0) THEN
+         HB_HEXIST=.FALSE.
+C
+C      RZ dir
+C
+      ELSEIF (ICHTOP(ICDIR).GT.0)THEN
+         HB_HEXIST=.FALSE.
+C
+C	Global section
+C
+      ELSEIF (ICHTOP(ICDIR) .lt. 0) THEN
+         LOCQ=1-LOCF(IQUEST(1))-ICHTOP(ICDIR)
+         HB_HEXIST=GS_HFIND(IDD,IQUEST(LOCQ)).ne.0
+C
+C	Memory resident directory
+C
+      ELSE
+         HB_HEXIST=HEXIST(IDD)
+      ENDIF
+      END
+
+      SUBROUTINE GS_HNOENT(IDD,NUMB,IQ)
+*.==========>
+*.           RETURNS THE NUMBER OF ENTRIES OF IDD in a Global Section
+*..=========> ( J.Clement )
+*
+      PARAMETER(KNCX=3,KXMIN=4,KXMAX=5,KBWIDX=6,KMIN=7,KMAX=8,KNORM=9,
+     +          KTIT1=10,KNCY=7,KYMIN=8,KYMAX=9,KBWIDY=10,KSCAL2=11,
+     +          KTIT2=12,KNBIT=1,KNOENT=2,KSTAT1=3,KNSDIR=5,KNRH=6,
+     +          KCON1=9,KCON2=3,KBITS=1,KNTOT=2)
+*
+*.___________________________________________
+      INTEGER GS_HFIND,IQ(*)
+      INTEGER LQ
+      REAL Q
+      EQUIVALENCE (LQ,Q)
+      LCID=GS_HFIND(IDD,IQ)
+      IF (LCID.LE.0) THEN
+         HS_HNOENT=0
+         RETURN
+      ENDIF
+      IF(JBIT(IQ(LCID+KBITS),4).NE.0)THEN
+         NUMB=IQ(LCID+3)
+      ELSEIF(IAND(IQ(LCID+KBITS),7) .NE. 0) THEN
+         LCONT=IQ(LCID-1-8)+18
+         NUMB=IQ(LCONT+KNOENT)
+      ELSE
+         NUMB=IQ(LCID-1)
+      ENDIF
+      END
+      INTEGER FUNCTION GS_HFIND(IDD,IQ)
+*.==========>
+*.
+*.    This function makes it easy to find the ID's in A GLOBAL section
+*.       Input:   I - The desired ID
+*.       Output:  The location in global sectin of ID
+*.
+*.
+*..=========> ( J.Clement )
+      PARAMETER (NLPATM=100)
+      COMMON /HCDIRN/NLCDIR,NLNDIR,NLPAT,ICDIR,NCHTOP,ICHTOP(NLPATM)
+      COMMON /HCDIRC/CHCDIR(NLPATM)
+      CHARACTER*16   CHCDIR
+*
+      PARAMETER(KNCX=3,KXMIN=4,KXMAX=5,KBWIDX=6,KMIN=7,KMAX=8,KNORM=9,
+     +          KTIT1=10,KNCY=7,KYMIN=8,KYMAX=9,KBWIDY=10,KSCAL2=11,
+     +          KTIT2=12,KNBIT=1,KNOENT=2,KSTAT1=3,KNSDIR=5,KNRH=6,
+     +          KCON1=9,KCON2=3,KBITS=1,KNTOT=2)
+*
+      COMMON/QUEST/IQUEST(100)
+      DIMENSION IHDIR(4)
+      DIMENSION IQ(*)
+*.___________________________________________
+      INTEGER I,IL,JR1,JR2
+      IF (NLCDIR.le.0 .or. NLCDIR.gt.20) GOTO 90
+      IF (IQ(1).le.0) GOTO 90		! Error ?
+*
+*          Search levels down for current one
+*
+         JR1=IQ(11)				! Start here
+         IF (JR1.le.0 .or. JR1 .gt. IQ(1)) GOTO 90
+         DO 50 IL=2,NLCDIR			! Search all levels
+            CALL UCTOH(CHCDIR(IL),IHDIR,4,16)	! Current subdir
+            JR1=IQ(JR1+9)			! Get next
+            ILOOP=1000
+  30        IF (JR1.le.0 .or. JR1 .gt. IQ(1)+23) GOTO 90
+            ILOOP=ILOOP-1
+            IF (ILOOP.eq.0) GOTO 90		! Too many loops ?
+            DO 40 I=1,4				! Check it it matches
+               IF(IHDIR(I).NE.IQ(JR1+I+18))THEN	! Not match ?
+                  JR1=IQ(JR1+10)		! Check next
+                  GO TO 30
+               ENDIF
+  40        CONTINUE
+  50     CONTINUE
+         GOTO 80
+*
+*	OK return
+*
+  80  CONTINUE
+      JTAB=IQ(JR1+10-3)+18			! Points to Table of IDS
+C         Get max number of hists
+      N=IQ(JR1+KNRH+18)
+      ID=IDD
+C	Locate the hist in table
+      I=LOCATI(IQ(JTAB+1),N,ID)
+      IF (I .gt. 0) THEN			! Found it ??
+         GS_HFIND=IQ(JTAB-I-8)+18		! Got address
+         GOTO 99
+      ENDIF
+*
+*	Error return
+*
+  90  GS_HFIND=0
+  99  RETURN
+      END
+      SUBROUTINE HB_GET_OPT(ID1,KKOPT,STRVAL,FVAL,IVAL,LVAL)
+*.==========>
+*.	To get options this supplements HGIVE
+*.
+*.	Input:	ID1	ID of the hist to get options
+*.		KKOPT	4 Character name of option
+*.	Output:	STRVAL	String option if appropriate
+*.				IVAL=Number of characters
+*.		FVAL	Floating value if appropriate
+*.		IVAL	Integer value if appropriate
+*.			IVAL=0 means off/ 1=on for YES/NO options
+*.		LVAL	.true. If option exists + is applicable to ID1
+*.
+*.	Currently this only applies to Memory resident data
+*.	It should be generalized to disk resident data
+*.
+*..=========> ( J.Clement )
+      COMMON/PAWC/NWPAW,IXPAWC,IHDIV,IXHIGZ,IXKU,FENC(5),LMAIN,HCV(9989)
+      DIMENSION IQ(2),Q(2),LQ(8000)
+      EQUIVALENCE (LQ(1),LMAIN),(IQ(1),LQ(9)),(Q(1),IQ(1))
+      COMMON/HCBOOK/HVERSN,IHWORK,LHBOOK,LHPLOT,LGTIT,LHWORK,
+     +LCDIR,LSDIR,LIDS,LTAB,LCID,LCONT,LSCAT,LPROX,LPROY,LSLIX,
+     +LSLIY,LBANX,LBANY,LPRX,LPRY,LFIX,LLID,LR1,LR2,LCIDN
+*
+      PARAMETER(KNCX=3,KXMIN=4,KXMAX=5,KBWIDX=6,KMIN=7,KMAX=8,KNORM=9,
+     +          KTIT1=10,KNCY=7,KYMIN=8,KYMAX=9,KBWIDY=10,KSCAL2=11,
+     +          KTIT2=12,KNBIT=1,KNOENT=2,KSTAT1=3,KNSDIR=5,KNRH=6,
+     +          KCON1=9,KCON2=3,KBITS=1,KNTOT=2)
+*
+      COMMON/HCPRIN/IFW   ,NW    ,NB    ,IH    ,NHT   ,ICN   ,IPONCE,
+     +       NH    ,MSTEP ,NOENT ,NOLD  ,IDOLAR,IBLANC,KBINSZ,INO   ,
+     +       KSQUEZ,NCOLMA,NCOLPA,NLINPA,BIGP  ,ICBLAC,ICSTAR,ICFUNC,
+     +       IDG(42),MAXBIT(30),IDENT(9)
+*
+      COMMON / HCBITS  / I1,   I2,   I3,   I4,   I5,   I6,   I7,   I8,
+     +                  I9,   I10,  I11,  I12,  I13,  I14,  I15,  I16,
+     +I17,  I18,  I19,  I20,  I21,  I22,  I23,  I24,  I25,  I26,  I27,
+     +I28,  I29,  I30,  I31,  I32,  I33,  I34,  I35,  I123, I230
+*
+      PARAMETER (NLPATM=100)
+      COMMON /HCDIRN/NLCDIR,NLNDIR,NLPAT,ICDIR,NCHTOP,ICHTOP(NLPATM)
+      COMMON /HCDIRC/CHCDIR(NLPATM)
+      CHARACTER*16   CHCDIR
+*
+      CHARACTER*(*)STRVAL,KKOPT
+      CHARACTER*4 KOPT
+      INTEGER ID1,IVAL
+      LOGICAL LVAL
+*.___________________________________________
+      KOPT=KKOPT
+      CALL CLTOU(KOPT)
+*
+      FVAL=0
+      IVAL=0
+      LVAL=.FALSE.
+      IF (ICHTOP(ICDIR) .ne. 0) RETURN			! Not mem resident ?
+      IF  (ID1.le.0) THEN				! All hists ?
+         IF  (KOPT.eq.'TITL') THEN			! Global title ?
+            STRVAL=' '
+            IF (LGTIT.ne.0) THEN
+               NWT=MIN(IQ(LGTIT-1)*4,LEN(STRVAL))
+               CALL UHTOC(IQ(LGTIT+1),4,STRVAL,NWT)
+               IVAL=NWT
+               LVAL=.true.
+            ENDIF
+         ELSEIF (KOPT.eq.'PAGS') THEN			! Page size
+            LVAL=.true.
+            IVAL=NLINPA
+         ELSEIF (KOPT.eq.'BINS') THEN			! Bin size (print)
+            LVAL=.true.
+            IVAL=KBINSZ
+         ELSEIF  (KOPT.eq.'SQUE') THEN			! SQueeze (omit ff) ?
+            IVAL=KSQUEZ
+	 ELSEIF (KOPT .EQ. 'VERS') THEN			! Version number
+		FVAL=HVERSN
+         ENDIF
+         RETURN
+      ENDIF
+      CALL HFIND(ID1,'HBGOPT')				! Get ID
+      IF   (LCID.le.0) RETURN				! None
+      CALL HDCOFL					! Get options
+      IF (I4.ne.0) THEN					! NTUPLES ?
+         IF (KOPT.EQ.'RECL') THEN			! Record size ?
+            LVAL=.true.					! Got value
+            IVAL=IQ(LCID+4)				! Record size
+         ENDIF
+         RETURN
+      ENDIF
+      IF (I123.eq.0) RETURN				! Array ???
+      LVAL=.TRUE.
+      LCONT=LQ(LCID-1)					! Get continuation
+      IF      (KOPT.EQ.'PMAX') THEN			! Max value to print ?
+         IF(I1.NE.0.and.I20.NE.0)THEN
+            FVAL=Q(LCID+KMAX)
+         ELSE
+            LVAL=.FALSE.
+         ENDIF
+      ELSEIF  (KOPT.EQ.'PMIN') THEN			! Min value to print ?
+         IF(I1.NE.0.AND.I21.NE.0)THEN
+            FVAL=Q(LCID+KMIN)
+         ELSE
+            LVAL=.FALSE.
+         ENDIF
+      ELSEIF  (KOPT.eq.'BINA')THEN			! Automatic binning
+         IVAL=I5
+      ELSEIF  (KOPT.eq.'BINV')THEN			! Variable width
+         IVAL=I6
+      ELSEIF  (KOPT.EQ.'PROF')THEN			! Profile hist ?
+         IVAL=I8
+      ELSEIF  (KOPT.EQ.'BLAC')THEN			! Black ?
+         IF ((I28.EQ.0)  .and. (I27.NE.0)) IVAL=1
+      ELSEIF  (KOPT.EQ.'CONT')THEN
+         IF ((I27.EQ.0)  .and. (I28.EQ.0)) IVAL=1
+      ELSEIF  (KOPT.EQ.'STAR')THEN
+         IF ((I27.EQ.0)  .and. (I28.NE.0)) IVAL=1
+      ELSEIF  (KOPT.EQ.'STAT')THEN
+         IVAL=I7
+      ELSEIF  (KOPT.EQ.'TABL')THEN
+         IF(I230.NE.0)THEN				! Mesh ?
+            IF ((I3.NE.0)    .and. (I2.EQ.0)) IVAL=1
+         ELSE
+            LVAL=.FALSE.
+         ENDIF
+      ELSEIF  (KOPT.EQ.'SCAT')THEN
+         IF(I230.NE.0)THEN				! Mesh ?
+            IF ((I3.EQ.0)    .and. (I2.NE.0)) IVAL=1
+         ELSE
+            LVAL=.FALSE.
+         ENDIF
+      ELSEIF  (KOPT.EQ.'ERRO')THEN
+         IF(I9+I10.EQ.0)IVAL=I11
+      ELSEIF  (KOPT.EQ.'INTE')THEN
+         IVAL=I22
+      ELSEIF  (KOPT.EQ.'LOGY')THEN
+         IVAL=I26
+      ELSEIF  (KOPT.EQ.'LINY')THEN
+         IF ((I26.EQ.0)) IVAL=1
+      ELSEIF  (KOPT.EQ.'PCHA')THEN
+         IF ((I29.EQ.0)) IVAL=1
+      ELSEIF  (KOPT.EQ.'PERR')THEN
+         IVAL=I31
+      ELSEIF  (KOPT.EQ.'PFUN')THEN
+         IVAL=I14
+      ELSEIF  (KOPT.EQ.'PLOW')THEN
+         IF ((I15.EQ.0)) IVAL=1
+      ELSEIF  (KOPT.EQ.'PHIS')THEN
+         IF ((I16.EQ.0)) IVAL=1
+      ELSEIF  (KOPT.EQ.'PSTA')THEN
+         IF ((I25.EQ.0)) IVAL=1
+      ELSEIF  (KOPT.EQ.'PCON')THEN
+         IF ((I30.EQ.0)) IVAL=1
+      ELSEIF  (KOPT.EQ.'ROTA')THEN
+         IVAL=I13
+      ELSEIF  (KOPT.EQ.'1EVL')THEN
+         IVAL=I24
+      ELSEIF  (KOPT.EQ.'AEVL')THEN
+         IF ((I24.EQ.0)) IVAL=1
+      ELSEIF  (KOPT.EQ.'2PAG')THEN
+         IVAL=I23
+      ELSEIF  (KOPT.EQ.'1PAG')THEN
+         IF ((I23.EQ.0)) IVAL=1
+      ELSEIF  (KOPT.EQ.'AUTO')THEN
+         IF ((I20.EQ.0)  .and. (I21.EQ.0)) IVAL=1
+      ELSEIF  (KOPT.eq.'RANG')THEN			! Hist range ?
+C
+C	The range of the hist
+C		IVAL=Number of bits
+C		FVAL=Maximum value stored
+C
+         IVAL=IQ(LCONT+KNBIT)
+         IF (IVAL.gt.0 .and. IVAL.lt.32) THEN
+            FVAL=2.**IVAL-1
+         ELSE
+            IVAL=0
+            FVAL=1.7E38
+         ENDIF
+      ELSEIF  (KOPT.EQ.'PROS')THEN
+         LW=LQ(LCONT)
+c         IF(LW.NE.0)CALL SBIT1(IQ(LW),1)
+         IF (LW.ne.0) THEN
+            IVAL=JBIT(IQ(LW),1)
+         ELSE
+            LVAL=.false.
+         ENDIF
+      ELSEIF  (KOPT.EQ.'PROE')THEN
+         LW=LQ(LCONT)
+c         IF(LW.NE.0)CALL SBIT0(IQ(LW),1)
+         IF (LW.ne.0) THEN
+            IVAL=1-JBIT(IQ(LW),1)
+         ELSE
+            LVAL=.false.
+         ENDIF
+      ELSEIF  (KOPT.eq.'BIGB') THEN
+         IF (I123.ne.0) THEN
+            IVAL=JBYT(IQ(LCID),1,4)
+C         CALL SBYT(NSTEP0,IQ(LCID),1,4)
+         ELSE
+            LVAL=.false.
+         ENDIF
+      ELSE
+         LVAL=.FALSE.
+      ENDIF
+      END
+      SUBROUTINE HRESET(IDD,CHTITL)
+*.==========>
+*.           RESETS TO 0. CONTENT OF IDD
+*.           OPTIONNALY CHANGE TITLE
+*.	Input:	IDD	Id to zero (0=all)
+*.		CHTITL	Char string New title
+*.
+*.	Modified by J.Clement
+*.		Increase efficiency by ELSEIF
+*.		To prevent zeroing NTUPL
+*.		This should be fixed !!!!!!!!!!!!!!!!!!
+*.		One should be able to zero an NTUPL!!!!
+*..=========> ( R.Brun )
+      COMMON / HCBITS  / I1,   I2,   I3,   I4,   I5,   I6,   I7,   I8,
+     +                  I9,   I10,  I11,  I12,  I13,  I14,  I15,  I16,
+     +I17,  I18,  I19,  I20,  I21,  I22,  I23,  I24,  I25,  I26,  I27,
+     +I28,  I29,  I30,  I31,  I32,  I33,  I34,  I35,  I123, I230
+*
+      COMMON/PAWC/NWPAW,IXPAWC,IHDIV,IXHIGZ,IXKU,FENC(5),LMAIN,HCV(9989)
+      DIMENSION IQ(2),Q(2),LQ(8000)
+      EQUIVALENCE (LQ(1),LMAIN),(IQ(1),LQ(9)),(Q(1),IQ(1))
+      COMMON/HCBOOK/HVERSN,IHWORK,LHBOOK,LHPLOT,LGTIT,LHWORK,
+     +LCDIR,LSDIR,LIDS,LTAB,LCID,LCONT,LSCAT,LPROX,LPROY,LSLIX,
+     +LSLIY,LBANX,LBANY,LPRX,LPRY,LFIX,LLID,LR1,LR2,LCIDN
+*
+      PARAMETER(KNCX=3,KXMIN=4,KXMAX=5,KBWIDX=6,KMIN=7,KMAX=8,KNORM=9,
+     +          KTIT1=10,KNCY=7,KYMIN=8,KYMAX=9,KBWIDY=10,KSCAL2=11,
+     +          KTIT2=12,KNBIT=1,KNOENT=2,KSTAT1=3,KNSDIR=5,KNRH=6,
+     +          KCON1=9,KCON2=3,KBITS=1,KNTOT=2)
+*
+      CHARACTER*(*) CHTITL
+*.___________________________________________
+      NARG=2
+      CALL NOARG(NARG)
+      IRET=3
+*
+  10  CALL HLOOP(IDD,'HRESET',IRET)
+      IF(IRET.EQ.0)GO TO 99
+      CALL HDCOFL
+*
+*             CHANGE TITLE
+*
+      IF(NARG.EQ.2.AND.I123.NE.0)THEN
+         CALL HBTIT(CHTITL,NWTITL,NCHT)
+         IF(NWTITL.NE.0)THEN
+            IF(I1.NE.0)THEN
+               NWOLD=IQ(LCID-1)-KTIT1+1
+               J1=KTIT1
+            ELSEIF(I230.NE.0)THEN
+               NWOLD=IQ(LCID-1)-KTIT2+1
+               J1=KTIT2
+            ENDIF
+            NMORE=NWTITL-NWOLD
+            IF(NMORE.NE.0)THEN
+               CALL MZPUSH(IHDIV,LCID,0,NMORE,' ')
+               IQ(LCID+KNTOT)=IQ(LCID+KNTOT)+NMORE
+            ENDIF
+            IF(NWTITL.NE.0)THEN
+               CALL UCTOH(CHTITL,IQ(LCID+J1),4,NCHT)
+            ENDIF
+         ENDIF
+      ENDIF
+*
+*             Reset contents
+      IF(I4.ne.0)THEN
+         CALL HBUG('Object is not histogram/array','HRESET',ID1)
+*
+*======>     Array
+*
+      ELSEIF(I123.EQ.0)THEN
+         CALL VZERO(IQ(LCID+1),IQ(LCID-1))
+*
+*======>     1-DIM histogram
+*
+      ELSEIF(I1.NE.0)THEN
+         LCONT=LQ(LCID-1)
+         CALL HREZ0(LQ(LCID-1))
+*
+*=====>     2-DIM histogram
+*
+      ELSEIF(I230.NE.0)THEN
+         LSCAT=LQ(LCID-1)
+         CALL VZERO(IQ(LSCAT+KNOENT),IQ(LSCAT-1)-1)
+*
+*           PROX
+*
+         CALL HREZ0(LQ(LCID-2))
+*
+*           PROY
+*
+         CALL HREZ0(LQ(LCID-3))
+*
+*           SLIX
+*
+         LSLIX=LQ(LCID-4)
+         IF(LSLIX.NE.0)THEN
+            DO 40 I=1,IQ(LSLIX-2)
+               CALL HREZ0(LQ(LSLIX-I))
+  40        CONTINUE
+         ENDIF
+*
+*           SLIY
+*
+         LSLIY=LQ(LCID-5)
+         IF(LSLIY.NE.0)THEN
+            DO 50 I=1,IQ(LSLIY-2)
+               CALL HREZ0(LQ(LSLIY-I))
+  50        CONTINUE
+         ENDIF
+*
+*           BANX
+*
+         LBANX=LQ(LCID-6)
+  60     IF(LBANX.NE.0)THEN
+            CALL HREZ0(LQ(LBANX-1))
+            LBANX=LQ(LBANX)
+            IF(LBANX.NE.0)GO TO 60
+         ENDIF
+*
+*           BANY
+*
+         LBANY=LQ(LCID-7)
+  70     IF(LBANY.NE.0)THEN
+            CALL HREZ0(LQ(LBANY-1))
+            LBANY=LQ(LBANY)
+            IF(LBANY.NE.0)GO TO 70
+         ENDIF
+      ENDIF
+*
+  90  IRET=2
+      GO TO 10
+*
+  99  RETURN
+      END
+%MORTRAN
+$VAX;
+%FORTRAN
+*CMZ :          21/02/89  16.14.53  by  Unknown
+*-- Author :
+      FUNCTION hmapg(global_name,base_common,off_set)
+*
+*       J.G. Loken      1/11/87
+*	Modified:	J.Clement Dec 1989
+*
+*       Function to dynamically map to an existing global section.
+*
+*       This function maps to the global section using SYS$MGBLSC,
+*       allocating pages in the p0 region with the sec$m_expreg option.
+*
+*       GLOBAL_NAME is the name of the section to be mapped.
+*       BASE_COMMON is the first word of reference COMMON.
+*       OFF_SET is the offset from BASE_COMMON of the mapped section in words.
+*                       i.e., BASE_COMMON(OFF_SET) is the first word.
+*       HMAPG is returned equal to the global section length (pages) if OK,
+*               or as an error if not (< 0).
+*
+      CHARACTER*(*) global_name
+      CHARACTER*80 name
+      INTEGER*4 base_common,off_set,new_addr,old_addr
+      INTEGER*4 inad(2),rtad(2),flag
+      INTEGER*4 hmapg
+*
+      INTEGER*4 sys$mgblsc
+*
+****      INCLUDE '($SECDEF)/NOLIST'
+*
+***************************************************************************
+*
+      CALL str$trim(name,global_name,length)
+      inad(1)=0
+      inad(2)=0
+*
+*       Give read/write access to mapped section.
+*       Also, use the expreg option to get its own VM space.
+*
+      flag=sec$m_gbl+sec$m_wrt+sec$m_expreg
+*
+      hmapg=sys$mgblsc(inad,rtad,,%val(flag),name(1:length),,)
+
+C
+C	Modified by J.Clement to try to open without write priv
+C
+      IF((hmapg.AND.1).EQ.0) THEN
+         flag=sec$m_gbl+sec$m_expreg
+         hmapg=sys$mgblsc(inad,rtad,,%val(flag),name(1:length),,)
+      ENDIF
+      IF((hmapg.AND.1).EQ.0) THEN
+        hmapg=-hmapg
+        RETURN
+      ELSE
+        hmapg=(rtad(2)-rtad(1)+1)/512
+      ENDIF
+*
+      new_addr=rtad(1)
+      old_addr=%loc(base_common)
+      off_set=1+(new_addr-old_addr)/4
+*
+      RETURN
+      END
+	INTEGER FUNCTION HCREATEG(GLOBAL_NAME,BASE_COMMON,SIZE)
+c	IMPLICIT NONE
+*
+*       J.G. Loken      1/11/87
+*	Modified:	J. Clement Dec 1989
+*
+*       Function to create and map a global section.
+*
+*       This function first opens a file with UFO option (using HST_OPEN_GBL),
+*       then creates and maps the global section using SYS$CRMPSC.
+*
+*	INPUT:
+*          GLOBAL_NAME is the name of the section to be mapped.
+*		GLOBAL_NAME may also be a file name to use in creating the
+*		section
+*          BASE_COMMON is the first word of the COMMON to be mapped.
+*          SIZE is the size of the common in words.
+*		If SIZE > 0 The global section has normal protection
+*	OUTPUT:
+*         HCREATEG is returned equal to the global section length
+*               (pages) if OK,
+*               or as an error if not (< 0).
+*
+*
+	CHARACTER*(*) GLOBAL_NAME
+	CHARACTER*80 NAME
+	INTEGER*4 IPROT,IDUM
+	INTEGER*4 BASE_COMMON,SIZE
+	INTEGER*4 INAD(2),RTAD(2),FLAG,INCHAN,NPAGES,APAGES
+	INTEGER*4 HB_CREATE_SECT
+*
+	INTEGER*4 HOPEN_GBL
+	EXTERNAL HOPEN_GBL
+	COMMON/OPENCOM/INCHAN,APAGES
+	INTEGER*4 GBL_LUN/100/
+*
+*       System functions
+*
+	INTEGER *4 SYS$CRMPSC,SYS$MGBLSC
+	INTEGER*4 SEC$M_TEMP/0/    !TEST REPLACEMENT FOR PERM
+*
+	INCLUDE '($SSDEF)'
+	INCLUDE '($SECDEF)'
+*
+*
+***************************************************************************
+*
+	LOGICAL LOPEN
+	INTEGER LENGTH,IBEGIN,ISTAT,ISTS(5)
+	hcreateg=0
+	DO 1 I=1,LEN(GLOBAL_NAME)
+	  IF (	global_name(I:I).ne.' ' .and.
+     &		global_name(I:I).ne.'	') goto 2
+1	CONTINUE
+2	CALL STR$TRIM(NAME,GLOBAL_NAME(I:),LENGTH)
+	CALL STR$UPCASE(NAME,NAME,LENGTH)
+	ibegin=index(name(:length),':')+1
+	ibegin=index(name(ibegin:length),']')+ibegin
+	ibegin=index(name(ibegin:length),']')+ibegin
+	NPAGES=(ABS(SIZE)+127)/128
+*
+*       - Setup histogram global section.
+*
+	DO 100 I=100,1,-1
+	    INQUIRE(UNIT=I,OPENED=LOPEN)		! Search for not open unit
+	    IF (.not. LOPEN) GOTO 101
+100	CONTINUE
+101	GBL_LUN=I
+	IF (SIZE.gt.0) CALL SYS$SETDFPROT('C000'X,IPROT)
+	IVERSION=0
+	OPEN(UNIT=GBL_LUN
+     &		,IOSTAT=ISTAT
+     &		,ERR=999
+     &		,STATUS='SCRATCH'
+     &		,FILE=name(1:LENGTH)
+     &		,defaultfile='sys$scratch:user_common.gbl'
+     &		,RECL=512
+     &		,RECORDTYPE='FIXED'
+     &		,NOSPANBLOCKS
+     &		,INITIALSIZE=NPAGES
+     &		,EXTENDSIZE=512
+     &		,CARRIAGECONTROL='NONE'
+     &		,USEROPEN=HOPEN_GBL)
+*
+*		If SIZE > 0 setup write access for group
+*		J.Clement
+*
+999	IF (SIZE.gt.0) CALL SYS$SETDFPROT(IPROT,IDUM)
+	if (ISTAT.ne.0) THEN
+	   CALL ERRSNS(ISTS(5),ISTS(2),ISTS(3),ISTS(4),ISTS(1))
+	   HCREATEG=-ABS(ISTAT)
+	   TYPE *,'	Failure to open file: "',NAME(:length),'"'
+	   CALL LIB$SIGNAL(%VAL(IAND('FFFFFFFB'X,ISTS(2))),%val(ISTS(3)))
+	   return
+	endif
+	NPAGES=MIN(NPAGES,APAGES)
+	INAD(1)=%LOC(BASE_COMMON)
+	IF (MOD(INAD(1),512) .ne. 0) THEN
+	   TYPE *,'	Global section not created -- improper alignment'
+	   RETURN
+	ENDIF
+	INAD(2)=INAD(1)+511
+	FLAG=SEC$M_GBL+SEC$M_WRT+SEC$M_TEMP
+	HCREATEG=0
+	DO 200 IVERSION=0,9
+	  IF (IVERSION.eq.1) THEN
+	    NAME(LENGTH+1:)='.'
+	    LENGTH=LENGTH+2
+	  ENDIF
+	  IF (IVERSION.gt.0) THEN
+	    WRITE(NAME(LENGTH:),'(I1)') IVERSION
+	  ENDIF
+	  ISTAT=SYS$MGBLSC(INAD,RTAD,,%VAL(FLAG)
+     &		,name(ibegin:LENGTH),,)
+	  IF (ISTAT.ne.SS$_NORMAL) GOTO 201
+200	CONTINUE
+	RETURN
+201	CONTINUE
+	INAD(2)=INAD(1)+512*NPAGES-1
+	HCREATEG=SYS$CRMPSC(INAD,RTAD,,%VAL(FLAG)
+     &		,name(ibegin:LENGTH),,
+     &		,%VAL(INCHAN)
+     &		,%VAL(NPAGES),,,)
+	IF((HCREATEG.AND.1).EQ.0) THEN
+	  type *,'	Section not created:'
+	  CALL LIB$SIGNAL(%VAL(IAND('FFFFFFFB'X,HCREATEG)))
+	  HCREATEG=-HCREATEG
+	ELSE
+	  HCREATEG=(RTAD(2)-RTAD(1)+1)/512
+	  TYPE *,'	Section created: "',NAME(IBEGIN:LENGTH),'"'
+	  IF (INAD(1).ne.RTAD(1) .or. INAD(2).ne.RTAD(2)) THEN
+	    TYPE *,'*** Improper alignment in section'
+	    HCREATEG=-HCREATEG
+	  ENDIF
+	ENDIF
+*
+	RETURN
+	END
+%MORTRAN
+$END;

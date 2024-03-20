@@ -1,0 +1,8 @@
+      FUNCTION LENGTH(S)
+      CHARACTER S*(*)
+      LENGTH=LEN(S)
+   10 IF (LENGTH.LE.0) RETURN
+      IF (LGT(S(LENGTH:LENGTH),' ')) RETURN
+      LENGTH=LENGTH-1
+      GOTO 10
+      END

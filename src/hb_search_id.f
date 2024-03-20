@@ -1,0 +1,120 @@
+      SUBROUTINE HB_SEARCH_DIR(CHPATH,LEVEL,LEVEL0)
+      WRITE(0,*)
+     *'SUBROUTINE HB_SEARCH_DIR(CHPATH,LEVEL,LEVEL0)
+     * called.'
+      RETURN
+      END
+      SUBROUTINE GS_SEARCH_DIR(CHPATH,LEVEL,LEVEL0,IPAWD)
+      WRITE(0,*)
+     *'SUBROUTINE GS_SEARCH_DIR(CHPATH,LEVEL,LEVEL0,IPAWD)
+     * called.'
+      RETURN
+      END
+      SUBROUTINE HB_HCDIR(CHPATH,CHOPT)
+      WRITE(0,*)
+     *'SUBROUTINE HB_HCDIR(CHPATH,CHOPT)
+     * called.'
+      RETURN
+      END
+      SUBROUTINE HRZ_SEARCH_DIR(CHDIR,LEVEL,LEVEL0)
+      WRITE(0,*)
+     *'SUBROUTINE HRZ_SEARCH_DIR(CHDIR,LEVEL,LEVEL0)
+     * called.'
+      RETURN
+      END
+      INTEGER FUNCTION hb_search_id(I)
+      WRITE(0,*)
+     *'INTEGER FUNCTION hb_search_id(I)
+     * called.'
+      hb_search_id = 0
+      RETURN
+      END
+      INTEGER FUNCTION GS_SEARCH_ID(LEVEL,IPAWD)
+      WRITE(0,*)
+     *'INTEGER FUNCTION GS_SEARCH_ID(LEVEL,IPAWD)
+     * called.'
+      gs_search_id = 0
+      RETURN
+      END
+      SUBROUTINE HB_RZCDIR(CHPATH,CHOPT)
+      WRITE(0,*)
+     *'SUBROUTINE HB_RZCDIR(CHPATH,CHOPT)
+     * called.'
+      RETURN
+      END
+      SUBROUTINE HB_RZFDIR(LT,LDIR)
+      WRITE(0,*)
+     *'SUBROUTINE HB_RZFDIR(LT,LDIR)
+     * called.'
+      RETURN
+      END
+      SUBROUTINE RZ_SEARCH_DIR(CHDIR,LEVEL,LEVEL0)
+      WRITE(0,*)
+     *'SUBROUTINE RZ_SEARCH_DIR(CHDIR,LEVEL,LEVEL0)
+     * called.'
+      RETURN
+      END
+      SUBROUTINE HB_HGIVE(IDD,CHTITL,NCX,XMIN,XMAX,NCY,YMIN,YMAX,
+     +NWT,IDB)
+      WRITE(0,*)
+     *'SUBROUTINE HB_HGIVE(IDD,CHTITL,NCX,XMIN,XMAX,NCY,YMIN,YMAX,
+     * called.'
+      RETURN
+      END
+      SUBROUTINE GS_HGIVE(IDD,CHTITL,NCX,XMIN,XMAX,NCY,YMIN,YMAX,
+     +NWT,IDB,IQ)
+      WRITE(0,*)
+     *'SUBROUTINE GS_HGIVE(IDD,CHTITL,NCX,XMIN,XMAX,NCY,YMIN,YMAX,
+     * called.'
+      RETURN
+      END
+      SUBROUTINE HB_HGIVEN( IDD, CHTITL, NVAR, TAGS, RLOW, RHIGH )
+      WRITE(0,*)
+     *'SUBROUTINE HB_HGIVEN( IDD, CHTITL, NVAR, TAGS, RLOW, RHIGH )
+     * called.'
+      RETURN
+      END
+      SUBROUTINE GS_HGIVEN( IDD, CHTITL, NVAR, TAGS, RLOW, RHIGH, IQ )
+      WRITE(0,*)
+     *'SUBROUTINE GS_HGIVEN( IDD, CHTITL, NVAR, TAGS, RLOW, RHIGH, IQ )
+     * called.'
+      RETURN
+      END
+      SUBROUTINE HB_HNOENT(IDD,NUMB)
+      WRITE(0,*)
+     *'SUBROUTINE HB_HNOENT(IDD,NUMB)
+     * called.'
+      RETURN
+      END
+      LOGICAL FUNCTION HB_HEXIST(IDD)
+      WRITE(0,*)
+     *'LOGICAL FUNCTION HB_HEXIST(IDD)
+     * called.'
+      hb_hexist = .false.
+      RETURN
+      END
+      SUBROUTINE GS_HNOENT(IDD,NUMB,IQ)
+      WRITE(0,*)
+     *'SUBROUTINE GS_HNOENT(IDD,NUMB,IQ)
+     * called.'
+      RETURN
+      END
+      INTEGER FUNCTION GS_HFIND(IDD,IQ)
+      WRITE(0,*)
+     *'INTEGER FUNCTION GS_HFIND(IDD,IQ)
+     * called.'
+      gs_hfind = 0
+      RETURN
+      END
+      SUBROUTINE HB_GET_OPT(ID1,KKOPT,STRVAL,FVAL,IVAL,LVAL)
+      WRITE(0,*)
+     *'SUBROUTINE HB_GET_OPT(ID1,KKOPT,STRVAL,FVAL,IVAL,LVAL)
+     * called.'
+      RETURN
+      END
+      SUBROUTINE HRESET(IDD,CHTITL)
+      WRITE(0,*)
+     *'SUBROUTINE HRESET(IDD,CHTITL)
+     * called.'
+      RETURN
+      END

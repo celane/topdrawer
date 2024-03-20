@@ -1,0 +1,2514 @@
+%N
+%U+ TDMACROS.MOR
+%L
+<TOKEN USING INFOIN,CARDIN>
+%';SUBROUTINE'=';<RESET> <SET> ;"SUBROUTINE"'
+<SET>;		"Ready for reset"
+%E  Start of SHOW command package
+"
+	This routine was written by:
+		J. Clement
+		T.W. Bonner Lab
+		Rice University
+		Box 1892
+		Houston, Tx, 77251
+		1986
+	It was primarily intended to run on a VAX using VMS
+	All other systems may need some modification!!!!"
+
+SUBROUTINE T2SHOW($INFO,$CARD);
+   IMPLICIT NONE;
+   $FLAGS;
+   INTEGER	T2_SHOW1,I,IMAX;
+   INTEGER	$INFO(10);
+   CHARACTER*(*) $CARD;
+   <IMAX=1,5;
+      I=T2_SHOW1($INFO,$CARD);
+      IF ($TRAP .or. I .eq. 0) GOTO :RET:;
+      CALL T2_SHOW_ALL;
+   >
+:RET:
+END;
+INTEGER FUNCTION T2_SHOW1($INFO,$CARD);
+   "   PROCESSES 'SHO' COMMANDS"
+   INTEGER	$INFO(10);
+   CHARACTER*(*)	$CARD;
+   $SPECIFICATION;
+   INTEGER N1,N2,N3,N4,NS1,NS2;
+   REAL TLIM(3,2);
+   $SPECIFYNONE;
+   $MAINSPEC;
+   $SPECIFYD;
+   $TXCOM;		"Needed for IROTAX"
+   $POINT ARRAYS($NPOINTS);
+   INTEGER	T2BTRIM;		"External integer function"
+   CHARACTER*4	T2_GET_SYMBOL;
+   REAL       PI ;
+   PARAMETER (PI=6.2831853);
+   REAL		TEMPA(10);
+   REAL		TEMP,TEMP1,TEMP2,TEMP3,TEMP4,T;
+   EQUIVALENCE (TEMP1,TEMPA(1));
+   EQUIVALENCE (TEMP2,TEMPA(2));
+   EQUIVALENCE (TEMP3,TEMPA(3));
+   EQUIVALENCE (TEMP4,TEMPA(4));
+   REAL		XFAC,YFAC,ZFAC;
+   $BOOLEAN LSET,LTEMP,LTEMP1,LTEMP2,LTEMP3;
+   $BOOLEAN LDATA,LSTAT,LTOTAL,LHEADER,L_OPENED;
+   REAL		TARR(8) ,DLIM(3,2);
+   EQUIVALENCE (DLIM(1,1),XMIN),(DLIM(1,2),XMAX);
+   EQUIVALENCE (DLIM(2,1),YMIN),(DLIM(2,2),YMAX);
+   EQUIVALENCE (DLIM(3,1),ZMIN),(DLIM(3,2),ZMAX);
+   DOUBLE PRECISION DSUM(8),DERR(8,4),DTOTAL(8),DTERR(8,4);
+   REAL		SUM(8);
+   REAL		XYZ($MAXCOR),XYZ1(2),XYZ2(3),XYZ0(2),XYSHLD(2,2),XYDEV(2,2);
+"
+   CHARACTER*20 C_FORMAT1,C_FORMAT2,C_FORMAT3;
+"
+   CHARACTER DIGITS*10		/'0123456789'/;
+   CHARACTER*3	C_STATUS;		"File type"
+   CHARACTER*10 C_ACCESS;		"File access"
+   CHARACTER*6	CJUST(3)	/'Left','Center','Right'/;
+   CHARACTER*6	CSHORT(2)	/' short',' long'/;
+   CHARACTER*11	CTEMP,CTEMP1;
+   CHARACTER*4	SYM,SYM1;
+   CHARACTER*5	CWID(3)		/'  Dx=','  Dy=','  Dz='/;
+   CHARACTER*3	CXYZ(4)		/'X','Y','Z',' '/;
+   CHARACTER*4	ONOFF(3)	/'ON','OFF','AUTO'/;
+   CHARACTER*5	CASE(3)		/'Upper','Lower','Mixed'/;
+   
+   INTEGER    MAXGRDTYP ;
+   PARAMETER (MAXGRDTYP=9);
+
+   CHARACTER*12	CGRTYP(MAXGRDTYP)
+	/'  Vert.','  Horiz.','  Z','  Char.',
+	 '  YZ','  ZY','  XY','  Outline',
+	 '  Cycle'/;
+   CHARACTER*8	COL(7)
+	/'WHITE','RED','GREEN','BLUE','YELLOW','MAGENTA','CYAN'/;
+   CHARACTER*8	CFONT(3)	/'BASIC','EXTENDED','DUPLEX'/;
+   CHARACTER*7	CORDER(0:$MAXCOR);
+   DATA CORDER			/' NONE',$MAXCOR*' NONE'/;
+   CHARACTER*8	CSCALE(10)
+	/'LINEAR','LOG','-LOG','MONTHS','YEARS','NORMAL',
+	'SECONDS','MINUTES','HOURS','DAYS'/;
+   CHARACTER*10	CTEX(8)
+	/'DOTS','DASHES','DOTDASHES',
+	'SOLID','FUNNY','PATTERNED','DAASHES',' '/;
+   CHARACTER*7	CLIMIT(3,2)
+	/'  Xmin=','  Ymin=','  Zmin=','  Xmax=','  Ymax=','  Zmax='/;
+   CHARACTER*8	CBOX(3)		/'Box','Diamond','Ellipse'/;
+   CHARACTER*10	CERR(5)
+	/' Deferred',' Immediate',' List',' Nowait',' Wait'/;
+   CHARACTER*8	CSET(2)		/'Auto Set','User Set'/;
+   CHARACTER*20	CUNIT1,CUNIT2;
+   CHARACTER*20 CUNIT(2),T2_GET_UNIT_NAME;
+   EQUIVALENCE (CUNIT1,CUNIT),(CUNIT2,CUNIT(2));
+   REAL		CUNITN(2)/2*0.0/;
+   INTEGER	NUNIT1,NUNIT2;
+   INTEGER	I,J,K,L,M,N,IWIDE,IHIGH,IW,NW;
+   INTEGER	ITEMP(15);
+   INTEGER	IOSTAT;
+   CHARACTER*4	QUOTES		/'"  "'/;
+   CHARACTER*8	CPAT(10)	/'Current','Axes','Tics','Grid','Outline',
+	'Shadow',4*' '/;
+   CHARACTER*10	CSEGM(8)
+	/'  Plots','  Axes','  Labels','  Ticks','  Outline'
+	,'  Points','  Titles',' '/;
+
+  REAL  INCHES , CM ;
+$ENGLISH;
+   CHARACTER*6 CUNIT3;
+   PARAMETER (INCHES = 1.0);
+   PARAMETER (CM     = 2.54);
+   PARAMETER (CUNIT3 = 'inches');
+$ELSE;
+   CHARACTER*2 CUNIT3 ;
+   PARAMETER (INCHES = 1.0/2.54);
+   PARAMETER (CM     = 1.0);
+   PARAMETER (CUNIT3 = 'cm');
+$END;
+
+   REAL MM, DM, METERS, MILS, POINTS, FEET, YARDS ;
+   REAL FATHOMS, RODS, FURLONGS, MILES, LEAGUES   ;
+   INTEGER MAXUNITS ;
+   PARAMETER ( MM       = CM*10);
+   PARAMETER ( DM       = CM/10);
+   PARAMETER ( METERS   = CM/100);
+   PARAMETER ( MILS     = INCHES*1000);
+   PARAMETER ( POINTS   = INCHES*72);
+   PARAMETER ( FEET     = INCHES/12);
+   PARAMETER ( YARDS    = FEET/3);
+   PARAMETER ( FATHOMS  = FEET/6);
+   PARAMETER ( RODS     = FEET/16.5);
+   PARAMETER ( FURLONGS = RODS/40);
+   PARAMETER ( MILES    = FURLONGS/8);
+   PARAMETER ( LEAGUES  = MILES/3);
+   PARAMETER ( MAXUNITS = 14);
+
+   REAL UNITS(MAXUNITS)
+	/INCHES,MM,CM,METERS,POINTS,MILS,DM,
+	FEET,YARDS,FATHOMS,RODS,FURLONGS,MILES,LEAGUES/;
+   CHARACTER*10 C_UNITS(MAXUNITS)
+	/'inches','mm','cm','meters','points','mils','dm',
+	'feet','yards','fathoms','rods','furlongs','miles','leagues'/;
+   $DATA;
+$VAX;
+   EXTERNAL T2_HANDL;
+   CALL LIB$ESTABLISH(T2_HANDL);	"Trap errors in this routine"
+   CALL T2_TTSTAT(IWIDE,IHIGH);
+   IWIDE=MIN(IWIDE,$TTRECL);
+$ELSE;
+   IWIDE=80; IHIGH=24;
+$END;
+   CALL T2GDSET(1,1,$LARGE INTEGER
+		,1,$LARGE INTEGER,ISETD,HNONE,'*'); "Get data"
+   T2_SHOW1=0;
+   IF (.not. FLAGS(74)) THEN;
+	   CALL TXDEFW; FLAGS(74)= .false.;
+   ENDIF;
+   <I=1,2;				"Check if units defined ?"
+     TEMP=REDUCE(I+1);
+     IF (CUNITN(i) .ne. TEMP) THEN;	"Unit not defined ?"
+	CUNITN(I)=ABS(TEMP);
+	IF (I .eq. 2) TEMP=TEMP*10;
+	CUNIT(I)=T2_GET_UNIT_NAME(TEMP);
+     ENDIF;
+   >
+   NUNIT1=T2BTRIM(CUNIT1);			"Get the size of string"
+   NUNIT2=T2BTRIM(CUNIT2);
+   IOFF=0; IF ($POLAR) IOFF=9;
+   <I=1,$MAXCOR; CALL T2GVNM(I,CORDER(I));>	"Normal coord names"
+   <LOOP> <
+    IF ($TRAP) GOTO :RET:;
+    <TOKEN> <
+     KEY:: <   "LOOK FOR KEYWORD"
+
+%E  --- ALL
+      ALL <
+$VAX;
+	IF (INTRAC(I)) WRITE($TERMINAL OUT,:BEGFOR:)
+	   '---> Type CTRL_C to terminate';
+$END;
+	T2_SHOW1 = 1; RETURN; >
+
+%E  --- AREA,WINDOWS
+
+      AREA,WINDOWS <	"SHOW AREA OR SHOW WINDOW"
+	   "Window number of current window"
+	TEMP1=MAX(1,INT(ABS(XYPART(1,1))))+
+		INT(ABS(XYPART(2,1))-1)*INT(ABS(XYPART(1,2)));
+	   "Total number of windows"
+	TEMP2=MAX(1,INT(ABS(XYPART(1,2))))*MAX(1,INT(ABS(XYPART(2,2))));
+	WRITE($TERMINAL OUT,:WINFOR:)       'Windows -',TEMP1,'of',TEMP2,
+	   'Level=',IWINLEV;
+	<I=1,2;
+		"Show abolute window limits"
+	    WRITE($TERMINAL OUT,:FLTFOR:)   '  -->'//CXYZ(I),WINDOW(I)
+		,'to',WINDOW(I+2),CUNIT1(:NUNIT1);
+	    IF (XYPART(I,2).ne.0)
+		 "Show numbered/relative window limits"
+		WRITE($TERMINAL OUT,:FLTFOR:)' ',
+		  XYPART(I,1),'of',XYPART(I,2);
+	    IF (IWINLEV.gt.1)
+		 "Show limits of outer window if any"
+		WRITE($TERMINAL OUT,:FLTFOR:)'  Inside',
+		  WINLIM(I,1),'to',WINLIM(I,2)+WINLIM(I,1),CUNIT1(:NUNIT1);
+	>
+      > "END OF 'SHOW AREA' BLOCK"
+
+%E  --- ARROW,AXES*
+
+      ARROW <		"SHOW ARROW..."
+	WRITE($TERMINAL OUT,:BEGFOR:)'Arrow -';
+	WRITE($TERMINAL OUT,:DFLFOR:)'  Size='
+	    ,ASIZE*REDUCE(3), DASIZE*REDUCE(3)
+	    ,CUNIT2(:NUNIT2);
+	WRITE($TERMINAL OUT,:DFLFOR:)'  Flare=',AFLARE,DAFLARE,'fraction';
+      >
+      AX,AXIS,AXES <	"SHOW AXIS|AXES"
+	WRITE($TERMINAL OUT,:BEGFOR:)'Axes -';
+	CALL T2_SHOW_ON_OFF('  Three=',134);
+	CALL T2_SHOW_ON_OFF('  Front=',132);
+	CALL T2_SHOW_ON_OFF('  Botht=',133);
+	CALL T2_SHOW_AXIS(19,50);
+	CALL T2_SHOW_INHIBIT(3);
+	CALL T2_SHOW_TEXTURE(IAXTEX,IDAXTEX);
+      > "END OF 'SHOW AXIS|AXES' BLOCK"
+
+%E  --- BAR,BOX,DIAMOND,CIRCLE,ELLIPSE,BLINK
+
+      BAR <		"SHOW BAR (SIZE) XXXX.XX"
+	WRITE($TERMINAL OUT,:BEGFOR:)'Bar -';
+	<I=1,3;
+	    WRITE($TERMINAL OUT,:DFLFOR:)
+		'  '//CXYZ(I)//'Size=',BARSIZ(I),DBARSIZ(I),CUNIT1(:NUNIT1)//
+			'(-=fraction)';
+	    k=1; IF( FLAGS(78+I) )K=2; J=1; IF( DFLAGS(78+I) )J=2;
+	    WRITE($TERMINAL OUT,:DSTFOR:)' ',CSET(K),CSET(J);
+	    WRITE($TERMINAL OUT,:DFLFOR:)
+		'     '     //'Break=',BARBRK(I),DBARBRK(I);
+	    CALL T2_SHOW_ON_OFF('     Suppress',131);
+	>
+      >	"END OF 'SHOW BAR SIZE' BLOCK"
+
+      BOX:1,DIAMOND:2,CIRCLE:3,ELLIPSE:3 <
+	I = INTEG;
+	WRITE($TERMINAL OUT,:STRFOR:)CBOX(I),'- Size';
+	<J=1,2;
+	   WRITE($TERMINAL OUT,:DFLFOR:)
+	    CWID(J),CIRSIZ(J,I),DCIRSIZ(J,I),CUNIT1(:NUNIT1);
+	>
+      >
+
+      BLINK <WRITE($TERMINAL OUT,:STRFOR:)'Blink -',ONOFF(2-IBLINK);>
+
+%E  --- CARD,INPUT,COLOR,CTRL_Z,COMMANDS,CURSOR,CYCLE
+
+      CARD,INPUT <	"SHOW CARD (LENGTH) NNN"
+	   WRITE($TERMINAL OUT,:DINFOR:)'Card Length =', LENCRD;
+      >	"END OF 'SHOW CARD LENGTH' BLOCK"
+      CHARACTERS < CALL T2_SHOW_CHARACTERS($INFO,$CARD); >
+      
+      COLOR <"SHOW COLOR"
+	  WRITE($TERMINAL OUT,:DSTFOR:)'Color =',COL(LINCOL),COL(LINCLF);
+      >	"END OF 'SHOW COLOR' BLOCK"
+      CTRL_Z <
+	CALL T2_SHOW_ON_OFF('CTRL_Z -',-100);
+      >
+      COMMANDS <
+$VAX;
+	 WRITE($TERMINAL OUT,*)' Commands -- Max Substitution=',MAX_SUBST;
+	CALL SPAWN('SHOW SYMBOL TD_C_*');
+$END;
+      >
+      CURSOR <
+	I = 0;
+	CALL T2CURS(I,XYZ0,XYZ1,XYZ2,LTEMP1,LTEMP2);
+	IF (I .gt. 0)
+	   WRITE(STJOU,*)' (Dev:  X=',XYZ0(1)*REDUCE(2),
+		' Y=',XYZ0(2)*REDUCE(2),
+		CUNIT1(:NUNIT1)//'   Key= "',CHAR(I),'"=',I,')';
+	   <J=1,80; IF (STJOU(J:J).ne.' ') NSTJOU=J;>
+	   WRITE($TERMINAL OUT,*)STJOU(1:NSTJOU);
+	   CALL T2JOUR;
+	IF (LTEMP1)
+	   WRITE(STJOU,*)' (Text: X=',XYZ1(1),' Y=',XYZ1(2)
+		,CUNIT1(:NUNIT1),')';
+	   <J=1,80; IF (STJOU(J:J).ne.' ') NSTJOU=J;>
+	   WRITE($TERMINAL OUT,*)STJOU(1:NSTJOU);
+	   CALL T2JOUR;
+	IF (LTEMP2)
+	   IMAX=2; IF ($3D) IMAX=3;
+	   WRITE(STJOU,*)' (Data:',
+	      (CORDER(2*I),'=',XYZ2(I),I=1,IMAX),')';
+	   <J=1,80; IF (STJOU(J:J).ne.' ') NSTJOU=J;>
+	   WRITE($TERMINAL OUT,*)STJOU(1:NSTJOU);
+	   CALL T2JOUR;
+      >
+
+      CYCLE <
+	WRITE($TERMINAL OUT,:BEGFOR:)'Cycle -';
+	<I=1,N_CYCLE;
+	   IF ($TRAP) GOTO :RET:;
+	   WRITE($TERMINAL OUT,'(3x,A,I10)')'Entry',I;
+	   CALL T2_SHOW_TEXTURE(ITX_CYCLE(I),IDTX_CYCLE(I));
+	   SYM=T2_GET_SYMBOL(SYM_CYCLE(I));
+	   SYM1=T2_GET_SYMBOL(DSYM_CYCLE(I));
+	   WRITE($TERMINAL OUT,:DSTFOR:)'  Symbol=',SYM,SYM1;
+	>
+      >
+
+%E  --- DATA
+      DA,DAT,DATA <
+	NS1=1; NS2=NDSETS;				"All data sets"
+	N_SELECT=1; C_SELECT(1:1)='*';		"All data sets"
+	N1=1; N2=$LARGE INTEGER;
+	N3=1; N4=$LARGE INTEGER;
+	TLIM(1,1)=HNONE;				"No limits on data"
+	LDATA=.true.;			"Display data"
+	LSTAT=.true.;			"And statistics"
+	LTOTAL=.true.;			"And total"
+	ITOTAL=0;			"Number of data sets"
+	LTEMP2=.false.;		"No limiting"
+	LTEMP3=.TRUE.;			"WEIGHTing"
+	IFILE=$TERMINAL OUT;		"Output unit"
+	C_STATUS='NEW';		"Output file type"
+	C_ACCESS='SEQUENTIAL';		"Default access"
+	N_FILE=0;			"No file name"
+	<TOKEN LOOP> <
+	   KEY:: <
+	      APPEND:Y <
+			IF (LTOKEN)	THEN;	C_STATUS='OLD'; 
+						C_ACCESS='APPEND';
+					ELSE;	C_STATUS='NEW';
+						C_ACCESS='SEQUENTIAL';
+			 ENDIF; >
+			"Get data set"
+	      SETS           <CALL T2NSET($INFO,$CARD,NS1,NS2); >
+			"Get points or columns"
+	      POINTS,COLUMNS < CALL T2PNTS($INFO,$CARD,N1,N2); >
+			"Get rows"
+	      LINES,ROWS     < CALL T2ROWS($INFO,$CARD,N3,N4); >
+			"Get file name"
+	      FILE:F,OUTPUT:F <
+		 C_FILE=STRNG; N_FILE=NSTRNG;
+		 CALL T2_SET_DEFAULT_FILE(C_FILE,N_FILE,'tdata.lis');
+		 IFILE=$SCRATCH FILE;
+		 IF (STRNG(1:NSTRNG).eq.'NONE') THEN;
+		    IFILE=0;
+$VAX;
+   %'$DEFAULT'='",CARRIAGECONTROL=''LIST''"';
+$ELSE;
+   %'$DEFAULT'='';
+$END;
+		 ELSE;
+		    IFILE=$SCRATCH FILE;
+		 ENDIF;
+	      >
+			"Type of output"
+	      BRIEF:N,ALL:Y,FULL:Y
+		 <LDATA=LTOKEN;      LSTAT=LTOKEN;      LTOTAL=LTOKEN;>
+	      SELECT:S    < C_SELECT=STRNG; N_SELECT=MAX(1,NSTRNG); >
+	      STATISTICS:Y
+		 <LDATA=.not.LTOKEN; LSTAT=LTOKEN;      LTOTAL=LTOKEN;>
+	      TOTAL:Y
+		 <LDATA=.not.LTOKEN; LSTAT=.not.LTOKEN; LTOTAL=LTOKEN;>
+			"Get data limits"
+	      LIMITED < LTEMP2=.true.;
+		 CALL T2XYZC($INFO,$CARD,TLIM,2,NLIM);
+	      >
+			"Weight the statistics"
+	      WEIGHTED:Y < LTEMP3=LTOKEN; >
+	   >
+	   ELSE:: <READ SAME TOKEN; <EXIT>;>
+	>
+	IF (N_FILE .gt. 0) THEN;		"Open output file ?"
+	   OPEN(UNIT=$SCRATCH FILE
+		,FILE=C_FILE(1:N_FILE)
+		,STATUS=C_STATUS
+		$ACCESS
+		$DEFAULT
+		,IOSTAT=IOSTAT
+		,ERR=:DERR:);
+	   :DERR: IF (IOSTAT.ne.0)
+	      CALL T2_TYPE_ERROR($INFO,$CARD,C_FILE(:N_FILE),IOSTAT);
+	ENDIF;
+	SETNUM=0;
+	LTEMP1=LSTAT.or.LTOTAL;
+	 LHEADER=(LDATA .or. LSTAT .or. .not. LTOTAL) .and. IFILE .gt. 0;
+	IF (IFILE.eq.0) THEN;
+	   LDATA=.false.; LSTAT=.false.; LTOTAL=.false.;
+	ENDIF;
+	IF (.not.($ERROR.and.$ABORT)) THEN;
+	   IF (LTEMP1) THEN;
+	      <J=1,$DATDATSIZ; <I=1,2; DATDAT(I,J)=0; > >
+	      <J=1,8; DTOTAL(J)=0.0; >
+	      <J=1,4; <K=1,8; DTERR(K,J)=0.0; > >
+	      CALL T2DTLM(TLIM,N1,N2,N3,N4,NS1,NS2,XFAC,YFAC,ZFAC,DLIM,
+			2,C_SELECT(:N_SELECT));
+	      DATXMN=XMIN; DATXMX=XMAX;
+	      DATYMN=YMIN; DATYMX=YMAX;
+	      DATZMN=ZMIN; DATZMX=ZMAX;
+	   ENDIF;
+$VAXFORTRAN;
+	   IDIGIT=ISIGFG;			"Number of significant figures"
+	   IF (INTRAC(I).and.IFILE.gt.0) WRITE($TERMINAL OUT,:BEGFOR:)
+	      '---> Type CTRL_C to terminate';
+$ELSE;
+	   IDIGIT=6;
+$END;
+	   IF (IDIGIT.eq.0) IDIGIT=3;		"Default is 3"
+	   IW=IDIGIT+7;
+	   IF (IFILE.gt.0.and.NPOINT.gt.0) THEN;
+	      WRITE(IFILE,*)' Data - ',NPOINT,' points ',NDSETS,' sets';
+	   ENDIF;
+	   <ISET=NS1,NS2;			"Scan data sets"
+		CALL T2GDSET(ISET,N1,N2,N3,N4,ISETD,TLIM
+			,C_SELECT(:N_SELECT));		"Get data"
+		IF (NL .lt. N3) <NEXT>;			"No data ?"
+		IF (NP .lt. N1) <NEXT>;			"No data ?"
+		JLIM=2; IDEP=N_YDATA;			"Dependent coor"
+		IF (DATBUF(I3).ne.HNONE) THEN;		"Z exists?"
+		 JLIM=3;
+		 IF ($3D.or.IBTYPE.eq.2) THEN;
+			IDEP=N_ZDATA;
+			YFAC=ZFAC;
+		 ENDIF;
+		ENDIF;
+		IF (LTEMP1) THEN;
+		 <I=1,3; DLIM(I,1)=$LARGE REAL; DLIM(I,2)=-$LARGE REAL; >
+		 <I=1,$MAXCOR; XYZ(I)=0; >	"Zero data point buffer"
+		 <J=1,8; DSUM(J)=0.0; >
+		 <J=1,4; <K=1,8; DERR(K,J)=0.0; > >
+		ENDIF;
+"
+	Write the data header
+"
+	      IF (LHEADER) THEN;			"Output ?"
+		    WRITE(IFILE,*)' Data set=',ISET;
+		    CALL T2_GET_SET_NAME(IBGDAT,OUTSTR);	"Get name"
+		    I=T2BTRIM(OUTSTR);				"Length"
+		    IF (OUTSTR(:I) .ne. ' ') THEN;		"Exists ?"
+			WRITE(IFILE,*)'   Name=','"'//OUTSTR(:I)//'"';
+		    ENDIF;
+		ENDIF;
+"
+	Write Mesh data ?
+"
+	      IF (IBTYPE.eq.2) THEN;
+		 NW=(IWIDE-3-IW*NMESH0)/IW;	"Number of numbers"
+		 NW=(NW/NMESH0)*NMESH0;	"Put dat, err on same line"
+		 IF (LHEADER)	WRITE(IFILE,*)' Data - ',CXYZ(MESH3),
+		     'Row ',CXYZ(MESH2),NMESH2-1,
+		     ' by Cols ',CXYZ(MESH1),NMESH1-1;
+		 NP=NMESH0*(NP-N1+1)-1;
+		 IF (LDATA) THEN;		"Show data points ??"
+		    OUTSTR=' ';
+		    OUTSTR(2:2)=CXYZ(MESH2);
+		    OUTSTR(IW*NMESH0-2:)=CXYZ(MESH1);
+		    IF (NMESH0.eq.2) THEN;	"IF errors show which ones"
+			OUTSTR(IW+2:IW+3)='D'//CXYZ(MESH2);
+			OUTSTR(IW*NMESH0-5:)=CXYZ(MESH1)(1:1)//
+			   ',D'//CXYZ(MESH1);
+		    ENDIF;
+$VAXFORTRAN;
+
+		    IF (LDATA) WRITE(IFILE,	"Write column data"
+			'(2x,1p,A<NMESH0*IW-1>,A1,
+			(T<NMESH0*IW+3>''''|'''',<NW>G<IW>.<IDIGIT>))')
+			OUTSTR,'=',
+			(DATBUF(I1+I),I=0,NP);
+$ELSE;
+		     IF (LDATA) WRITE(IFILE,
+			'(2x,1p,A11,A2,A1,
+			(T17,''''|'''',4G14.6))')
+			CXYZ(MESH2),CXYZ(MESH1),'=',
+			(DATBUF(I1+I),I=0,NP);
+$END;
+		 ENDIF;
+		 <J=0,NP;
+		     TEMP=DATBUF(I1+J);
+		     DLIM(MESH1,1)=MIN(TEMP,DLIM(MESH1,1));
+		     DLIM(MESH1,2)=MAX(TEMP,DLIM(MESH1,2));
+		 >
+		 <I=N3,NL;
+		     IF ($TRAP) GOTO :RET:;
+		     TEMP=DATBUF(I2);
+		     XYZ(MESH2*2)=TEMP;
+		     DLIM(MESH2,1)=MIN(TEMP,DLIM(MESH2,1));
+		     DLIM(MESH2,2)=MAX(TEMP,DLIM(MESH2,2));
+		     IF (NMESH0.eq.2) XYZ(MESH2*2+1)=DATBUF(I2+1);
+		     IF (LDATA) THEN;
+$VAXFORTRAN;
+			WRITE(IFILE,	"Write rows of data"
+			 '(2x,1p,<NMESH0>G<IW>.<IDIGIT>,
+			 (T<NMESH0*IW+3>''''|'''',<NW>G<IW>.<IDIGIT>))')
+			 (DATBUF(I2+K),K=0,NMESH0-1)	"Y"
+			  ,(DATBUF(I3+J),J=0,NP); "Z"
+$ELSE;
+			WRITE(IFILE,
+			 '(2x,1p,G14.6,
+			 (''''|'''',4G14.6))')
+			 (DATBUF(I2+K),K=0,NMESH0-1)
+			  ,(DATBUF(I3+J),J=0,NP);
+$END;
+		     ENDIF;
+		     IF (LTEMP1 .and. .not. LSYERR) THEN;
+			<J=0,NP,NMESH0;
+			   IF ($TRAP) GOTO :RET:;
+			   XYZ(MESH1*2)=DATBUF(I1+J);
+			   TEMP=DATBUF(I3+J);
+			   XYZ(MESH3*2)=TEMP;
+			   IF (.NOT.LTEMP2.or.
+			     (TEMP.ge.TLIM(MESH3,1).and.
+			      TEMP.le.TLIM(MESH3,2))) THEN;
+			      IF (NMESH0.eq.2) THEN;
+				 XYZ(MESH1*2+1)=DATBUF(I1+J+1);
+				 XYZ(MESH3*2+1)=DATBUF(I3+J+1);
+			      ENDIF;
+			      CALL T2DTSM(XYZ(2),XYZ(6),
+				      XYZ(3),XYZ(7),
+				      DSUM,DERR,LTEMP3);
+			      IF (TEMP.LT.DLIM(MESH3,1)) DLIM(MESH3,1)=TEMP;
+			      IF (TEMP.GT.DLIM(MESH3,2)) DLIM(MESH3,2)=TEMP;
+			   ENDIF;
+			>
+		     ENDIF;
+		     I2=I2+NINCR1*NINCR0;
+		     I3=I3+NINCR1*NINCR0;
+		 >
+	      ELSEIF (IBTYPE.eq.1) THEN;;
+		  IF (LHEADER) WRITE(IFILE,'(7X,A,I7)')
+			'Points=',(IENDAT+1-$IMSPTR)/NINCR1;
+		 <I=1,$MAXCOR; XYZ(I)=0; >		"Set all data to zero"
+			"Get enough sig. figs. to fill field"
+		 K=NINCR1-1;
+		 IF (ISIGFG.le.0) IDIGIT=MIN(MAX((IWIDE-20)/K-8,2),6);
+			"Limit it to 6 allowing for a space"
+		 IW=IDIGIT+7; IW=IW+MIN(MAX((IWIDE-20-IW*K)/K,0),1);
+		 IMAX=MIN(MAX((IWIDE-14)/IW,4),20);
+"
+		 WRITE(C_FORMAT1,'(A,I2,A)') '(7x,A7,A9,(50 A',IW,'))';
+		 WRITE(C_FORMAT2,'(A,I2,''''.'''',I2,A)'
+				'(I7,1x,A4,2x,1p,(50G',IW,IDIGIT,'))';
+		 WRITE(C_FORMAT3,'(A,I2,''''.'''',I2,A)'
+				'(14x,1p,(50G',IW,IDIGIT,'))';
+"
+$VAXFORTRAN;
+		 IF (LDATA) WRITE(IFILE, '(7x,A7,A9,(50 A<IW>))')
+		     (CORDER(IVARBL(I)),I=1,MIN(NINCR1,IMAX+1));
+		 <J=IMAX+2,NINCR1,IMAX;
+		   IF (LDATA) WRITE(IFILE, '(14X,A9,(50 A<IW>))')
+		     (CORDER(IVARBL(K)),K=J,MIN(NINCR1,IMAX+J-1));
+		 >
+$ELSE;
+		 IF (LDATA) WRITE(IFILE, '(7x,A7,A10,(50 A14))')
+		     (CORDER(IVARBL(I)),I=1,NINCR1);
+$END;
+		 <I=N1,NP;
+		    IF ($TRAP) GOTO :RET:;
+		    <J=1,NINCR1; XYZ(IVARBL(J))=DATBUF(IM); IM=IM+1; >
+		    IF (LTEMP2) THEN;
+			<J=1,JLIM;
+			   IF ( XYZ(NCSIZE*(J-1)+N_XDATA).lt.TLIM(J,1) .or.
+				XYZ(NCSIZE*(J-1)+N_XDATA).gt.TLIM(J,2))
+				GOTO :NEXT1:;
+			>
+		    ENDIF;
+		    SYM=T2_GET_SYMBOL(XYZ(N_SYMBOL));
+		    IP=(IM-$IMSPTR)/NINCR1;
+		    IF (LDATA) THEN;	"Output both ?"
+$VAXFORTRAN;
+			WRITE(IFILE, '(I7,1x,A4,2x,1p,
+				(50 G<IW>.<IDIGIT>))')
+			     IP,SYM,(XYZ(IVARBL(K)),K=2,MIN(NINCR1,IMAX+1));
+			<J=IMAX+2,NINCR1,IMAX;
+			  WRITE(IFILE, '(14X,1p,
+				(50 G<IW>.<IDIGIT>))')
+			     (XYZ(IVARBL(K)),K=J,MIN(NINCR1,IMAX+J-1));
+		 >
+$ELSE;
+			  WRITE(IFILE, '(I7,1x,A4,2x,1p,(4 G14.6))')
+			     IP,SYM,(XYZ(J),J=2,NINCR1);
+$END;
+		    ENDIF;
+		    IF (LTEMP1.and..not. LSYERR) THEN;
+			  <J=1,JLIM;
+			    DLIM(J,1)=MIN(DLIM(J,1),XYZ(NCSIZE*(J-1)+N_XDATA));
+			    DLIM(J,2)=MAX(DLIM(J,2),XYZ(NCSIZE*(J-1)+N_XDATA));
+			  >
+			  CALL T2DTSM(XYZ(N_XDATA),XYZ(IDEP),
+				      XYZ(N_DXDATA),XYZ(IDEP+1),
+				      DSUM,DERR,LTEMP3);
+		    ENDIF;
+:NEXT1:
+		 >
+	      ENDIF;
+	      IF (LSYERR) THEN;
+		 DTOTAL(8)=0; LTOTAL=.false.;
+		 ERROR STRING;'* Statistics suppressed due to error';
+	      ELSEIF (DSUM(8).gt.0) THEN;
+		 IF (LTEMP1) CALL T2STSM(XFAC,YFAC,DSUM,DERR,LTEMP3);
+		 IF (LSTAT) THEN;
+		    WRITE(IFILE, '(4x,1p,5(A,1p,G15.6))')
+			'Pts= ',DATPTS;
+		    WRITE(IFILE, '(4x,A,1p,5(A,1p,G15.6))')
+			CORDER(N_XDATA),' Min= ',XMIN,' Max= ',XMAX;
+		    WRITE(IFILE, '(4x,A,1p,5(A,1p,G15.6))')
+			CORDER(N_YDATA),' Min= ',YMIN,' Max= ',YMAX;
+		    IF (ZMIN.le.ZMAX)
+			WRITE(IFILE, '(4x,A,1p,5(A,1p,G15.6))')
+			CORDER(N_ZDATA),' Min= ',ZMIN,' Max= ',ZMAX;
+		    WRITE(IFILE, '(4x,A,1p,5(A,1p,G15.6))')
+			CORDER(IDEP),
+			' Sum= ',DATSUM,' Ave= ',DATAVE,'/Point';
+		    IF (ERRSUM.gt.0)
+			WRITE(IFILE, '(11x,1p,5(A,1p,G15.6))')
+			' Err= ',ERRSUM,' Err= ',ERRAVE;
+		    IF (DATSUM.ne.0)
+			WRITE(IFILE, '(4x,A,1p,5(A,1p,G15.6))')
+			  CORDER(N_XDATA),' Mean=',DATCEN,' Std= ',DATSTD;
+		    IF (ERRCEN.gt.0)
+			WRITE(IFILE, '(11x,1p,5(A,1p,G15.6))')
+			  ' Err= ',ERRCEN,' Err= ',ERRSTD;
+		 ENDIF;
+		 ITOTAL=ITOTAL+1;
+		 <J=1,8; DTOTAL(J)=DTOTAL(J)+DSUM(J); >
+		 <J=1,4; <K=1,8; DTERR(K,J)=DTERR(K,J)+DERR(K,J); > >
+	      ENDIF;
+	   >
+	   LTOTAL=LTOTAL .and. ITOTAL.gt.1;
+	   IF (LTEMP1) CALL T2STSM(XFAC,YFAC,DTOTAL,DTERR,LTEMP3);
+:STATS:
+	   IF (LTOTAL .and. IFILE.gt.0) THEN;
+	      IF (DATPTS.gt.0) THEN;
+		 IF     (IBTYPE.eq.2 .or.
+			(DATBUF(I3).ne.HNONE.and.$3D)) THEN;
+			IDEP=N_ZDATA;
+		 ELSE;
+			IDEP=N_YDATA;
+		 ENDIF;
+		 WRITE(IFILE, '(4x,1p,5(A,1p,G15.6))')
+		    'Total Pts= ',DATPTS;
+		 WRITE(IFILE, '(4x,A,1p,5(A,1p,G15.6))')
+		    CORDER(N_XDATA),' Min= ',DATXMN,' Max= ',DATXMX;
+		 WRITE(IFILE, '(4x,A,1p,5(A,1p,G15.6))')
+		    CORDER(N_YDATA),' Min= ',DATYMN,' Max= ',DATYMX;
+		 IF (DATZMN.le.DATZMX)
+		    WRITE(IFILE, '(4x,A,1p,5(A,1p,G15.6))')
+			CORDER(N_ZDATA),' Min= ',DATZMN,' Max= ',DATZMX;
+		 WRITE(IFILE, '(4x,A,1p,5(A,1p,G15.6))') CORDER(IDEP),
+		    ' Sum= ',DATSUM,' Ave= ',DATAVE,'/Point';
+		 IF (ERRSUM.gt.0)
+		    WRITE(IFILE, '(11x,1p,5(A,1p,G15.6))')
+			' Err= ',ERRSUM,' Err= ',ERRAVE;
+		 IF (DATSUM.ne.0) THEN;
+		    WRITE(IFILE, '(4x,A,1p,5(A,1p,G15.6))')
+			CORDER(N_XDATA),' Mean=',DATCEN,' Std= ',DATSTD;
+		    IF (ERRCEN.gt.0)
+			WRITE(IFILE, '(11x,1p,5(A,1p,G15.6))')
+			  ' Err= ',ERRCEN,' Err= ',ERRSTD;
+		 ENDIF;
+	      ELSE;
+		 WRITE($TERMINAL OUT,:BEGFOR:)'Data - none available';
+	      ENDIF;
+	   ENDIF;
+	ENDIF;
+      >
+%E  --- DATE
+
+      DATE < WRITE($TERMINAL OUT,:INTFOR:)'Date - Year=',IYEAR,
+	'Month=',IMONTH,'Day=',IDAY;
+      >
+
+      DIGITS < WRITE($TERMINAL OUT,:INTFOR:)'Digits =',ISIGFG; >
+
+%E  --- DEVICE
+      DEVICE <		"SHOW DEVICE"
+	  WRITE($TERMINAL OUT,:BEGFOR:)'Device -';
+	  CALL TXDEVS;
+      > "END OF SHOW  DEVICE BLOCK"
+%E  --- ERASE
+      CLEAR,ERASE <
+	IF (flags(60)) then;	" Deferred ?"
+	   WRITE($TERMINAL OUT,:BEGFOR:)'Clear -         Deferred';
+	else;
+	   WRITE($TERMINAL OUT,:BEGFOR:)'Clear -         Immediate';
+	endif;
+      >
+%E  --- ERRORS
+
+      ERRORS <
+	I = 1;
+	IF (ERRFIL .eq. $TERMINAL OUT) I=2;
+	IF (ERRFIL .eq. OUTFIL) I=3;
+	J = 4;
+	IF (FLAGS(26)) J=5;
+	WRITE($TERMINAL OUT,:STRFOR:)'Errors -',CERR(I),CERR(J);
+	IF ($WARN) THEN;
+	   REWIND(UNIT=$ERR FILE);
+	   I=0;
+	   <LOOP> <
+	      READ($ERR FILE,'(A)',END=:NOERR:,ERR=:NOERR:) OUTSTR ;
+              JMAX = T2BTRIM ( OUTSTR ) ;
+	      IF (I.eq.0) WRITE($TERMINAL OUT,:BEGFOR:)
+		 '  Errors for this plot';
+	      I=I+1;
+	      IF (JMAX.le.0) THEN; OUTSTR=' '; JMAX=1; ENDIF;
+	      IF (.not.$TRAP) WRITE($TERMINAL OUT,:BEGFOR:)OUTSTR(1:JMAX);
+	   >
+:NOERR:     CONTINUE;
+	ENDIF;
+      >
+      EXACT <
+	   CALL T2_SHOW_ON_OFF(' EXACT -',130);
+      >
+
+%E  --- FILES
+
+      FI,FIL,FILES <
+	WRITE($TERMINAL OUT,:BEGFOR:)'File -';
+	<I=INPFIL,9,-1;	"Parse input files"
+	   CALL T2_SHOW_FILE(I,     'Input    ');
+	>
+	CALL T2_SHOW_FILE(OUTFIL,   'Output   ');
+	CALL T2_SHOW_FILE(JOUFIL,   'Journal  ');
+	CALL T2_SHOW_FILE(ERRFIL,   'Error    ');
+	CALL T2_SHOW_FILE($HISTFILE,'Histogram');
+	<I=1,99;	"Parse misc files"
+	   IF (I.ge.9 .and. I .le.INPFIL) <NEXT>;
+	   IF (     I.eq.OUTFIL
+		.or. I.eq.JOUFIL
+		.or. I.eq.ERRFIL
+		.or. I.eq.$HISTFILE) <NEXT>;
+	   CALL T2_SHOW_FILE(I,     'Misc.    ');
+	>
+      >
+
+      FILL  <
+	WRITE($TERMINAL OUT,:BEGFOR:)'Fill -';
+	<I=1,MAX_FILL;
+	    OUTSTR=CUNIT1;
+	    TEMP=FILL_WIDTH(I);
+	    IF (TEMP .lt. 0) THEN; 
+	      OUTSTR=' pixels';
+	    ENDIF;
+	   WRITE($TERMINAL OUT,'(3x,A,I10)')'Entry',I;
+		WRITE($TERMINAL OUT,:FLTFOR:)'  Size=',
+		   TEMP,OUTSTR(:T2BTRIM(OUTSTR));
+		WRITE($TERMINAL OUT,:FLTFOR:)'  Angle=',
+		   ASIND(FILL_ANGLE(I)),'deg.';
+	      J=2; IF ( IAND(1,FILL_TEX(I)) .eq. 0 ) J=1;
+	      WRITE($TERMINAL OUT,:STRFOR:)'  Alternate=',ONOFF(J);
+	      CALL T2_SHOW_TEXTURE(FILL_TEX(I),0);
+	>
+      >
+
+      FIT   <
+	LTEMP=.false.;
+	<TOKEN LOOP> <
+	   KEY::  < FULL:Y <LTEMP=LTOKEN; > >
+	   ELSE:: < READ SAME TOKEN; <EXIT>;>
+	>
+	CALL T2_SHOW_FIT($TERMINAL OUT,LTEMP);
+      >
+
+      FLUSH <
+	CALL T2_SHOW_ON_OFF('Flush -',-54);
+      >
+
+"
+      FLAGS <WRITE($TERMINAL OUT, '(5(A,I3,A,L1))')
+	    ('   FLAG(',I,')=',FLAGS(I),I=1,100);>
+"
+%E  --- FONT
+      FONT <
+	   I=LETSET; IF (I.eq.0) I=2;
+	   WRITE($TERMINAL OUT,:STRFOR:)'Font -',CFONT(I);
+      >
+      FORMAT <
+	   WRITE($TERMINAL OUT,:STRFOR:)'Format -',INPFMT;
+      >
+
+%E  --- Grid
+      GRID <		"SHOW GRID"
+	J=2; IF (IAND(GRDTYP,15+128).gt.0) J=1; "Grid on ?"
+	K=2; IF (IAND(DGRDTYP,15+128).gt.0) K=1; "Grid on ?"
+	WRITE($TERMINAL OUT,:DSTFOR:)'Grid  -',ONOFF(J),ONOFF(K);
+	L=1;
+	<I=1,MAXGRDTYP;
+	   J=2; IF (IAND(GRDTYP,L).gt.0) J=1; "Grid on ?"
+	   K=2; IF (IAND(DGRDTYP,L).gt.0) K=1; "Grid on ?"
+	   IF (J+K.ne.4) THEN;
+	      WRITE($TERMINAL OUT,:DSTFOR:)CGRTYP(I),ONOFF(J),ONOFF(K);
+	   ENDIF;
+	   L=L*2;
+	>
+	SYM=T2_GET_SYMBOL(GRDSYM);
+	SYM1=T2_GET_SYMBOL(DGRDSYM);
+	WRITE($TERMINAL OUT,:DSTFOR:)'  Symbol=',SYM,SYM1;
+	WRITE($TERMINAL OUT,:DFLFOR:)'  Size=',GRDSIZ*REDUCE(3)
+	    ,DGRDSIZ*REDUCE(3),CUNIT2(:NUNIT2);
+	I=1; IF ( FLAGS(71) )I=2; J=1; IF ( DFLAGS(71) )J=2;
+	WRITE($TERMINAL OUT,:DSTFOR:)' ',CSET(I),CSET(J);
+	WRITE($TERMINAL OUT,:DFLFOR:)'  Theta=',GRDIR(1),DGRDIR(1),'deg.';
+	WRITE($TERMINAL OUT,:DFLFOR:)'  Phi=',GRDIR(2),DGRDIR(2);
+	WRITE($TERMINAL OUT,:DFLFOR:)'  Angle=',GRDIR(3),DGRDIR(3);
+	CALL T2_SHOW_TEXTURE(GRDTEX,DGRDTEX);
+      >
+
+      HISTOGRAMS <CALL T2_SHOW_HIST($INFO,$CARD);>
+%E  --- Horizon,Intensity,Width
+
+      HORIZON < CALL T2_MESH_LIST_HORIZ; >
+
+      KEY:0,KEYS:0,KEYPAD:0 <
+	I=0;
+	<TOKEN LOOP> <
+	   KEY:: <
+	      ALL:0,
+	      PF:0,PF1:0,PF2:0,PF3:0,PF4:0,KP:0,
+	      KP0:0,KP1:0,KP2:0,KP3:0,KP4:0,KP5:0,KP6:0,KP7:0,KP8:0,KP9:0,
+	      E:0,E1:0,E2:0,E3:0,E4:0,E5:0,E6:0,
+	      F:0,F1:0,F2:0,F3:0,F4:0,F5:0,F6:0,F7:0,F8:0,F9:0,
+	      F10:0,F11:0,F12:0,F13:0,F14:0,F15:0,F16:0,F17:0,
+	      F18:0,F19:0,F20:0,
+	      MINUS:0,PERIOD:0,COMMA:0,ENTER:0,
+	      FIND:0,INSERT:0,REMOVE:0,SELECT:0,
+	      PREV_SCREEN:0,NEXT_SCREEN:0,HELP:0,DO <
+		 CALL T2SKEY($TERMINAL OUT,$TRAP,STRNG(1:NSTRNG));
+		 I=I+1;
+	      >
+	   >
+	   ELSE:: <
+	      <READ SAME TOKEN>;
+	      IF (I.eq.0) CALL T2SKEY($TERMINAL OUT,$TRAP,' ');
+	      <EXIT>;
+	   >
+	   END OF CARD:: <
+	      <READ SAME TOKEN>;
+	      IF (I.eq.0) CALL T2SKEY($TERMINAL OUT,$TRAP,' ');
+	      <EXIT>;
+	   >
+	>
+      >
+
+      INTENSITY,WIDTH <
+	WRITE($TERMINAL OUT,:BEGFOR:)'Intensity/Line -';
+	WRITE($TERMINAL OUT,:DINFOR:)'  Width=',LINWID,LINWDF;
+      >
+%E  --- LABELS
+      LABELS <		"SHOW LABEL ..."
+	WRITE($TERMINAL OUT,:BEGFOR:)'Labels -';
+	CALL T2_SHOW_AXIS(36,47);
+	WRITE($TERMINAL OUT,:TITFOR:)'  Shift=',FRELBL;
+	WRITE($TERMINAL OUT,:TITFOR:)'    Default:',DFRELBL;
+	WRITE($TERMINAL OUT,:DFLFOR:)'  Size='
+	   ,LBLSIZ*REDUCE(3),DLBLSIZ*REDUCE(3),CUNIT2(:NUNIT2);
+	I=1; IF ( FLAGS(77) )I=2; J=1; IF ( DFLAGS(77) )J=2;
+	WRITE($TERMINAL OUT,:DSTFOR:)' ',CSET(I),CSET(J);
+	WRITE($TERMINAL OUT,:DINFOR:)'  Chars=',LBLCHR(2),DLBLCHR(2);
+	CALL T2_SHOW_ON_OFF('  Inside=',94);
+	CALL T2_SHOW_TEXTURE(LABTEX,DLABTEX);
+      > "END OF 'SHOW LABEL' BLOCK"
+      LEXICALS <
+	WRITE ($TERMINAL OUT,:BEGFOR:)'Lexicals -';
+	<TOKEN LOOP> <
+	   NUMBER:: < WRITE($TERMINAL OUT,*)'   ',
+	      $CARD($INFO(5):$INFO(3)),'=',FLOTNG;>
+	   STRING:: < 
+	      IF (NSTRNG.gt.0) THEN;
+		 WRITE($TERMINAL OUT,*)'   ',$CARD($INFO(5):$INFO(3)),
+		    '="'//STRNG(1:NSTRNG)//'"';
+	      ELSE;
+		 WRITE($TERMINAL OUT,*)'   ""';
+	      ENDIF;
+	   >
+	   ELSE::   < READ SAME TOKEN; <EXIT>; >
+	>
+      >
+%E  --- LIMITS
+      LIMITS <	"SHOW LIMITS"
+	WRITE($TERMINAL OUT,:BEGFOR:)'Limits -';
+	<I=1,3; <J=1,2; K=2*I+J+2;
+	   WRITE(OUTSTR,:EXPFOR:)CLIMIT(I,J),XYZLIM(I,J),
+				 'Default:',DXYZLIM(I,J);
+	   IF (.NOT. (FLAGS(K).or.FLAGS(60+K)))
+	      OUTSTR(16:16+16)='   NONE';
+	   IF (.NOT. DFLAGS(60+K))
+	      OUTSTR(49:49+16)='   NONE';
+	      WRITE($TERMINAL OUT,:BEGFOR:)OUTSTR(3:49+16);
+	> >
+	IF (FLAGS(85))
+	   WRITE($TERMINAL OUT,:FLTFOR:)'  Radius=',RADMAX;
+	IF (FLAGS(13))
+	   WRITE($TERMINAL OUT,:FLTFOR:)'  Scale=',DSCAL;
+      >
+%E  --- MODE
+      MODE <		"SHOW MODE"
+	   WRITE($TERMINAL OUT,:BEGFOR:)'Mode -';
+	   I=2; IF ($ABORT)I=1;
+	   WRITE($TERMINAL OUT,:STRFOR:)'  ABORT',ONOFF(I);
+	   CALL T2_SHOW_ON_OFF('  APPEND',-106);
+	   CALL T2_SHOW_ON_OFF('  AUTOPLOT',-97);
+	   CALL T2_SHOW_ON_OFF('  CONFIRM',-104);
+	   CALL T2_SHOW_ON_OFF('  CHECK',-105);
+	   CALL T2_SHOW_ON_OFF('  DATAVECTOR',-102);
+	   I=2; IF ($DEBUG)I=1;
+	   WRITE($TERMINAL OUT,:STRFOR:)'  DEBUG',ONOFF(I);
+	   WRITE($TERMINAL OUT,:INTFOR:)'  ECHO=',MXECHO;
+	   WRITE($TERMINAL OUT,:STRFOR:)'  ERASE',ONOFF(2-IERASE);
+	   CALL T2_SHOW_ON_OFF('  EXPAND',-17);
+	   WRITE($TERMINAL OUT,:STRFOR:)'  FILECASE',CASE(IFILE_CASE+1);
+	   WRITE($TERMINAL OUT,:STRFOR:)'  HARDSTRUCT',ONOFF(IHTEX+1);
+	   I=2; IF (JOUFIL.gt.0) I=1;
+	   WRITE($TERMINAL OUT,:STRFOR:)'  JOURNALING',ONOFF(I);
+	   CALL T2_SHOW_ON_OFF('  LOG',-95);
+	   I=2; IF (OUTFIL.gt.0) I=1;
+	   WRITE($TERMINAL OUT,:STRFOR:)'  LISTING',ONOFF(I);
+	   CALL T2_SHOW_ON_OFF('  PATTERNED',-101);
+	   CALL T2_SHOW_ON_OFF('  MONITOR',-107);
+	   WRITE($TERMINAL OUT,:STRFOR:)'  PROPORTIONAL',ONOFF(IPROP+1);
+	   CALL T2_SHOW_ON_OFF('  QUICK',-83);
+	   CALL T2_SHOW_ON_OFF('  SHOW',-16);
+	   CALL T2_SHOW_ON_OFF('  TITLE',-108);
+	   CALL T2_SHOW_ON_OFF('  TREE',-103);
+	   I=2; IF ($TRACE)I=1;
+	   WRITE($TERMINAL OUT,:STRFOR:)'  TRACE        ',ONOFF(I);
+	   CALL T2_SHOW_ON_OFF('  VECTOR',-25);
+	   CALL T2_SHOW_ON_OFF('  VLOG',-96);
+      >
+%E  --- MONITOR
+      MONITOR < CALL T2_SHOW_MONITOR; >
+%E  --- ORDER
+      ORDER <		"SHOW ORDER"
+	<I=1,$MAXCOR;
+	    IF (FLAGS(RELFLAG-1+I)) THEN;
+		J=INDEX(CORDER(I),'D');
+		IF (J .ne. 0)
+		    CORDER(I)(J:J)='R';
+	    ENDIF;
+	>
+	WRITE($TERMINAL OUT,:BEGFOR:)'Order -';
+	CALL T2_SHOW_ON_OFF('  Packed=',12);
+	IMAX=1; JMAX=1;
+	<I=1,$MAXCOR; IMAX=MAX(IMAX,IFIELD(I)); JMAX=MAX(JMAX,IFLDDF(I)); >
+	<I=1,MAX(IMAX,JMAX);
+	   K=0; L=0; TEMP=0; TEMP1=0;
+	   <J=1,$MAXVAR;
+	      IF (IFIELD(J).eq.I .and. IVPTR(J) .gt. 0) THEN;
+		 K=J;  TEMP=FACTXY(J);
+	      ENDIF;
+	      IF (IFLDDF(J).eq.I) THEN;
+		 L=J;  TEMP1=DFACTXY(J);
+	      ENDIF;
+	   >
+	   IF (I.gt.IMAX) K=0;
+	   IF (I.gt.JMAX) L=0;
+	   WRITE($TERMINAL OUT,'(3X,I3,1P,2A,G10.3,3A,G10.3)')
+	      I,CORDER(K),' Scale=',TEMP,
+	      ' Default:  ',CORDER(L),' Scale=',TEMP1;
+	>
+      > "END OF 'SHOW ORDER' BLOCK"
+%E  --- OUTLINE
+      OUTLINE,FRAME <		"SHOW OUTLINE"
+	WRITE($TERMINAL OUT,:BEGFOR:)'Outline -';
+	CALL T2_SHOW_AXIS(40,0);
+	CALL T2_SHOW_INHIBIT(2);
+	CALL T2_SHOW_TEXTURE(OUTTEX,DOUTTEX);
+      > "END OF 'SHOW OUTLINE' BLOCK"
+
+      PAUSE,WAIT <
+	CALL T2_SHOW_ON_OFF('Pause=',-53);
+      >
+      PATTERN <
+	WRITE($TERMINAL OUT,:BEGFOR:)'Pattern -';
+	WRITE($TERMINAL OUT,:DFLFOR:)'  Size=',PATSZ,DPATSZ,CUNIT1(:NUNIT1);
+	WRITE($TERMINAL OUT,'(1X,4(4X,''''Draw'''',5x,''''Space''''))');
+	<I=1,$PATN;
+	  IF (NPATRN(I).gt.1) THEN;
+	     IF (I .le. 10) THEN;
+		WRITE($TERMINAL OUT,*)'  ',CPAT(I);
+	     ELSE;
+		WRITE($TERMINAL OUT,*)'  Cycle',I-10;
+	     ENDIF;
+	     WRITE($TERMINAL OUT,'(4X,1P,8G9.2)')(PATRN(J,I),J=1,NPATRN(I));
+	  ENDIF;
+	>
+      >
+      PEN <
+	WRITE($TERMINAL OUT,:DINFOR:)'Pen number=',LINCOL,LINCLF;
+      >
+      PLOTS <
+	WRITE($TERMINAL OUT,:INTFOR:)'Plots=',NPLOTS;
+      >
+      POLAR,SPHERICAL <	"SHOW POLAR"
+	I=2; IF ($POLAR.and. .not.FLAGS(91))I=1;
+	K=2; IF (D$POLAR.and. .not.DFLAGS(91))K=1;
+	WRITE($TERMINAL OUT,:DSTFOR:)'  Polar=',ONOFF(I),ONOFF(K);
+	I=2; IF ($POLAR.and.      FLAGS(91))I=1;
+	K=2; IF (D$POLAR.and.     DFLAGS(91))K=1;
+	WRITE($TERMINAL OUT,:DSTFOR:)'  Spherical=',ONOFF(I),ONOFF(K);
+	WRITE($TERMINAL OUT,:DFLFOR:)'  Circle=',PI/RADANG,PI/DRADANG;
+	"WRITE($TERMINAL OUT,:VECFOR:)'  Center=',RADX0,RADY0;
+	WRITE($TERMINAL OUT,:VECFOR:)'  Angle =',RADAMN,RADANG;
+	WRITE($TERMINAL OUT,:VECFOR:)'  Radius=',RADRMN,RADRMX;"
+      >
+	"Show the status (color,texture...) of primary lines"
+      PRIMARY <
+	WRITE($TERMINAL OUT,:BEGFOR:)'Primary -';
+	CALL T2_SHOW_TEXTURE(ITXPRI,IDTXPRI);
+      >
+%E  --- REVISION
+
+      REVISION <WRITE($TERMINAL OUT,:FLTFOR:)'Revision=',REVLEV;>
+
+%E  --- SECONDARY
+					"Show the status of secondary lines"
+      SECONDARY <
+	WRITE($TERMINAL OUT,:BEGFOR:)'Secondary -';
+	CALL T2_SHOW_TEXTURE(ITXSEC,IDTXSEC);
+      >
+	 "Show segment status"
+      SEGMENTS <
+	<I=1,7; CALL T2_SHOW_ON_OFF(CSEGM(I),120+I); >
+      >
+
+      SCALES <					"Show scale"
+	WRITE($TERMINAL OUT,:BEGFOR:)'Scale -';
+	<IDEF=1,2;
+	 IF (IDEF.eq.2) WRITE($TERMINAL OUT,:BEGFOR:)'	- Default -';
+	 <I=1,3;
+	   IF (IDEF.eq.1) THEN;			"Current data ?"
+	      ISCAL=NONLIN(I);
+	      <J=1,10; TEMPA(J)=SCLPRM(J,I); >
+	      ITEMP1=NXYZ1(I); ITEMP2=NXYZ2(I);
+	   ELSE;				"Default ?"
+	      ISCAL=DNONLN(I);
+	      <J=1,10; TEMPA(J)=DSCLPRM(J,I); >
+	      ITEMP1=DNXYZ1(I); ITEMP2=DNXYZ2(I);
+	   ENDIF;
+	   IF (ISCAL.ge.0.or.ABS(ISCAL).gt.8) THEN;
+	      WRITE($TERMINAL OUT,:INTFOR:)'  '//CXYZ(I)//'User=',ISCAL;
+	      WRITE($TERMINAL OUT,:TITFOR:)'    Params=',(TEMPA(J),J=1,10);
+	   ELSE;
+	      ISCAL=-ISCAL;
+	      J1=1; IF (ITEMP1.ge.0) J1=2;
+	      J2=1; IF (ITEMP2.gt.0) J2=2;
+	      IF (ITEMP1.eq.0) ITEMP1=NXYZDEF1(ISCAL);
+	      IF (ITEMP2.eq.0) ITEMP2=NXYZDEF2(ISCAL);
+	      ITEMP3=ITEMP2;
+	      ITEMP1=IABS(ITEMP1);
+	      ITEMP2=IABS(ITEMP2);
+	      ITEMP2=IAND(ITEMP2,2**16-1);
+	      J=ISCAL;
+	      IF (ISCAL.eq.7) THEN;
+		 T=TEMPA(4);
+		 <K=1,3; IF (T.gt.2) J=J+1; T=T/60.; >
+	      ENDIF;
+	      IF (ISCAL.eq.8) THEN;
+		 WRITE($TERMINAL OUT,:STRFOR:)
+		    '  '//CXYZ(I),'Power';
+		 WRITE($TERMINAL OUT,:FLTFOR:)
+		    '    Power=',TEMPA(4),'Base=',TEMPA(1);
+	      ELSE;
+		 WRITE($TERMINAL OUT,:STRFOR:)
+		    '  '//CXYZ(I),CSCALE(J);
+		 IF (ABS(TEMPA(1)-10) .gt. $DELTA)
+		    WRITE($TERMINAL OUT,:FLTFOR:)'    Base=',TEMPA(1);
+	      ENDIF;
+	      IF (ISCAL.eq.6) THEN;
+		 WRITE($TERMINAL OUT,:FLTFOR:)
+		    '    Mean=',TEMPA(2),'Dev.=',TEMPA(3);
+	      ENDIF;
+	      IF (ISCAL.eq.2.or.ISCAL.eq.3 .and. 
+		    IAND( ITEMP1,2**16) .eq. 0) THEN;
+		 IF (IAND(2**17,ITEMP1).eq.0) J1=0;
+		 IDEC=IAND(31,ITEMP1/2**10);
+		 ITEMP1=IAND(ITEMP1,2**10-1);
+		 IF (ITEMP1.eq.2) ITEMP1=1023;
+		 IF (ITEMP2.eq.2) ITEMP2=1023;
+		 IMAX=0; L=2;
+		 <K=2,9;
+		    L=2*L;
+		    IF (IAND(ITEMP1,L).ne.0) THEN;
+			IMAX=IMAX+1; ITEMP(IMAX)=K; ENDIF;
+		 >
+		 ITEMP(1)=0; IF (ITEMP1.eq.1) IMAX=1;
+		 ISUBT=ITEMP2/2**10;
+		 ITEMP2=IAND(ITEMP2,2**10-1);
+		 ITEMP2=ITEMP2-IAND(ITEMP2,ITEMP1);
+		 IF (IDEC.gt.0) WRITE($TERMINAL OUT,'(7x,A,I3)')
+		     'Decades/label= ',IDEC;
+		 IF (ITEMP3.ge.0) J2=2;
+		 IF (ABS(ITEMP3)+IMAX.gt.0) THEN;
+		    WRITE($TERMINAL OUT,'(7x,3A,20I3)')
+			'Labels=',CSHORT(J2),' at',(ITEMP(K),K=1,IMAX);
+		 ENDIF;
+		 IF (J1.ne.0) WRITE($TERMINAL OUT,:BEGFOR:)
+			'        Exponential='//ONOFF(J1);
+		 IMAX=0; L=2;
+		 <K=2,9;
+		    L=2*L;
+		    IF (IAND(ITEMP2,L).ne.0) THEN;
+			IMAX=IMAX+1; ITEMP(IMAX)=K; ENDIF;
+		 >
+		 ITEMP(1)=0; IF (ITEMP2.eq.1) IMAX=1;
+		 IF (ITEMP3.le.0) J2=1;
+		 IF (ABS(ITEMP3)+IMAX.gt.0)
+		    WRITE($TERMINAL OUT,'(7x,3A,20I3)')
+		    'Ticks= ',CSHORT(J2),' at',(ITEMP(K),K=1,IMAX);
+		 IF (ISUBT.gt.0) WRITE($TERMINAL OUT,'(7x,2A,I3)')
+		     'Subticks/tick=',CSHORT(1),ISUBT;
+	      ELSE;
+		 ITEMP1=IAND(ITEMP1,2**16-1);
+		 IF(ITEMP1.ne.0)
+		    WRITE($TERMINAL OUT,:INTFOR:)
+			'    Labels=',ITEMP1,CSHORT(J1);
+		 IF(ITEMP2.ne.0)
+		    WRITE($TERMINAL OUT,:INTFOR:)
+			'    Ticks= ',ITEMP2,CSHORT(J2);
+	      ENDIF;
+	   ENDIF;
+	   IF (LSCREV(I)) WRITE($TERMINAL OUT,'(7x,A)')'Reverse';
+	 >
+      >  >				"END OF 'SHOW SCALE' BLOCK"
+%E  --- SHADOW
+      SHADOW <		"SHOW SHADOW"
+	J=2; IF (IAND(SHADOWTYP,15*16).gt.0) J=1; "Shadow on ?"
+	K=2; IF (IAND(DSHADOWTYP,15*16).gt.0) K=1; "SHADOW on ?"
+	WRITE($TERMINAL OUT,:DSTFOR:)'Shadow  -',ONOFF(J),ONOFF(K);
+	L=1;
+	<I=1,MAXGRDTYP;
+	   J=2; IF (IAND(SHADOWTYP,L).gt.0) J=1; "Shadow on ?"
+	   K=2; IF (IAND(DSHADOWTYP,L).gt.0) K=1; "Shadow on ?"
+	   IF (J+K.ne.4) THEN;
+	      WRITE($TERMINAL OUT,:DSTFOR:)CGRTYP(I),ONOFF(J),ONOFF(K);
+	   ENDIF;
+	   L=L*2;
+	>
+	CALL T2_SHOW_TEXTURE(SHADOWTEX,DSHADOWTEX);
+      >
+%E  --- SHIELDS
+      SHIELDS <
+	WRITE($TERMINAL OUT,*)' Shielded areas (Text coordinates)';
+	IF (.not. $DEF TEXT) CALL TXDEF1;		"Define text system"
+	<I=1,4; CALL UGSHLD('GET,SHIELD='//DIGITS(I+1:I+1),XYDEV);
+	   IF ($ERROR) <EXIT>;
+	   IF (XYDEV(1,2) .ne. 0.0) THEN;		"Shield exists ?"
+	     CALL T2IFRM(2,2,XYDEV,LINEAR,XFRM34,2,XYSHLD);  "Device-->text"
+	     WRITE($TERMINAL OUT,			"Write it out"
+		'(3x,A,I3,1P,/,(5x,A,T16,G11.3,A,T38,G11.3))')
+		'Number=',I,((CLIMIT(J,K),XYSHLD(J,K),J=1,2),K=2,1,-1);
+	   ENDIF;
+	>
+      >
+%E  --- SIZE
+      SIZE <				"SHOW SIZE"
+	TEMP=REDUCE(1); IF(TEMP.eq.0.)TEMP=REDFAC;
+	WRITE($TERMINAL OUT,:FLTFOR:)'Size -',
+	   SCREEN(1),'by',SCREEN(2),CUNIT1(:NUNIT1);
+	WRITE($TERMINAL OUT,:FLTFOR:)'  Reduce=',TEMP,'fraction';
+	IF(REDFAC.ne.1.) WRITE($TERMINAL OUT,:BEGFOR:)
+	   '  Plot automatically reduced';
+	IF(IROTAX.ne.0 ) WRITE($TERMINAL OUT,:INTFOR:)
+	   '  Orientation',IROTAX,'Angle=',90*IROTAX;
+	WRITE($TERMINAL OUT,:STRFOR:)
+	  '  Margins:','Left','Right','Bottom','Top';
+	WRITE($TERMINAL OUT,:TITFOR:) ' ',MARGIN;
+      >					"END OF 'SHOW SIZE' BLOCK"
+
+      STATISTICS <
+	IF (DATDAT(1,1).eq.HNONE) THEN;
+	   WRITE($TERMINAL OUT,:BEGFOR:)'No statistics are available';
+	ELSE;
+	    IFILE=$TERMINAL OUT;
+	   LTOTAL=.true.;
+	   GOTO :STATS:;
+	ENDIF;
+      >
+
+      STORAGE <
+	IOFF=1; If($POLAR) IOFF=10;
+	WRITE($TERMINAL OUT,*)' Storage - ',(CORDER(IVARBL(I)),I=1,NINCR);
+	WRITE($TERMINAL OUT,*)   '   Words= ',NPTMAX-$IBASEPTR+1,
+	   ' Free=',$MFREE;
+	IF(NINCR.gt.0) THEN;
+	   WRITE($TERMINAL OUT,*)'   Points=',NPOINT,' Free=',$PFREE;
+	ENDIF;
+$VIRT;
+	   WRITE($TERMINAL OUT,:BEGFOR:)
+	      '  ===> Storage will be increased when needed'
+$END;
+      >
+
+      STRINGS <
+$VAX;
+	CALL SPAWN('SHOW SYMBOL TD_S_*');
+$END;
+      >
+
+      SYMBOL <				"'SYMBOL'"
+	SYM=T2_GET_SYMBOL(SYMBOL);
+	SYM1=T2_GET_SYMBOL(DSYMBOL);
+	WRITE($TERMINAL OUT,:BEGFOR:)'Symbol -';
+	WRITE($TERMINAL OUT,:DSTFOR:)'  Symbol=',SYM,SYM1;
+	WRITE($TERMINAL OUT,:DFLFOR:)'  Size='
+	   ,SYMSIZ*REDUCE(3),SMSZDF*REDUCE(3),CUNIT2(:NUNIT2);
+	I=1; IF( FLAGS(72) )I=2; J=1; IF( DFLAGS(72) )J=2;
+	WRITE($TERMINAL OUT,:DSTFOR:)' ',CSET(I),CSET(J);
+	WRITE($TERMINAL OUT,:DFLFOR:)'  Theta=',SYDIR(1),DSYDIR(1),'deg.';
+	WRITE($TERMINAL OUT,:DFLFOR:)'  Phi=',SYDIR(2),DSYDIR(2);
+	WRITE($TERMINAL OUT,:DFLFOR:)'  Angle=',SYDIR(3),DSYDIR(3);
+      >					"END OF 'SHOW SYMBOL' BLOCK"
+
+%E  --- TEXTURE
+
+      TEXTURE,STRUCTURE < " SHOW TEXTURE (SOLID|DASH|DOT-DASH|DOTS) "
+	WRITE($TERMINAL OUT,:DSTFOR:)'Texture =',CTEX(LINTEX),CTEX(LINTXF);
+      >  " END OF 'SHOW TEXTURE' BLOCK "
+
+      THREE <
+	I=2; IF($3D) I=1;		"Three overrides"
+	K=2; IF(D$3D) K=1;		"Three overrides"
+	IF (NDIMNS(1).eq.0) K=3;	"Automatic"
+	WRITE($TERMINAL OUT,:DSTFOR:)'Three -',ONOFF(I),ONOFF(K);
+	CALL T2_SHOW_ON_OFF('  Perspective',120);
+	WRITE($TERMINAL OUT,:STRFOR:)' ','X','Y','Z';
+	WRITE(OUTSTR,:VECFOR:)'  Axis angle=',AXANG,'deg.';
+	<I=1,3;
+	   IF(ABS(AXANG(I)) .gt. 360) THEN;
+	      J=16+(I-1)*11;
+	      OUTSTR(J:J+11)='   None';
+	   ENDIF;
+	>
+	ITEMP1=INDEX(OUTSTR,'deg.')+3;
+	WRITE($TERMINAL OUT,:BEGFOR:)OUTSTR(3:ITEMP1);
+	WRITE(OUTSTR,:VECFOR:)'    Default:',DAXANG,'deg.';
+	<I=1,3;
+	   IF(ABS(DAXANG(I)) .gt. 360) THEN;
+	      J=16+(I-1)*11;
+	      OUTSTR(J:J+14)='   None';
+	   ENDIF;
+	>
+	WRITE($TERMINAL OUT,:BEGFOR:)OUTSTR(3:ITEMP1);
+	<I=1,3;
+	   IF (ABS(VUECEN(I)).GT.1000.) THEN;
+	      SUM(I)=0.5*WORLD(I);
+	   ELSE; SUM(I)=VUECEN(I); ENDIF;
+	>
+	WRITE($TERMINAL OUT,:VECFOR:)'  Center=',(SUM(I),I=1,3)
+	     ,CUNIT1(:NUNIT1);
+	IF(FLAGS(85)) THEN;
+	   WRITE($TERMINAL OUT,:VECFOR:)'  Origin=',ORAXES,CUNIT1(:NUNIT1);
+	ENDIF;
+	IF(DFLAGS(85)) THEN;
+	   WRITE($TERMINAL OUT,:VECFOR:)'    Default:',DORAXES;
+	ENDIF;
+	TEMP=0;
+	<I=1,3; SUM(I)=VERTCL(I); TEMP=TEMP+ABS(SUM(I));>
+	IF(TEMP .eq. 0) SUM(3)=1;
+	WRITE($TERMINAL OUT,:VECFOR:)'  Vertical=',(SUM(I),I=1,3),'vect.';
+	TEMP=0;
+	<I=1,3; SUM(I)=DVERTCL(I); TEMP=TEMP+ABS(SUM(I));>
+	IF(TEMP .eq. 0) SUM(3)=1;
+	WRITE($TERMINAL OUT,:VECFOR:)'    Default:',(SUM(I),I=1,3),'vect.';
+	WRITE($TERMINAL OUT,:VECFOR:)'  World=',WORLD,CUNIT1(:NUNIT1);
+	IF(FLAGS(55)) THEN;
+	   WRITE($TERMINAL OUT,:VECFOR:)'  Direction=',EYEDIR,'vect.';
+	ELSE;
+	   WRITE($TERMINAL OUT,:FLTFOR:)'  Theta=',TTHETA,
+	      'Phi=',TPHI,'deg.';
+	ENDIF;
+	IF(DFLAGS(55)) THEN;
+	   WRITE($TERMINAL OUT,:VECFOR:)'    Def: Dir=',DEYEDIR,'vect.';
+	ELSE;
+	   WRITE($TERMINAL OUT,:FLTFOR:)'    Def:Thet=',DTTHETA,
+	      'Phi=',DTPHI,'deg.';
+	ENDIF;
+	WRITE($TERMINAL OUT,:DFLFOR:)'  Distance=',EYEDIS,DEYEDIS
+		,CUNIT1(:NUNIT1);
+	WRITE($TERMINAL OUT,:DFLFOR:)'  Scrd=',SCRD,DSCRD,CUNIT1(:NUNIT1);
+	WRITE($TERMINAL OUT,:DFLFOR:)'  Separation=',EYESEP,DEYESEP
+		,CUNIT1(:NUNIT1);
+      >
+
+      TICKS <				"SHOW TICKS"
+	WRITE($TERMINAL OUT,:BEGFOR:)'Ticks -';
+	CALL T2_SHOW_AXIS(32,44);
+	WRITE($TERMINAL OUT,:DFLFOR:)'  Size=',TIKSIZ(1),DTIKSIZ(1)
+		,CUNIT1(:NUNIT1);
+	I=1; IF( FLAGS(78) )I=2; J=1; IF( DFLAGS(78) )J=2;
+	WRITE($TERMINAL OUT,:DSTFOR:)' ',CSET(I),CSET(J);
+	WRITE($TERMINAL OUT,:DFLFOR:)'  Long=',TIKFAC,DTIKFAC,'ratio';
+	CALL T2_SHOW_TEXTURE(TICTEX,DTICTEX);
+      > "END OF 'SHOW  TICK' BLOCK"
+
+      TIME <
+	WRITE($TERMINAL OUT,:BEGFOR:)'Time -';
+	OUTSTR=' ';
+	CALL DATE(OUTSTR);
+	CALL TDTIME(OUTSTR(11:18));
+	WRITE($TERMINAL OUT,:STRFOR:)'  Time=',OUTSTR(1:18);
+	TEMP=RELTIM(OREAL); CALL T2CVTM(TEMP,CTEMP1);
+	OREAL=RELTIM(0.0); CALL T2CVTM(OREAL,CTEMP);
+	WRITE($TERMINAL OUT,:STRFOR:)'  Elapsed=',Ctemp,' ','Diff=',CTEMP1;
+	TEMP=CPUTIM(OCPU); CALL T2CVTM(TEMP,CTEMP1);
+	OCPU=CPUTIM(0.0); CALL T2CVTM(OCPU,CTEMP);
+	WRITE($TERMINAL OUT,:STRFOR:)'  Cputime=',CTEMP,' ','Diff=',CTEMP1;
+	TEMP=CPULIM(CPUTIM(0.0));
+	IF(TEMP.ge.0) THEN;
+	   CALL T2CVTM(TEMP,CTEMP);
+	   WRITE($TERMINAL OUT,:STRFOR:)'  Cpuleft=',CTEMP;
+	ENDIF;
+      >
+
+%E  --- TITLE
+
+      TITLES <
+	WRITE($TERMINAL OUT,:BEGFOR:)'Title -';
+	WRITE($TERMINAL OUT,:DFLFOR:)'  Size=',
+	    TITSIZ*REDUCE(3),DTITSIZ*REDUCE(3),CUNIT2(:NUNIT2);
+	I=1; IF( FLAGS(76) )I=2; J=1; IF( DFLAGS(76) )J=2;
+	WRITE($TERMINAL OUT,:DSTFOR:)' ',CSET(I),CSET(J);
+	CALL T2_SHOW_TEXTURE(TITEX,DTITEX);
+	CALL T2_SHOW_AXIS(0,0);
+	WRITE($TERMINAL OUT,:TITFOR:)
+	   '  Lines=', TITLIN;
+	WRITE($TERMINAL OUT,:TITFOR:)
+	   '    Default:',DTITLIN;
+	WRITE($TERMINAL OUT,:TITFOR:)
+	   '  Scale=', TITFAC;
+	WRITE($TERMINAL OUT,:TITFOR:)
+	   '    Default:',DTITFAC;
+	WRITE($TERMINAL OUT,:TITFOR:)
+	   '  Margin=', TITMAR;
+	WRITE($TERMINAL OUT,:TITFOR:)
+	   '    Default:',DTITMAR;
+	WRITE($TERMINAL OUT,:DFLFOR:)'  Index=',TITINX,DTITINX,'lines';
+	WRITE($TERMINAL OUT,:STRFOR:)
+	 '  Current','Size','Angle','Space','Index','Lines';
+	WRITE($TERMINAL OUT,:TITFOR:)' ',TITCON;
+	WRITE($TERMINAL OUT,:STRFOR:)' ','X','Y','Z';
+	WRITE($TERMINAL OUT,:TITFOR:)' ',TITX,TITY,TITZ;
+	WRITE($TERMINAL OUT,:STRFOR:)'  Current',
+		CJUST(ITCNTR+1),'Justification';
+	OUTSTR(:4)='"'//C_TIT_ESCAPE//'"';
+	IF (OUTSTR(2:2).EQ.CHAR(0)) THEN; OUTSTR(:4)='NONE'; ENDIF;
+	WRITE($TERMINAL OUT,:STRFOR:)'  Escape=',OUTSTR(:4);
+	OUTSTR(:4)='"'//C_TIT_SUBSTITUTE//'"';
+	IF (OUTSTR(2:2).EQ.CHAR(0)) THEN; OUTSTR(:4)='NONE'; ENDIF;
+	WRITE($TERMINAL OUT,:STRFOR:)'  Substitute=',OUTSTR(:4);
+      >
+%E  --- UNITS
+
+      UNITS <
+	WRITE($TERMINAL OUT,:FLTFOR:)'Units -';
+	WRITE($TERMINAL OUT,:FLTFOR:)'  Character=',REDUCE(3)
+	    ,'=',1/reduce(3)
+	   ,cunit3//' ='//CUNIT2(:NUNIT2);
+	WRITE($TERMINAL OUT,:FLTFOR:)'  Text=',REDUCE(2)
+	    ,'=',1/reduce(3)
+	   ,cunit3//' ='//CUNIT1(:NUNIT1);
+      >
+
+%E  --- VALUES
+
+      VALUES <
+$VAX;
+	CALL SPAWN('SHOW SYMBOL TD_V_*');
+$END;
+      >
+
+%E  --- VERSION
+
+      VERSION <
+	WRITE($TERMINAL OUT,:VFORM:)REVLEV;
+	:VFORM: FORMAT('  Version - ',F5.2,'  TopDrawer (Bonner Lab) ',$DATE);
+      >
+     >					"END OF TOKEN BLOCK"
+     ENDOFCARD:: < GOTO :RET:; >
+     ELSE:: < <TOKEN ERROR>; GOTO :RET:; >
+    >
+   >
+:RET: NSTJOU=0; LSTJOU=0;
+:BEGFOR: FORMAT(2X,A);
+:INTFOR: FORMAT(2X,A,T16,I7,T30,A,T38,I7,T52,A,T60,I7);
+:DINFOR: FORMAT(2X,A,T16,I7,T30,'Default:',T38,I7,T52,A);
+:VECFOR: FORMAT(2X,A,T16,1p,3G11.3,T63,A);
+:STRFOR: FORMAT(2X,A,T19,A,T30,A,T41,A,T52,A,T63,A);
+:DSTFOR: FORMAT(2X,A,T19,A,T30,'Default:',T41,A);
+:FLTFOR: FORMAT(2X,A,T16,1P,G11.3,T30,A,T38,G11.3,T52,A);
+:DFLFOR: FORMAT(2X,A,T16,1P,G11.3,T30,'Default:',T38,G11.3,T52,A);
+:TITFOR: FORMAT(2X,A,1P,(T16,5G11.3));
+:WINFOR: FORMAT(2X,A,T16,1P,G11.3,T30,A,T38,G11.3,T52,A,T60,I7);
+:EXPFOR: FORMAT(2X,A,T16,1P,G15.7,T41,A,T49,G15.7);
+END;
+%E  SUBROUTINE T2GVNM  --- Get name of a variable
+SUBROUTINE T2GVNM(N,NAME);
+   IMPLICIT NONE;
+   $SPECIFICATION;
+   $SPECIFYNONE;
+   $POINT ARRAYS($NPOINTS);
+   CHARACTER*(*) NAME;
+   INTEGER I,J,N;
+   CHARACTER*7 CORDER(28);
+      DATA CORDER/	' Symbol',
+	' X',		' Dx',
+	' Y',		' Dy',
+	' Z',		' Dz',
+	' NDx',		' NDy',		' NDz',
+	' U',		' Du',		' NDu',
+	' V',		' Dv',		' NDv',
+	' W',		' Dw',		' NDw',
+	' Theta',	' Dtheta',
+	' Radius',	' Drad',
+	' Phi',		' Dphi',
+	' NDthet',	' NDrad',	' NDphi'/;
+   I=I_VORDER(N,2);
+   IF (I.ge.1 .and. I.le.19) THEN;
+      IF ( (I.gt.1 .and.I .le. 10) .and. ($SPHERICAL .OR.
+	($POLAR.and. (I.le.5 .or. I.eq.8 .or. I .eq. 9)) ) ) THEN;
+	J=18;
+      ELSE;
+	J=0;
+      ENDIF;
+      NAME=CORDER(I+J);
+   ELSE;
+	NAME='******';
+   ENDIF;
+END;
+%E  SUBROUTINE T2CVTM  --- Convert time
+SUBROUTINE T2CVTM(TIME,CTIME);
+"
+	Convert time to format nn:nn:nn.nm
+	INPUT:	Time	(Real number)
+	OUTPUT:	CTIME	(Character string)
+"
+   IMPLICIT NONE;
+   CHARACTER*(*) CTIME;
+   CHARACTER*10  CTEMP;
+   REAL TEMP,TIME;
+   INTEGER ITEMP,IHR,MINUTE;
+   CTIME=' ';
+   TEMP=TIME;
+   TEMP=ABS(TEMP);
+   IHR=TEMP/3600.;
+   TEMP=TEMP-IHR*3600.;
+   MINUTE=TEMP/60;
+   TEMP=TEMP-MINUTE*60;
+   TEMP=ABS(TEMP);
+   IHR=MIN(IHR,99);
+   WRITE(CTEMP,'(I10)')IHR;
+   CTIME(1:3)=CTEMP(9:10)//':';
+   WRITE(CTEMP,'(I10.2)')MINUTE;
+   CTIME(4:6)=CTEMP(9:10)//':';
+   WRITE(CTEMP,'(F10.2)')TEMP;
+   CTIME(7:11)=CTEMP(6:10);
+   IF(CTIME(7:7).eq.' ')CTIME(7:7)='0';
+END;
+%E  SUBROUTINE T2CURS  --- Get cursor
+SUBROUTINE T2CURS(I,XYZ,XYZ1,XYZ2,F1,F2);
+"
+ This subroutine returns both text and data coordinates from
+ The Cursor:
+     OUTPUT:
+	I    = Character typed (If 0 no input)
+	XYZ  = Physical device coordinates.
+	XYZ1 = Text coordinates.
+	XYZ2 = Data coordinates.
+	F1   = .true. if text coor.
+	F2   = .true. if data coor.
+"
+   IMPLICIT NONE;
+   $SPECIFICATION;
+   integer I,J;
+   real xyz(2),xyz1(2),xyz2(3);
+   $BOOLEAN f1,f2;
+   IF (.NOT.FLAGS(73)) CALL TXDEF1;	"If not defined set up text coord sys"
+   f1 = .false.; f2=.false.;	"Start with false"
+   CALL TXVOID;
+   <I=1,3;
+       IF( FLAGS(73) ) F1=.true.;
+       IF( FLAGS(75) ) F2=.true.;
+   >
+   I = 0;
+   IF( F1 .or. F2) THEN;
+      CALL TXCURS(XYZ(1),XYZ(2),I);
+      IF(I .eq. 0) THEN; F1=.false.; F2=.false.; endif;
+      IF(F1) CALL T2IFRM(2,1,XYZ,LINEAR,XFRM34,2,XYZ1);
+      IF(F2) CALL T2IFRM(2,1,XYZ,NONLIN,XFRM14,3,XYZ2);
+   ENDIF;
+end;
+%E  SUBROUTINE T2_LIST  --- List data
+SUBROUTINE T2_LIST($INFO,$CARD);
+   IMPLICIT NONE;
+   INTEGER $INFO(10);
+   CHARACTER*(*) $CARD;
+   $MAINSPEC;
+   $SPECIFICATION;
+   $SELECTSPEC;
+   $SPECIFYNONE;
+   $POINT ARRAYS($NPOINTS);
+   $BOOLEAN LSTAT,LVALU, LCOMP,LZ,LHEADER;
+   CHARACTER*10 C_ACCESS;
+   CHARACTER*3 C_STATUS;
+   CHARACTER*4 SYM,T2_GET_SYMBOL;
+   CHARACTER*2 CXYZ(4)		/'X=','Y=','Z=',' '/;
+   CHARACTER*7 CORDER($MAXCOR)	/$MAXCOR*' '/;
+   INTEGER T2BTRIM;
+   INTEGER I,J,K,JLIM,LUN,IOFF,IMAX,NLIM;
+   INTEGER ISET,INDEP,IDEP;
+   REAL DVEC($MAXCOR),TARR(8),ZMIN,ZMAX,TEMP,SETNUM,TEMP1,DTEMP1;
+   REAL DLIM(3,2);
+"   REAL*16 SUM(8); "
+   REAL*8 SUM(8);
+   REAL XYZ1(2),XYZ2(3),XYZ0(2);
+   CHARACTER*4 QUOTES		/'"  "'/;
+   $DATA;
+   C_STATUS='NEW';
+   C_ACCESS='SEQUENTIAL';			"Default access"
+   LUN=OUTFIL;
+   IF(LUN .le. 0) LUN=$TERMINAL OUT;
+   <I=1,$MAXCOR; CALL T2GVNM(I,CORDER(I));>	"Normal coord names"
+   LCOMP=.false.;			"No compression"
+   LSTAT=.true.;			"Statistics"
+   LVALU=.true.;			"Values"
+   LHEADER=.true.;			"Headers on"
+   N_FILE=0;
+
+   <TOKEN KEY LOOP> <
+      APPEND:Y <
+	IF (LTOKEN)	THEN;	C_STATUS='OLD'; 
+				C_ACCESS='APPEND';
+			ELSE;	C_STATUS='NEW';
+				C_ACCESS='SEQUENTIAL';
+			ENDIF;
+      >
+      FILE:F,OUTPUT:F <
+	LUN=$SCRATCH FILE;
+$VAX;
+   %'$DEFAULT'='",CARRIAGECONTROL=''LIST''"';
+$ELSE;
+   %'$DEFAULT'='';
+$END;
+	C_FILE=STRNG; N_FILE=NSTRNG;
+	CALL T2_SET_DEFAULT_FILE(C_FILE,N_FILE,'tdata.lis');
+      >
+      HEADER		< LHEADER=LTOKEN; >
+      SETS		< CALL T2NSET($INFO,$CARD,NS1,NS2); >	"Get data set"
+      SELECT:S		< C_SELECT=STRNG; N_SELECT=MAX(1,NSTRNG); >
+      POINTS,COLUMNS	< CALL T2PNTS($INFO,$CARD,N1,N2); >
+      LINES,ROWS	< CALL T2ROWS($INFO,$CARD,N3,N4); >
+      STATISTICS:Y	< LSTAT=LTOKEN; LVALU=.not. LTOKEN; >
+      COMPRESS:Y	< LCOMP=LTOKEN; >
+      LOG:Y		< LLOG =LTOKEN; >
+      LIMITED		< CALL T2XYZC($INFO,$CARD,TLIM,2,NLIM); >
+   >
+   IF(($ERROR.and.$ABORT)) RETURN;
+   LSTAT=LSTAT .and. .not. LCOMP;
+   IF (N_FILE .gt. 0) THEN;
+$VAX;
+%'$RECL'=',RECL=512'
+$ELSE;
+%'$RECL'=' '
+$END;
+	OPEN(UNIT=LUN
+		,FILE=C_FILE(1:N_FILE)
+		,STATUS=C_STATUS
+		$RECL
+		$ACCESS
+		$DEFAULT
+		,ERR=:ERR1:);
+	IF (LUN.le.20) NINP(LUN)=0;
+   ENDIF;
+   <ISET=NS1,NS2;
+      CALL T2GDSET(ISET,N1,N2,N3,N4,ISETD,TLIM,C_SELECT(:N_SELECT));
+	IF (NP .lt. N1) <NEXT>;
+	CALL T2_GET_SET_NAME(IBGDAT,C_NAME);
+	N_NAME=T2BTRIM(C_NAME);
+      JLIM=0;
+      IF (TLIM(1,1) .ne. HNONE) THEN;
+	JLIM=2; IF (DATBUF(I3).ne.HNONE) JLIM=3;
+      ENDIF;
+      <I=1,8; SUM(I)=0.0; >
+      IF(IBTYPE.eq.2) THEN;
+	INDEP=MESH1*2; IDEP=MESH2*2;
+	IF (LLOG) WRITE($TERMINAL OUT,*)'  List - ',CXYZ(MESH3),' vs ',
+	    CXYZ(MESH2),NINCR2-1,' by ',CXYZ(MESH1),NINCR1-1,
+	    ' Set=',ISET,' Name=','"'//C_NAME(:N_NAME)//'"';
+	ZMIN=$LARGE REAL; ZMAX=-$LARGE REAL;
+	IF (LVALU) THEN;
+	   WRITE(LUN,*)'READ MESH';
+	   IF (NINCR0 .eq.2) WRITE(LUN,*)' WITH ERROR';
+	    WRITE(LUN,'(A)') '   NAME="'//C_NAME(:N_NAME)//'"';
+	   NP=NINCR0*(NP-N1+1);
+	   K=MESH1;
+	   <I=0,NP-1,8*nincr0;
+	      WRITE(OUTSTR,'(2x,1p,A,T5,8G15.6)') CXYZ(K),
+		 (DATBUF(I1+J),J=I,MIN(I+nincr0*8-1,NP-1),nincr0);
+	      CALL T2WRSQ(OUTSTR,LCOMP,LUN,1);
+	      K=4;
+	   >
+	ENDIF;
+   
+	<I=N3,NL;
+	   IF($TRAP) GOTO :RET:;
+	   IF (LVALU) THEN;
+	      K=MESH3;
+	      <J=0,NP-1,8;
+		 IF (J.eq.0) THEN;
+		    WRITE(OUTSTR,'(2x,A,1p,T5,4G15.6)')
+			CXYZ(MESH2),DATBUF(I2);
+		    CALL T2WRSQ(OUTSTR,LCOMP,LUN,1);
+		 ENDIF;
+		 WRITE(OUTSTR,'(2x,A,T5,8G15.6)')
+		    CXYZ(K),(DATBUF(I3+K),K=J,MIN(J+7,NP-1));
+		 CALL T2WRSQ(OUTSTR,LCOMP,LUN,1);
+		 K=4;
+	      >
+	   ENDIF;
+	    IF (LSTAT) THEN;
+		<J=0,NP-1,NINCR0;
+		    IF($TRAP) GOTO :RET:;
+		    TEMP=DATBUF(I3+J);
+		    SUM(1)=SUM(1)+TEMP;
+		    SUM(8)=SUM(8)+1.;
+		    IF(TEMP.lt.ZMIN)ZMIN=TEMP;
+		    IF(TEMP.gt.ZMAX)ZMAX=TEMP;
+		>
+	    ENDIF;
+	   I2=I2+NINCR0*NINCR1;
+	   I3=I3+NINCR0*NINCR1;
+	>
+      ELSEIF (NP.ge.N1) THEN;
+	<J=1,8; DVEC(I)=0; >
+	IF (LLOG) WRITE($TERMINAL OUT,*)'  List - Points',N1,' to ',NP,
+	    ' Set=',ISET,' Name=','"'//C_NAME(:N_NAME)//'"';
+	IF (.not.LCOMP)
+	   WRITE(LUN,*)' (Data - Points',N1,' to ',NP,' Set',ISET,')';
+	LZ=DATBUF(I3).ne.HNONE;
+	INDEP=2;
+	IF (LZ.and.$3D) THEN;
+	   IDEP=N_ZDATA;
+	ELSE;
+	   IDEP=N_YDATA;
+	ENDIF;
+	IF(LVALU) THEN;
+	   WRITE(OUTSTR,'(A,2A7,(12A15))')
+	    ' SET ORDER DUM',(CORDER(IVARBL(I)),I=1,NINCR);
+	   CALL T2WRSQ(OUTSTR,LCOMP,LUN,1);
+	ENDIF;
+	ZMIN=$LARGE REAL; ZMAX=-$LARGE REAL;
+	SYM=' ';		"If no sym"
+	OUTSTR=' DATA SET NAME="'//C_NAME(:N_NAME)//'"';
+	CALL T2WRSQ(OUTSTR,LCOMP,LUN,1);
+	WRITE(OUTSTR,*)' (Set number -',ISET,')';
+	CALL T2WRSQ(OUTSTR,LCOMP,LUN,1);
+	<I=N1,NP;
+	   IF($TRAP) GOTO :RET:;
+	   SETNUM=0;
+	   <J=1,NINCR; DVEC(IVARBL(J))=DATBUF(IM); IM=IM+1; >
+	   SYM=T2_GET_SYMBOL(DVEC(N_SYMBOL));
+	   <J=1,JLIM; TEMP=DVEC(NCSIZE*(J-1)+N_XDATA);	"Test data"
+	      IF (TEMP.lt.TLIM(J,1) .or. TEMP.gt.TLIM(J,2) ) GOTO :KILL2D:;
+	   >
+	   IF(LSTAT) THEN;		"Write data ??"
+	      SUM(8)=SUM(8)+1.;
+	      TEMP=DVEC(IDEP);
+	      SUM(1)=SUM(1)+TEMP;
+	      IF(TEMP.lt.ZMIN)ZMIN=TEMP;
+	      IF(TEMP.gt.ZMAX)ZMAX=TEMP;
+	      TEMP1=DVEC(INDEP);
+	      <J=1,3;SUM(J+1)=
+		    SUM(J+1)+TEMP*TEMP1**J;
+	      >
+	      IF(LVALU) THEN;
+			"Output both"
+		WRITE(OUTSTR,'(1x,I7,1x,A4,2x,1p,(8G15.6))')
+		   I,SYM,(DVEC(IVARBL(J)),J=2,NINCR);
+		CALL T2WRSQ(OUTSTR,LCOMP,LUN,1);
+	      ENDIF;
+	   ENDIF;
+:KILL2D:
+	>
+      ENDIF;
+      IF (SUM(8).gt.0) THEN;
+	WRITE(LUN,'(1p,5(A,1p,G15.6))')' (Pts= ',SUM(8),')';
+	WRITE(LUN,'(2A,1p,5(A,1p,G15.6))')
+	   ' (',CORDER(IDEP),
+	   ' Sum= ',SUM(1),
+	   ' Ave= ',SUM(1)/SUM(8),' /Point)';
+	IF (SUM(1).ne.0.0.and.IBTYPE.eq.1) THEN;
+	   DTEMP1=SUM(3)/SUM(1)-(SUM(2)/SUM(1))**2;
+	   DTEMP1=SQRT(ABS(DTEMP1));
+	   WRITE(LUN,'(2A,1p,5(A,1p,G15.6))')
+	      ' (',CORDER(INDEP),
+	      ' Mean=',SUM(2)/SUM(1),
+	      ' Std= ',DTEMP1,')';
+	ENDIF;
+	WRITE(LUN,'(2A,1p,5(A,1p,G15.6))')
+	   ' (',CORDER(IDEP),
+	   ' Min= ',ZMIN,' Max= ',ZMAX,')';
+      ENDIF;
+   >
+:RET:
+   IF (LLOG) THEN;
+	N_FILE=0;
+	INQUIRE(UNIT=LUN,NAME=C_FILE,ERR=:INQERR:);
+	CALL T2_CONCEAL_PASSWORD(C_FILE,N_FILE);
+	if (C_ACCESS(1:1) .eq. 'S') C_ACCESS='written';
+	WRITE($TERMINAL OUT,*)'	',C_ACCESS,' To:',C_FILE(:N_FILE);
+   ENDIF;
+   IF ($TRAP) WRITE($TERMINAL OUT,*) '*** Listing terminated';
+:INQERR:
+   IF (LUN.eq.$SCRATCH FILE) CLOSE(UNIT=LUN);
+   RETURN;
+:ERR1:
+   ERROR OUT;
+      ('*** ERROR *** Failure to open list file:'//C_FILE(:N_FILE));
+END;
+%E  SUBROUTINE T2_SHOW_ALL  --- Show all
+SUBROUTINE T2_SHOW_ALL;
+   IMPLICIT NONE;
+   INTEGER T2_SHOW1;
+   INTEGER $INFO(10),I;
+   <I=1,10; $INFO(I)=0;>
+   I=T2_SHOW1($INFO,'VERSION,ARROW,AXIS,BAR,BOX,BLINK'
+	//',CARD,CHARACTERS,CLEAR,COLOR,CTRL,CYCLE'
+	//',DATA BRIEF,DATE,DEVICE,DIAMOND,DIGITS'
+	//',ELLIPSE,ERRORS,FIT,FILE,FILL,FLUSH,FONT,FORMAT'
+	//',GRID,INTENSITY,KEYS,LABELS,LIMITS,MODE,MONITOR,ORDER,OUTLINE'
+	//',PATTERN,PAUSE,PEN,PLOTS,POLAR,PRIMARY,REVISION'
+	//',SECONDARY,SEGMENTS,SCALE,SHADOW,SHIELD,SIZE,STORAGE,SYMBOL'
+	//',TEXTURE,THREE,TICKS,TIME,TITLE'
+	//',UNITS,WINDOW');
+END;
+%E  SUBROUTINE T2_SHOW_AXIS  --- Show axes
+SUBROUTINE T2_SHOW_AXIS(IFL1,IFL2);
+   IMPLICIT NONE;
+   $SPECIFICATION;
+   $SPECIFYD;
+   CHARACTER*10 ONOFF(2)		/'ON','OFF'/;
+   INTEGER IFL,IFL1,IFL2,I,J,IONOFF(4,2),IPASS,IMAX;
+   <IPASS=1,2;
+      IF (IPASS.eq.1) THEN;
+	IMAX=3;
+	IFL=IFL2-1;
+	IF (IFL .le. 0) <NEXT>;
+	WRITE($TERMINAL OUT,:STRFOR:)' ','X','Y','Z';
+      ELSE;
+	IMAX=4;
+	IFL=IFL1-1;
+	WRITE($TERMINAL OUT,:STRFOR:)' ','Left','Bottom','Right','Top';
+      ENDIF;
+      IF (IFL .le. 0) RETURN;
+      <I=1,2; <J=1,4; IONOFF(J,I)=2; > >
+      <I=1,IMAX;
+	IF (FLAGS(IFL+I))IONOFF(I,1)=1;
+	IF (DFLAGS(IFL+I))IONOFF(I,2)=1;
+      >
+      WRITE($TERMINAL OUT,:STRFOR:)'  Setting=',
+	(ONOFF(IONOFF(I,1)),I=1,IMAX);
+      WRITE($TERMINAL OUT,:STRFOR:)'    Default:',
+	(ONOFF(IONOFF(I,2)),I=1,IMAX);
+   >
+:STRFOR: FORMAT(2X,A,T19,A,T30,A,T41,A,T52,A,T63,A,T74,A);
+END;
+%E  SUBROUTINE T2_SHOW_ON_OFF  --- Show on off status
+SUBROUTINE T2_SHOW_ON_OFF(STR,IFL);
+   IMPLICIT NONE;
+   $SPECIFICATION;
+   $SPECIFYD;
+   CHARACTER*(*) STR;
+   CHARACTER*4 ONOFF(2)		/'ON','OFF'/;
+   INTEGER IFL,I,J,K;
+   I=ABS(IFL); J=2; K=2;
+   IF (FLAGS(I) ) J=1;
+   IF (DFLAGS(I)) K=1;
+   IF (IFL.gt.0) THEN;   
+      WRITE($TERMINAL OUT,:DSTFOR:)STR,ONOFF(J),ONOFF(K);
+   ELSE;
+      WRITE($TERMINAL OUT,:STRFOR:)STR,ONOFF(J);
+   ENDIF;
+:STRFOR: FORMAT(2X,A,T19,A);
+:DSTFOR: FORMAT(2X,A,T19,A,T30,'Default:',T41,A);
+END;
+%E  SUBROUTINE T2_SHOW_INHIBIT  --- Show inhibit status
+SUBROUTINE T2_SHOW_INHIBIT(IFL);
+   IMPLICIT NONE;
+   $SPECIFICATION;
+   $SPECIFYD;
+   INTEGER J,K,IFL;
+   CHARACTER*10 ONOFF(2)	 /'ENABLED','INHIBITED'/;
+   J=1; K=1;
+   IF (FLAGS(IFL)) J=2;
+   IF (DFLAGS(IFL)) K=2;
+   WRITE($TERMINAL OUT,'(2X,A,T19,A,T30,A,T41,A)')
+      '  Auto plot=',ONOFF(J),'Default:',ONOFF(K);
+END;
+%E  SUBROUTINE T2_SHOW_TEXTURE  --- Show color,texture,inten
+SUBROUTINE T2_SHOW_TEXTURE(I,K);
+    IMPLICIT NONE;
+    INTEGER I,J,K,L;
+    CHARACTER*8 COL(8);
+    DATA COL/'NONE','WHITE','RED','GREEN','BLUE','YELLOW','MAGENTA','CYAN'/;
+    CHARACTER*10 CTEX(8);
+    DATA CTEX/'NONE','DOTS','DASHES','DOTDASHES',
+	'SOLID','FUNNY','PATTERNED','DAASHES'/;
+    J=IAND(I/8,7);   L=IAND(K/8,7);
+:DINFOR: FORMAT(2X,A,T16,I7,T30,'Default:',T38,I7,T52,A);
+:DSTFOR: FORMAT(2X,A,T19,A,T30,'Default:',T41,A);
+    WRITE($TERMINAL OUT,:DINFOR:)'  Intensity=',J,L;
+    J=IAND(I/512,7)+1; L=IAND(K/512,7)+1;
+    WRITE($TERMINAL OUT,:DSTFOR:)'  Color=',COL(J),COL(L);
+    J=IAND(I/64,7)+1;  L=IAND(K/64,7)+1;
+    WRITE($TERMINAL OUT,:DSTFOR:)'  Texture=',CTEX(J),CTEX(L);
+    IF (J.eq.7 .or. L.eq.7) CALL T2_SHOW_PATTERN(I);
+END;
+SUBROUTINE T2_SHOW_PATTERN(I);
+    IMPLICIT NONE;
+    INTEGER I,J,K;
+    $SPECIFICATION;
+    J=IAND(I/64,7);
+    IF (J .ne. 6) RETURN;
+    K=MIN(MAX(I/4096,1),$PATN);
+    IF (NPATRN(K).gt.1) THEN;
+	WRITE($TERMINAL OUT,'(1X,4(4X,''''Draw'''',5x,''''Space''''))');
+	WRITE($TERMINAL OUT,'(4X,1P,8G9.2)')(PATRN(J,K),J=1,NPATRN(K));
+    ENDIF;
+END;
+%E  SUBROUTINE T2_TYPE   --- Type out composed line
+SUBROUTINE T2_TYPE($INFO,$CARD);
+   IMPLICIT NONE;
+   INTEGER $INFO(10); CHARACTER*(*) $CARD;
+   $SPECIFICATION;
+   INTEGER ITEMP,NTSTR;
+   $BOOLEAN LATTR;
+   CHARACTER*100 TSTR;
+   CHARACTER DIGITS*10 /'0123456789'/;
+   CHARACTER FB*1 /'3'/;
+   ITEMP=0;	"default is normal prompt"
+   NTSTR=0;
+   TSTR=' ';
+   LATTR=.false.;
+   FB='3';
+   <TOKEN LOOP> <
+      KEY:: <
+	ERASE < TSTR(NTSTR+1:LEN(TSTR))=CHAR(27)//'[2J';
+	   NTSTR=MIN(NTSTR+4,LEN(TSTR)); >
+	TOP < TSTR(NTSTR+1:LEN(TSTR))=CHAR(27)//'[H'//CHAR(27)//'[K';
+	   NTSTR=MIN(NTSTR+6,LEN(TSTR)); >
+	BOTTOM < TSTR(NTSTR+1:LEN(TSTR))=CHAR(27)//'[50H'//CHAR(27)//'[K';
+	   NTSTR=MIN(NTSTR+8,LEN(TSTR)); >
+	BELL < NTSTR=MIN(NTSTR+1,LEN(TSTR)); TSTR(NTSTR:NTSTR) = CHAR(7); >
+	BOLD:1,UNDERLINE:4,BLINK:5,REVERSE:7 <
+	   TSTR(NTSTR+1:LEN(TSTR))=CHAR(27)//'['//CHAR(INTEG+48)//'m';
+	   LATTR=.TRUE.; NTSTR=MIN(NTSTR+4,LEN(TSTR)); >
+	WIDE < TSTR(NTSTR+1:LEN(TSTR))=CHAR(27)//'#6';
+	   NTSTR=MIN(NTSTR+3,LEN(TSTR)); >
+	BACKGROUND:4,FOREGROUND:3 < INTEG=INTEG+1; FB=DIGITS(INTEG:INTEG); >
+	RED:1,GREEN:2,BLUE:4,YELLOW:3,MAGENTA:5,CYAN:6,WHITE:7
+	   < INTEG=INTEG+1; 
+	     TSTR(NTSTR+1:)=CHAR(27)//'['//FB//DIGITS(INTEG:INTEG)//'m';
+	     NTSTR=MIN(NTSTR+5,LEN(TSTR)); >
+      >
+      NUMBER:: < NTSTR=MIN(NTSTR+1,LEN(TSTR)); TSTR(NTSTR:NTSTR)=CHAR(INTEG); >
+      STRING:: <
+	IF(NSTRNG.le.0) THEN;
+	   NSTRNG=1; STRNG=' ';
+	ENDIF;
+	TSTR(NTSTR+1:LEN(TSTR))=STRNG(1:NSTRNG);
+	NTSTR=MIN(NTSTR+NSTRNG,LEN(TSTR));
+      >
+   >
+   IF (LATTR) THEN;
+      WRITE($TERMINAL OUT,*) TSTR(1:NTSTR)//CHAR(27)//'[0m';
+   ELSE;
+      IF (NTSTR.gt.0) WRITE($TERMINAL OUT,*) TSTR(1:NTSTR);
+   ENDIF;
+END;
+%E  SUBROUTINE TDSTAT  --- Get statistics
+SUBROUTINE TDSTAT(TLIM,N1,N2,N3,N4,NS1,NS2,LWEIGHT,NTLIM,STRING);
+"
+	Computes the sum,mean,std...
+	INPUT:
+		TLIM - Array of limits
+		N1,N2	Point or column number
+		N2,N4   Row numbers
+	OUTPUT:
+		sum,mean,std...
+"
+   IMPLICIT NONE;
+   $SPECIFICATION;
+   $SPECIFYNONE;
+   $MAINSPEC;
+   $POINT ARRAYS($NPOINTS);
+   $BOOLEAN LWEIGHT, LOK;
+   REAL TLIM(3,*),DLIM(3,2),XYZ($MAXCOR),XFAC,YFAC,ZFAC,TEMP1, TEMP2, TEMP3;
+   REAL T,TLIM1(3,2);
+   DOUBLE PRECISION DSUM(8),DERR(8,4);
+   DOUBLE PRECISION DDSLOPE(2,2,2);
+   INTEGER NTLIM;
+   CHARACTER*(*) STRING;
+   INTEGER I,J,JLIM,K,KLIM,L,LLIM;
+   INTEGER IS,IDEP,IZYZ($MAXCOR),ISET,N1,N2,N3,N4,NS1,NS2;
+   <J=1,8; DSUM(J)=0.0; >
+   <J=1,4; <K=1,8; DERR(K,J)=0.0; > >
+   <J=1,$DATDATSIZ; <I=1,2; DATDAT(I,J)=0; > >
+   <K=1,2; <J=1,2; <I=1,2; DDSLOPE(I,J,K)=0; >  >  >
+   DATXMN=$LARGE REAL; DATXMX=-$LARGE REAL;
+   DATYMN=$LARGE REAL; DATYMX=-$LARGE REAL;
+   DATZMN=$LARGE REAL; DATZMX=-$LARGE REAL;
+   CALL T2DTLM(TLIM,N1,N2,N3,N4,NS1,NS2,XFAC,YFAC,ZFAC,DLIM,
+			NTLIM,STRING);
+   KLIM=NTLIM;				"Maximum number of limits"
+   IF (TLIM(1,1) .eq. HNONE) KLIM=-5;
+   TLIM1(1,1)=HNONE;
+   IF (KLIM .gt. 1) THEN;
+      <J=1,2; <I=1,3; TLIM1(I,J)=DLIM(I,J); > >
+   ENDIF;
+   <ISET=NS1,NS2;
+      JLIM=2; IDEP=N_YDATA;
+      <I=1,$MAXCOR; XYZ(I)=0; >
+      CALL T2GDSET(ISET,N1,N2,N3,N4,ISETD,TLIM1,STRING);
+	IF (NP .lt. N1) <NEXT>;
+      IF (DATBUF(I3).ne.HNONE) THEN;
+	JLIM=3;
+	IF ($3D) THEN; IDEP=N_ZDATA; YFAC=ZFAC; ENDIF;
+      ENDIF;
+	K=0;
+      IF (NP.ge.N1 .and. NL.ge.N3) THEN;
+       IF (IBTYPE.eq.2 ) THEN;
+	NP=NMESH0*(NP-N1+1)-1;
+	<I=N3,NL;
+	   IF ($TRAP) GOTO :RET:;
+	   XYZ(MESH2*2)=DATBUF(I2);
+	   IF (NMESH0.eq.2) XYZ(MESH2*2)=DATBUF(I2+1);
+	   <J=0,NP,NMESH0;
+	      IF ($TRAP) GOTO :RET:;
+	      XYZ(MESH1*2)=DATBUF(I1+J);
+	      XYZ(MESH3*2)=DATBUF(I3+J);
+		IF (KLIM .gt. 0) THEN;
+		  <K=1,KLIM,2;
+		    <L=1,JLIM;
+			IF (	XYZ(L) .lt. TLIM(L,K) .or.
+				XYZ(L) .gt. TLIM(L,K+1) ) <EXIT>;
+		    >
+		    IF (L .gt. JLIM) <EXIT>;
+		  >
+		  IF (K .gt. KLIM) <NEXT>;
+		ENDIF;
+		CALL T2DTSM(XYZ(2),XYZ(6),
+		    XYZ(3),XYZ(7),
+		    DSUM,DERR,LWEIGHT);
+		<K=1,2; <L=1,2;
+		    IF (ABS(XYZ(2*L)-DLIM(K,L)) .lt.
+				(DLIM(K,2)-DLIM(K,1))/10) THEN;
+			DDSLOPE(K,L,1)=DDSLOPE(K,L,1)+1;
+			DDSLOPE(K,L,1)=DDSLOPE(K,L,1)+XYZ(6);
+		    ENDIF;
+		>  >
+	   >
+	   I2=I2+NINCR1*NINCR0;
+	   I3=I3+NINCR1*NINCR0;
+	>
+       ELSEIF (IBTYPE.eq.1) THEN;;
+	<I=N1,NP;
+	   IF ($TRAP) GOTO :RET:;
+	   <J=1,NINCR; XYZ(IVARBL(J))=DATBUF(IM); IM=IM+1; >
+	    IF (KLIM .gt. 0) THEN;
+	      <K=1,KLIM,2;
+		<J=1,JLIM; IF (XYZ(NCSIZE*(J-1)+N_XDATA).lt.TLIM(J,K) .or.
+			     XYZ(NCSIZE*(J-1)+N_XDATA).gt.TLIM(J,K+1) ) <NEXT>;
+		>
+		IF (J .gt. JLIM) <EXIT>;
+	     >
+	      IF (K .gt. KLIM) <NEXT>;
+	    ENDIF;
+	   CALL T2DTSM(XYZ(N_XDATA),XYZ(IDEP),
+		XYZ(N_DXDATA),XYZ(IDEP+1),DSUM,DERR,LWEIGHT);
+		<K=1,2; <L=1,2; 
+		    IF (ABS(XYZ(NCSIZE*(L-1)+N_XDATA)-DLIM(K,L)) .lt.
+				(DLIM(K,2)-DLIM(K,1))/10) THEN;
+			DDSLOPE(K,L,1)=DDSLOPE(K,L,1)+1;
+			DDSLOPE(K,L,1)=DDSLOPE(K,L,1)+XYZ(IDEP);
+		    ENDIF;
+		>  >
+	>
+       ENDIF;
+      ENDIF;
+   >
+   DATXMN=DLIM(1,1); DATXMX=DLIM(1,2);
+   DATYMN=DLIM(2,1); DATYMX=DLIM(2,2);
+   DATZMN=DLIM(3,1); DATZMX=DLIM(3,2);
+   CALL T2STSM(XFAC,YFAC,DSUM,DERR,LWEIGHT);
+   <I=1,2; <J=1,2; DSLOPE(J,I)=HNONE;
+	IF (DDSLOPE(J,I,1) .gt. 0)
+	    DSLOPE(J,I)=DDSLOPE(J,I,2)/DDSLOPE(J,I,1);
+   >  >
+:RET: CONTINUE;
+END;
+%E  SUBROUTINE T2STSM  --- Calculate stats -- sum, average, mean...
+SUBROUTINE T2STSM(XFAC,YFAC,DSUM,DERR,LWEIGHT);
+"
+	Routine to calculate the sum,average,mean...
+	INPUT:
+		XFAC,YFAC,DSUM,DERR
+	OUTPUT:
+		sum,mean,average
+"
+   IMPLICIT NONE;
+   $BOOLEAN LWEIGHT;
+   $SPECIFICATION;
+   REAL XFAC,YFAC;
+   DOUBLE PRECISION DSUM(8),DTEMP1,DTEMP2,DTEMP3,DERR(8,4),DERRSTD,DERRCEN;
+   IF (DSUM(8).gt.0.and.XFAC.ne.0.and.YFAC.ne.0) THEN;
+	DATPTS=DSUM(8);
+	DATSUM=DSUM(1)/YFAC;
+	DATAVE=DATSUM/DSUM(8);
+	ERRSUM=SQRT(DERR(1,1))/YFAC;
+	ERRAVE=(ERRSUM/DSUM(8));
+	ERRSTD=0; ERRCEN=0;
+      IF (DATSUM.ne.0.0) THEN;
+	DTEMP1=DSUM(2)/DSUM(1);
+	DATCEN=DTEMP1/XFAC;
+	DTEMP2=DSUM(3)/DSUM(1)-DTEMP1**2;
+	DATSTD=SQRT(ABS(DTEMP2))/XFAC;
+	IF (DERR(1,1).gt.0 .or. DERR(1,2).gt.0) THEN;
+	   IF (DERR(1,2) .ne. 0 .and.
+		  (DATSTD.le. ABS($DELTA*DATCEN) .or.
+		   DERR(1,1).eq.0 .or.
+		   DSUM(7).lt.3)   ) THEN;   "Do X errors only"
+	      DERRCEN=DERR(1,2);
+	      DERRSTD=4*(DERR(3,2)-2*DERR(2,2)*DSUM(2)+
+			DERR(1,2)*DSUM(2)**2);
+	   ELSE;
+	      DERRCEN=DERR(3,1)-2*DERR(2,1)*DTEMP1+DERR(1,1)*DTEMP1**2;
+	      DTEMP2=-2*DTEMP1;
+	      DTEMP3=2*DTEMP1**2-DSUM(3)/DSUM(1);
+	      DERRSTD=DERR(5,1)+2*DTEMP2*DERR(4,1)+2*DTEMP3*DERR(3,1)
+			   +DTEMP2**2*DERR(3,1)+2*DTEMP2*DTEMP3*DERR(2,1)
+			   +DTEMP3**2*DERR(1,1);
+	   ENDIF;
+	   ERRCEN=(SQRT(ABS(DERRCEN))/ABS(DSUM(1)))/XFAC;
+	   IF (DATSTD.GT.0) THEN;
+	      DERRSTD=SQRT(ABS(DERRSTD))/ABS(DSUM(1));
+	      DERRSTD=DERRSTD/XFAC**2;
+	      ERRSTD=0.5*DERRSTD/DATSTD;
+	   ENDIF;
+	ENDIF;
+      ENDIF;
+   ENDIF;
+END;
+%E  SUBROUTINE T2DTLM  --- Find MIN, MAX of data set
+SUBROUTINE T2DTLM(TLIM,N1,N2,N3,N4,NS1,NS2,XFAC,YFAC,ZFAC,DLIM,NTLIM,STRING);
+"
+	Subroutine to find the MIN, MAX
+	Point number, and value for data bounded by TLIM
+	INPUT:
+		TLIM(3,2) is the array of limits (XYZ,LO-HI)
+		For 2-d
+			N1,N2 are the inital point numbers to search
+		For 2-d
+			N1,N2 are the MESH1 numbers to search
+			N3,N4 are the MESH2 numbers to search
+
+	OUTPUT:
+		n1=n4 are the final point, mesh numbers
+		DLIM are the limits on the data
+		XFAC,YFAC are nomalization factors for performing sums
+"
+   IMPLICIT NONE;
+   CHARACTER*(*) STRING;
+   INTEGER N1,N2,N3,N4,NS1,NS2,NTLIM;
+   REAL TLIM(3,*),TLIM1(3,2),DLIM(3,2),XFAC,YFAC,ZFAC;
+   $SPECIFICATION;
+   $SPECIFYNONE;
+   $POINT ARRAYS($NPOINTS);
+   $MAINSPEC;
+   REAL XYZ($MAXCOR),XMIN,YMIN,ZMIN;
+   INTEGER IS,IDEP,ISET,IPNT,I,J,K,L,LLIM,KLIM;
+   REAL T;
+   <J=1,3; DLIM(J,2)=-$LARGE REAL; DLIM(J,1)=$LARGE REAL; >
+   XFAC=1; YFAC=1; ZFAC=1;
+   KLIM=NTLIM;
+   IF (TLIM(1,1).eq.HNONE) KLIM=0;
+   TLIM1(1,1)=HNONE;
+   <J=1,2; <I=1,3; TLIM1(I,J)=TLIM(I,J); >  >
+   <J=1,KLIM,2;
+      <I=1,3;	TLIM1(I,1)=MIN(TLIM1(I,1),TLIM(I,J));
+		TLIM1(I,2)=MAX(TLIM1(I,2),TLIM(I,J+1)); > >
+   <ISET=NS1,NS2;
+      CALL T2GDSET(ISET,N1,N2,N3,N4,ISETD,TLIM1,STRING);
+	IF (NP .lt. N1) <NEXT>;
+      IF (DATBUF(I3).eq.HNONE) THEN;
+	   LLIM=2;
+      ELSE;
+	   LLIM=3;
+      ENDIF;
+      IF (NP .ge. N1 .and. NL.ge.N3) THEN;
+       IF (IBTYPE.eq.2 ) THEN;
+	NP=(NP-N1+1)*NINCR0-1;
+	<I=N3,NL;
+	    XYZ(MESH2)=DATBUF(I2);
+	   IPNT=I3;
+	   <J=0,NP,NINCR0;
+	      XYZ(MESH1)=DATBUF(I1+J);
+	      XYZ(MESH3)=DATBUF(I3+J);
+		IF (KLIM .gt. 0) THEN;
+		  <K=1,KLIM,2;
+		    <L=1,LLIM;
+			IF (	XYZ(L) .lt. TLIM(L,K) .or.
+				XYZ(L) .gt. TLIM(L,K+1) ) <EXIT>;
+		    >
+		    IF (L .gt. LLIM) <EXIT>;
+		  >
+		  IF (K .gt. KLIM) <NEXT>;
+		ENDIF;
+		<L=1,LLIM;				"Set limits"
+		    DLIM(L,1)=MIN(DLIM(L,1),XYZ(L));
+		    DLIM(L,2)=MAX(DLIM(L,2),XYZ(L));
+		>
+	   >
+	   I2=I2+NINCR1*NINCR0;
+	   I3=I3+NINCR1*NINCR0;
+	>
+       ELSEIF (IBTYPE.eq.1) THEN;
+	<I=1,7; XYZ(I)=0; >
+	<I=n1,nP;
+	   IF ($TRAP) RETURN;
+	   <J=1,NINCR; XYZ(IVARBL(J))=DATBUF(IM); IM=IM+1; > "Get data"
+	    IF (KLIM .gt. 0) THEN;
+		<K=1,KLIM,2;
+		    <L=1,LLIM;
+			T=XYZ(NCSIZE*(L-1)+N_XDATA);
+			IF (	T .lt. TLIM(L,K) .or.
+				T .gt. TLIM(L,K+1) ) <EXIT>;
+		    >
+		    IF (L .gt. LLIM) <EXIT>;
+		>
+		IF (K .gt. KLIM) <NEXT>;
+	    ENDIF;
+	   <J=1,LLIM;				"Set limits"
+	      DLIM(J,1)=MIN(DLIM(J,1),XYZ(NCSIZE*(J-1)+N_XDATA));
+	      DLIM(J,2)=MAX(DLIM(J,2),XYZ(NCSIZE*(J-1)+N_XDATA));
+	   >
+	>
+       ENDIF;
+      ENDIF;
+   >
+"
+   IF (XFAC.eq.0) THEN;
+      XFAC=1.0; YFAC=1.0; ZFAC=1.0;
+   ELSE;
+      XFAC=MAX(XFAC,ABS(DLIM(1,1)));
+      XFAC=MAX(XFAC,ABS(DLIM(1,2)));
+      IF (XFAC.eq.0) XFAC=.001;
+      XFAC=2.0/MIN(MAX(XFAC,$SMALL REAL*1000),$LARGE REAL);
+      YFAC=MAX(YFAC,ABS(DLIM(2,1)));
+      YFAC=MAX(YFAC,ABS(DLIM(2,2)));
+      IF (YFAC.eq.0) YFAC=.001;
+      YFAC=2.0/MIN(MAX(YFAC,$SMALL REAL*1000),$LARGE REAL);
+      ZFAC=MAX(ZFAC,ABS(DLIM(3,1)));
+      ZFAC=MAX(ZFAC,ABS(DLIM(3,2)));
+      IF (ZFAC.eq.0) ZFAC=.001;
+      ZFAC=2.0/MIN(MAX(ZFAC,$SMALL REAL*1000),$LARGE REAL);
+   ENDIF;
+"
+END;
+%E  SUBROUTINE T2DTSM  --- Accumulate sums for stat calc
+SUBROUTINE T2DTSM(X,Y,DX,DY,DSUM,DERR,LWEIGHT);
+"
+	Routine to calculate the fiducial sums over data
+	INPUT:
+		X,Y,DX,DY
+	OUTPUT:
+		DSUM,DERR the sums for computation
+"
+   IMPLICIT NONE;
+   $BOOLEAN LWEIGHT;
+   INTEGER I,J;
+   REAL X,Y,DX,DY;
+   DOUBLE PRECISION DSUM(8),DXV,DDY2,DDX2,DTEMP1,DYV2,DYV,DERR(8,4);
+   DSUM(8)=DSUM(8)+1.;
+   IF (Y.eq.0 .and. DY.eq.0 .and. DX.eq.0) RETURN;
+   DSUM(7)=DSUM(7)+1;
+   DXV=X;
+   DYV=Y;
+   DYV2=DYV**2;	"DYV2=Y**2"
+   DDX2=DX;
+   DDX2=DDX2**2;
+   DDY2=DY;
+   DTEMP1=1;
+	"DXV=X, DDY2=DY**2, DDX2=DX**2"
+   <J=1,3;
+      DSUM(J)=DSUM(J)+DYV*DTEMP1;
+      DERR(J,2)=DERR(J,2)+DDX2*DTEMP1*DYV2;
+      DTEMP1=DTEMP1*DXV;
+   >
+   IF (DY .ne.0) THEN;
+      DTEMP1=1;
+      DDY2=DDY2**2;
+      <J=1,5;
+	DERR(J,1)=DERR(J,1)+DDY2*DTEMP1;
+	DTEMP1=DTEMP1*DXV;
+      >
+   ENDIF;
+END;
+%E  SUBROUTINE T2_SHOW_FILE  --- Show file
+SUBROUTINE T2_SHOW_FILE(IFILE,NAME);
+"
+	Type information about the selected file
+	INPUT:
+		IFILE - The unit number of the file
+	OUTPUT:
+		NAME - The file name
+		Information on the terminal about the file		
+"
+   IMPLICIT NONE;
+   INTEGER IFILE,I,J,JMAX,T2BTRIM;
+   CHARACTER *(*) NAME;
+   $BOOLEAN LOPEN;
+   $SPECIFICATION;
+   I=ABS(IFILE); IF (I.eq.0) RETURN;
+   INQUIRE(UNIT=I,NAME=OUTSTR,ERR=:INQERR:,OPENED=LOPEN,NEXTREC=J);
+   IF (.NOT. LOPEN) RETURN;
+   J=J-1;
+   IF (J .le. 0) THEN;
+      J=0; IF(I.le.20) J=NINP(I);
+   ENDIF;
+   JMAX=T2BTRIM(OUTSTR);
+$VAX;
+      CALL T2_CONCEAL_PASSWORD(OUTSTR,JMAX);
+$END;
+   WRITE($TERMINAL OUT,*,ERR=:INQERR:)'   ',NAME,' Unit=',I,' Line=',J;
+   WRITE($TERMINAL OUT,*,ERR=:INQERR:)'     File=','"'//OUTSTR(:JMAX)//'"';
+:INQERR: CONTINUE;
+END;
+SUBROUTINE T2WRSQ(STR,LCOMP,LUN,IB);
+"
+	This routine Writes a string and compresses it if desired.
+	Input:
+		STR	The string to write
+		LCOMP	.true. if compressed output desired
+		LUN	Output logical unit number
+		IB	Minimum character to compress	
+"
+   IMPLICIT NONE;
+   CHARACTER *($MAXTIT) STR;
+   $BOOLEAN LCOMP,LALPHA;
+
+   INTEGER LUN,IB;
+   INTEGER I,IMOVE,IBEG,IEND,ISTR,T2BTRIM,ILAST ;
+   ISTR=$MAXTIT;
+   <LOOP> <
+"
+	Remove E+00 from output strings
+"
+      I=INDEX(STR(1:ISTR),'E+00 ');
+      IF(I.gt.0) THEN; STR(I:I+3)=' '; ELSE; <EXIT>; ENDIF;
+   >
+   IF (LCOMP) THEN;
+      IMOVE=MAX(1,IB); IBEG=0; IEND=0;
+      ILAST=1; LALPHA=.true.;
+      <I=MAX(1,IB),ISTR;
+	 IF (STR(I:I).eq.' ') THEN;
+	    IF (IBEG.GE.IMOVE) THEN;
+		IF (IBEG.ne.IMOVE) STR(IMOVE:I)=STR(IBEG:IEND);
+		IMOVE=(IEND-IBEG)+IMOVE+2;
+		ILAST=IMOVE-2;
+	    ENDIF;
+	    IBEG=0; IEND=0; LALPHA=.true.;
+	 ELSEIF (.not.LALPHA.and.STR(I:I).eq.'0') THEN;
+	    IF (IBEG.eq.0) THEN; IBEG=I; IEND=I; ENDIF;
+	 ELSE;
+	    IF (INDEX('0123456789',STR(I:I)).le.0) THEN; "Not number ?"
+		IF (.not.LALPHA )THEN;
+		  IF (IBEG.GE.IMOVE) THEN;
+		     IF (IBEG.ne.IMOVE) STR(IMOVE:I-1)=STR(IBEG:IEND);
+		     IMOVE=(IEND-IBEG)+IMOVE+1;
+		     ILAST=IMOVE-2;
+		  ENDIF;
+		  IBEG=I;
+		ENDIF;
+		LALPHA=.true.;
+	    ENDIF;
+	    IF (STR(I:I).eq.'.') LALPHA=.false.;
+	    IF (IBEG.eq.0) IBEG=I;
+	    IEND=I;
+	 ENDIF;
+      >
+      I=MIN(I,ISTR);
+      IF (IBEG.GE.IMOVE) THEN;
+	IF (IBEG.ne.IMOVE) STR(IMOVE:I)=STR(IBEG:IEND);
+	IMOVE=(IEND-IBEG)+IMOVE+2;
+	ILAST=IMOVE-2;
+	IEND=0;
+      ENDIF;
+      ISTR=MAX(ILAST,IEND);
+   ELSE;
+      ISTR=T2BTRIM(STR);
+   ENDIF;
+   WRITE(LUN,'(A)') ' '//STR(1:ISTR);
+END;
+%E  SUBROUTINE T2_SHOW_CHARACTERS  --- Type the character definitions
+SUBROUTINE T2_SHOW_CHARACTERS($INFO,$CARD);
+   IMPLICIT NONE;
+   INTEGER $INFO(10),I,J,K,L;
+   CHARACTER*(*) $CARD;
+   $SPECIFICATION;
+   $T2TOKNC;
+   CHARACTER*13 TYPES(6);
+   CHARACTER*1 CCHAR;
+   DATA TYPES/
+      '  ALPHA=','  TERMINATOR=','  SEPARATOR=',
+      '  COMMENT=','  ENDCOMMENT=','  SPECIAL='/;
+   INTEGER ITYPES(6);
+   DATA ITYPES/5,8,7,10,11,12/;
+   WRITE($TERMINAL OUT,:BEGFOR:)'Characters -';
+   <J=1,6;				"All legal types"
+      OUTSTR='"';			"Enclose string in quotes"
+      L=1;
+      <I=1,256;
+	IF (TYPTAB(I).ne.ITYPES(J)) <NEXT>;  "Not current type ?"
+	CCHAR=CHAR(I-1);		"Get character"
+	CALL T2UPCS(CCHAR);		"Make it upper case"
+	IF (INDEX('	 ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890-+.',CCHAR)
+	    .gt.0) <NEXT>;		"Not normal chars ?"
+	L=L+1; OUTSTR(L:L)=CCHAR;	"Save the char"
+	IF (L+1 .ge. LEN(OUTSTR)) <EXIT>;	"At end of string ?"
+      >
+      IF ($TRAP) <EXIT>;		"Kill ?"
+      L=L+1; OUTSTR(L:L)='"';		"Add final quotes"
+      IF (L.gt.2) WRITE($TERMINAL OUT,:STRFOR:) TYPES(J),OUTSTR(1:L);
+   >
+:BEGFOR: FORMAT(2X,A);
+:STRFOR: FORMAT(2X,A,T19,A);
+END;
+%E SUBROUTINE T2_SET_DEFAULT_FILE(C_FILE,N_FILE,C_DEFAULT);
+SUBROUTINE T2_SET_DEFAULT_FILE(C_FILE,N_FILE,C_DEFAULT);
+   IMPLICIT NONE;
+   CHARACTER*(*) C_FILE,C_DEFAULT;
+   CHARACTER*$MAXTIT C_STRING;
+   INTEGER T2_GET_LOGICAL,ISTAT;
+   INTEGER N_STRING;
+   INTEGER N_FILE,I,J,K,L,IMIN,IMAX;
+   IF (N_FILE .ge. LEN(C_FILE)) RETURN;	"File string full ??"
+   IF (N_FILE .le. 0) THEN;		"No file name"
+      C_FILE=C_DEFAULT;			"Use the default"
+      N_FILE=LEN(C_DEFAULT);
+      RETURN;
+   ENDIF;
+		"Translate logical name"
+   ISTAT=T2_GET_LOGICAL(C_FILE(:N_FILE),C_STRING,N_STRING);
+   IF (N_STRING.gt.0) THEN;	"Got one ??"
+	C_FILE=C_STRING(:N_STRING);	"Now set file name"
+	N_FILE=N_STRING;
+   ENDIF;
+   K=INDEX(C_DEFAULT,'.')-1;		"Location of type in DEFAULT"
+   imin=1;				"File name start"
+   L=0;					"File version number"
+$VAX;					"Convert UNIX file spec to VAX"
+   J=0;
+   IMIN=INDEX(c_file(imin:n_file),'::')+imin;	"Node ??"
+   if (IMIN .gt. 1) IMIN=IMIN+1;
+   IMIN=INDEX(c_file(IMIN:n_file),':')+IMIN;	"DEvice ?"
+   IMAX=0;
+   <I=IMIN,n_FILE;
+	if (c_file(I:I) .eq. '/') then;
+		if (i .eq. 1)	then; c_file(i:i)='[';
+				else; c_file(i:i)='.'; endif;
+		j=i;
+	elseif (c_file(I:I+1) .eq. '..') then;
+		c_file(I:)='-'//c_file(I+2:n_file);
+		n_file=n_file-1;
+	elseif (c_file(I:I) .eq. ']') then;
+		imax=i;
+	endif;
+   >
+   if (j .ne. 0) then;
+	imin=j+1;
+	c_file(j:j)=']';
+	if(c_file(IMIN:IMIN) .eq. '-') then;
+		c_file='['//c_file;
+		n_file=n_file+1;
+	elseif(c_file(IMIN:IMIN) .ne. '[') then;
+		c_file='[.'//c_file;
+		n_file=n_file+2;
+	endif;
+   else;
+	imin=imax+1;
+   endif;
+   <I=imin,N_FILE;
+	IF (	C_FILE(I:I) .eq. ';' .or.
+		C_FILE(I:I) .eq. '.' ) L=I;
+   >			"Directory ?"
+$ELSE;
+$UNIX;
+      <I=1,N_FILE;
+	IF ( C_FILE(I:I) .eq. '/')  imin=I+1;	"Path name ?"
+      >
+$END;
+   IF (C_FILE(N_FILE:N_FILE) .eq. '.') THEN;	"Dot at end ??"
+	N_FILE=MAX(1,N_FILE-1);
+   ENDIF;
+$END;
+   IF (imin.gt.N_FILE) THEN;		"No file name ?"
+      C_FILE(imin:)=C_DEFAULT;
+      N_FILE=N_FILE+LEN(C_DEFAULT);
+   ELSEIF (K.gt.1) THEN;
+      I=INDEX(C_FILE(imin:N_FILE),'.');
+      IF (I .eq. 1) THEN;			"Dot at beginning ?"
+	C_FILE(imin:)=C_DEFAULT(:k)//C_FILE(imin:N_FILE);
+	N_FILE=N_FILE+k;
+      ELSEIF (I .eq. 0) THEN;			"No dot ?"
+	IF (L. gt .imin) THEN;			"File version ?"
+	   C_FILE(imin:)=C_FILE(imin:L-1)//C_DEFAULT(K+1:)//C_FILE(L:);
+	ELSEIF (L .eq. imin) THEN;			"No file name ?"
+	   C_FILE(imin:)=C_DEFAULT//C_FILE(L:);
+	   k=0;
+	ELSE;					"No file version"
+	   C_FILE(imin:)=C_FILE(imin:N_FILE)//C_DEFAULT(K+1:);
+	ENDIF;
+	N_FILE=N_FILE+(LEN(C_DEFAULT)-(k));
+      ENDIF;
+   ENDIF;
+   N_FILE=MIN(N_FILE,LEN(C_FILE));
+END;
+%E  FUNCTION T2_GET_SYMBOL
+CHARACTER*4 FUNCTION T2_GET_SYMBOL(SYM);
+   CHARACTER*4 C_SYM;
+   REAL SYM;
+   IF (SYM .lt. 0.5) THEN;
+      C_SYM='NONE';
+   ELSE;
+      C_SYM='"  "';
+      CALL SYMTXT(SYM,C_SYM(2:3));
+      IF (C_SYM(2:3).eq.' ') C_SYM='DOT';
+   ENDIF;
+   T2_GET_SYMBOL=C_SYM;
+END;
+%E  FUNCTION T2_GET_UNIT_NAME
+CHARACTER*20 FUNCTION T2_GET_UNIT_NAME(UNIT);
+   IMPLICIT NONE;
+   REAL UNIT,TEMP;
+   CHARACTER*20 CUNIT/'?'/;
+   INTEGER J;
+
+   INTEGER NUNIT;
+
+
+  REAL  INCHES , CM ;
+$ENGLISH;
+   CHARACTER*6 CUNIT3 ;
+   PARAMETER (INCHES = 1.0);
+   PARAMETER (CM     = 2.54);
+   PARAMETER (CUNIT3 = 'inches');
+$ELSE;
+   CHARACTER*2 CUNIT3 ;
+   PARAMETER (INCHES = 1.0/2.54);
+   PARAMETER (CM     = 1.0);
+   PARAMETER (CUNIT3 = 'cm');
+$END;
+
+   REAL MM, DM, METERS, MILS, POINTS, FEET, YARDS ;
+   REAL FATHOMS, RODS, FURLONGS, MILES, LEAGUES   ;
+   INTEGER MAXUNITS ;
+   PARAMETER ( MM       = CM*10);
+   PARAMETER ( DM       = CM/10);
+   PARAMETER ( METERS   = CM/100);
+   PARAMETER ( MILS     = INCHES*1000);
+   PARAMETER ( POINTS   = INCHES*72);
+   PARAMETER ( FEET     = INCHES/12);
+   PARAMETER ( YARDS    = FEET/3);
+   PARAMETER ( FATHOMS  = FEET/6);
+   PARAMETER ( RODS     = FEET/16.5);
+   PARAMETER ( FURLONGS = RODS/40);
+   PARAMETER ( MILES    = FURLONGS/8);
+   PARAMETER ( LEAGUES  = MILES/3);
+   PARAMETER ( MAXUNITS = 14);
+
+   REAL UNITS(MAXUNITS)
+	/INCHES,MM,CM,METERS,POINTS,MILS,DM,
+	FEET,YARDS,FATHOMS,RODS,FURLONGS,MILES,LEAGUES/;
+   CHARACTER*10 C_UNITS(MAXUNITS)
+	/'inches','mm','cm','meters','points','mils','dm',
+	'feet','yards','fathoms','rods','furlongs','miles','leagues'/;
+
+	TEMP = 1. ;
+	IF (UNIT .GT. .000001 ) TEMP=UNIT ;
+$ENGLISH;
+	   WRITE(CUNIT,'(A,1P,G10.2,5A)')
+	      '(',1/TEMP,' inches)';
+$ELSE;
+	   WRITE(CUNIT,'(A,1P,G10.2,5A)')
+	      '(',1/TEMP,' cm.)';
+$END;
+	CALL T2SQEZ(CUNIT,NUNIT);		"Squeeze the string"
+	<J=1,MAXUNITS;				"Check standard units"
+	    IF (ABS(UNIT-UNITS(j))  .le. .001*unit)
+	    CUNIT=C_UNITS(J);
+	>
+	T2_GET_UNIT_NAME=CUNIT;
+   END;

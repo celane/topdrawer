@@ -1,0 +1,572 @@
+%N
+%U+ TDMACROS.MOR
+%L
+"
+	This module contains routines to create,merge, and delete data sets
+	It also contains some misc. routines
+"
+   <TOKEN USING INFOIN,CARDIN>;
+%';SUBROUTINE'=';<RESET> <SET> ;"SUBROUTINE"'
+<SET>;                      "Ready for reset"
+%E  SUBROUTINE T2_CONFIRM
+INTEGER FUNCTION T2_CONFIRM(STR);
+   IMPLICIT NONE;
+   CHARACTER*(*) STR;
+   CHARACTER*40  PROMPT;
+   CHARACTER*8 OUTSTR;
+   INTEGER I,L;
+   LOGICAL INTRAC;
+   T2_CONFIRM=2;
+   IF (INTRAC(I)) THEN;
+:AGAIN:
+      I = LEN(STR)     ;
+      L = LEN(OUTSTR)  ;
+      PROMPT = ' '//STR//' ? (Y,N,Q,A) (Default=N):' ;
+      CALL READPR( PROMPT(:I+26) , OUTSTR , L ) ;
+      IF (L.lt.0) RETURN;
+      IF (L.gt.0) THEN;
+        CALL T2SQEZ(OUTSTR(:L),L);
+        CALL T2UPCS(OUTSTR(:L));
+      ELSE;
+        RETURN;
+      ENDIF;
+      IF     (INDEX('NO'  ,OUTSTR(:L)).eq.1) THEN; RETURN;
+      ELSEIF (INDEX('YES' ,OUTSTR(:L)).eq.1) THEN; T2_CONFIRM=1; RETURN;
+      ELSEIF (INDEX('FALSE'  ,OUTSTR(:L)).eq.1) THEN; RETURN;
+      ELSEIF (INDEX('TRUE' ,OUTSTR(:L)).eq.1) THEN; T2_CONFIRM=1; RETURN;
+      ELSEIF (INDEX('0'  ,OUTSTR(:L)).eq.1) THEN; RETURN;
+      ELSEIF (INDEX('1' ,OUTSTR(:L)).eq.1) THEN; T2_CONFIRM=1; RETURN;
+      ELSEIF (INDEX('QUIT',OUTSTR(:L)).eq.1) THEN; T2_CONFIRM=3; RETURN;
+      ELSEIF (INDEX('ALL',OUTSTR(:L)).eq.1) THEN; T2_CONFIRM=4; RETURN;
+      ENDIF;
+GOTO :AGAIN:;
+   ENDIF;
+END;
+%E  SUBROUTINE T2RMLS - Remove last data set
+SUBROUTINE T2RMLS;
+   IMPLICIT NONE;
+   $SPECIFICATION;
+   $SPECIFYNONE;
+   $POINT ARRAYS($NPOINTS);
+   $MAINSPEC;
+   IF (NDSETS .le. 0) RETURN;      "No data ?"
+   CALL T2GDSET(NDSETS,1,$LARGE INTEGER,1,$LARGE INTEGER,ISETD,HNONE,'*');
+   $INEXTPTR=IBGDAT;               "Next available datum"
+   NDSETS=NDSETS-1;                "Number of data sets"
+   IF (IBTYPE.eq.1) THEN; NPOINT=NPOINT-NP;       "Number of points"
+                    ELSE; NPOINT=NPOINT-NP*NL*NINCR0;
+                    ENDIF;
+END;
+%E  SUBROUTINE T2_DELETE_DATA
+   SUBROUTINE T2_DELETE_DATA($INFO,$CARD);
+"
+	program to delete data points
+	Options:
+		POINTS,SETS,LIMITED,ALL,CONFIRM,LOG
+"
+   IMPLICIT NONE;
+   INTEGER INFOIN(10);
+   INTEGER IOFF;
+   INTEGER I,I0,J,K,L;
+   INTEGER ISET ,NLIM ,IPOINT ,IDEL ,LGET ,JLIM ,T2_CONFIRM ,T2BTRIM;
+   REAL XV,YV,ZV,SV;
+   CHARACTER*(*) CARDIN;
+   $BOOLEAN LTEMP1 ,LTEMP2 ,LLIMIT ,LALL ,LKEEP;
+   $SPECIFICATION;
+   $SELECTSPEC;
+   $SPECIFYNONE;
+   $POINT ARRAYS($NPOINTS);
+   $MAINSPEC;
+   REAL DVEC($MAXCOR),T;
+   EQUIVALENCE (DVEC(N_XDATA),XV),(DVEC(N_YDATA),YV),(DVEC(N_ZDATA),ZV);
+   IF (NDSETS.le.0) THEN;       "No data ?"
+      ERROR OUT;('*** ERROR *** No data to delete');
+      RETURN;
+   ENDIF;
+   N2=0;
+   NS2=0;
+   LALL=.false.;
+   <TOKEN KEY LOOP> <
+                      "Get data set"
+      ALL        < LALL=.true.;>
+      CONFIRM:Y  < LCONF=LTOKEN;>
+      LIMITED    < CALL T2XYZC($INFO,$CARD,TLIM,2,NLIM); >
+      LOG:Y      < LLOG =LTOKEN;>
+      POINTS     < CALL T2PNTS($INFO,$CARD,N1,N2); >
+      SETS       < CALL T2NSET($INFO,$CARD,NS1,NS2); >
+      SELECT:S   < C_SELECT=STRNG; N_SELECT=MAX(1,NSTRNG); >
+   >
+   IF ($ERROR) RETURN;
+   LLOG=LLOG.or.LCONF;
+   LLIMIT=TLIM(1,1).ne.HNONE;
+   IF (	.not. LLIMIT .and.			"No limits ?"
+	N2 .eq. 0 .and.				"No points ?"
+	NS2 .eq. 0 .and.			"No sets ?"
+	.not. LALL)THEN;			"Not all ?"
+	ERROR OUT;('*** ERROR *** No data specified');
+	RETURN;
+   ELSEIF (LALL .and. .not. LCONF) THEN;		"All ?"
+	IF (LLOG) WRITE($TERMINAL OUT,*)'  All data deleted';
+	CALL T2PNTR;
+	RETURN;						"Kill all data"
+   ENDIF;
+   IF (N2.eq.0) N2=$LARGE INTEGER;
+   IF (NS2.eq.0) NS2=NDSETS;
+   IOFF=0;						"Data set offset"
+   <ISET=NS1,NS2;
+	IF ($TRAP) RETURN;
+	CALL T2GDSET(ISET-IOFF,N1,N2,N3,N4,ISETD,HNONE,C_SELECT(:N_SELECT));
+	IF (NP .lt. N1 .or. NL .lt. N3) <NEXT>;		"No data selected"
+	LKEEP=.true.;
+	IF (IBTYPE .eq. 2) THEN;
+	    J=(NINCR1-1)*(NINCR2-1);			"Tot points For mesh"
+	ELSE;
+	    J=(IENDAT+1-$IMSPTR)/NINCR0;		"Tot. Number of points"
+	ENDIF;
+	IF (LLOG) THEN;
+	    WRITE($TERMINAL OUT,*)'Set=',ISET-IOFF,' Points=',J;
+	    CALL T2_GET_SET_NAME(IBGDAT,C_NAME);
+	    N_NAME=T2BTRIM(C_NAME);
+	    IF (N_NAME.gt.0) WRITE($TERMINAL OUT,*)
+		' NAME="'//C_NAME(:N_NAME)//'"';
+	    IF (IBTYPE .eq. 2) WRITE($TERMINAL OUT,*)
+               ' Mesh data',NINCR2-1,' by ',NINCR1-1;
+	ENDIF;
+	IPOINT=0;
+	I0=IBGDAT; I1=IBGDAT; I2=IBGDAT;
+"
+	Find out if Z values ??
+"
+	JLIM=3; IF (DATBUF(I3).eq.HNONE) JLIM=2;
+      IF (IBTYPE.eq.2) THEN;			"3-d data ?"
+         IPOINT=J;
+         I1=I0;
+         IM=IENDAT+1;
+         If (LCONF) THEN;
+            GOTO (:YES:,:NO:,:QUIT:,:ALL:) T2_CONFIRM('Delete');
+               :QUIT: <EXIT>;
+               :NO:   <NEXT>;
+               :ALL:  LCONF=.false.;
+               :YES:
+         ENDIF;
+      ELSE;
+         I1=IM; I2=$IMSPTR;
+         <I=N1,NP;
+            LKEEP=.false.;
+            IF ($TRAP) <EXIT>;
+            IF (LLIMIT.or.LLOG) THEN;
+               <J=1,NINCR0; DVEC(IVARBL(J))=DATBUF(J+IM-1); >	"Get values"
+               IF (LLIMIT) THEN;
+                  <J=1,JLIM;
+			T=DVEC(NCSIZE*(J-1)+N_XDATA);
+			LKEEP=	T .lt. TLIM(J,1) .or.
+				T .gt. TLIM(J,2);
+			IF (LKEEP) GOTO :KEEP:;
+                  >
+                  "Keep data within limits"
+               ENDIF;
+               IF (LLOG) THEN;
+		J=(IM-$IMSPTR)/NINCR0+1;			"Point number"
+		  IF (JLIM.eq.3) THEN;
+                     WRITE($TERMINAL OUT,'(A,I5,1P,10(A,G10.3))',ERR=:ERR1:)
+                        '  Point=',J,' X=',XV,' Y=',YV,' Z=',ZV;
+		ELSE;
+                     WRITE($TERMINAL OUT,'(A,I5,1P,10(A,G10.3))',ERR=:ERR1:)
+                        '  Point=',J,' X=',XV,' Y=',YV;
+		ENDIF;
+:ERR1:
+		IF ( LCONF ) THEN;
+                  LKEEP=.false.;
+                  GOTO (:YES1:,:NO1:,:QUIT1:,:ALL1:) T2_CONFIRM('Delete');
+                     :ALL1:  LCONF=.false.;
+                             GOTO :YES1:;
+                     :QUIT1: <EXIT>;
+                     :NO1:   LKEEP=.true.;
+                     :YES1:
+		ENDIF;
+               ENDIF;
+            ENDIF;
+:KEEP:
+            IF (LKEEP) THEN;
+               <J=1,NINCR0; DATBUF(I1)=DATBUF(IM+J-1); I1=I1+1; >
+            ELSE;
+               IF (LLOG) WRITE($TERMINAL OUT,*)'   ---> Deleted';
+               IPOINT=IPOINT+1;
+            ENDIF;
+            IM=IM+NINCR0;
+         >
+         IF (I2.eq.I1) THEN;			"No dat kept?"
+            IF (LLOG) WRITE($TERMINAL OUT,*)'   Set Deleted';
+            IF (IM.eq.I1) <NEXT>;		"No data to delete?"
+            IF (IM.gt.IENDAT) I1=I0;		"Deleted all"
+         ENDIF;
+      ENDIF;
+      NPOINT=NPOINT-IPOINT;
+      IF (I1.eq.IBGDAT) THEN;
+         NDSETS=NDSETS-1; IOFF=IOFF+1;
+      ELSE;
+         DATBUF(IBGDAT+2)=DATBUF(IBGDAT+2)-(IM-I1);
+      ENDIF;
+      <J=IM,$INEXTPTR-1; DATBUF(I1)=DATBUF(J); I1=I1+1; >
+      $INEXTPTR=I1;
+      DATDAT(1,1)=HNONE;
+   >
+:END:
+END;
+%E  SUBROUTINE T2_MERGE
+   SUBROUTINE T2_MERGE($INFO,$CARD);
+"
+	program to merge data sets
+	Options:
+		ALL,SETS,POINTS,APPEND,LOG
+"
+   IMPLICIT NONE;
+   INTEGER INFOIN(10);
+   REAL XV,YV,ZV;
+   $BOOLEAN LZV;
+   INTEGER I,J,JOFF,NMAX,NLIM;
+   INTEGER ISET,JSET,JBGDAT,J7,IPOINT;
+   CHARACTER*(*) CARDIN;
+   $BOOLEAN LKEEP;
+   $SPECIFICATION;
+   $SPECIFYNONE;
+   $SELECTSPEC;
+   $MAINSPEC;
+   $POINT ARRAYS($NPOINTS);
+   REAL DVEC($MAXCOR),T;
+   EQUIVALENCE (DVEC(N_XDATA),XV),(DVEC(N_YDATA),YV),(DVEC(N_ZDATA),ZV);
+   IF (NPOINT.le.0) THEN;       "No data ?"
+      ERROR OUT;('*** ERROR *** No data to merge');
+      RETURN;
+   ENDIF;
+   <I=1,$MAXCOR; DVEC(I)=0; >
+   NS2=0;
+   C_NAME='Merged %';
+   N_NAME=INDEX(C_NAME,'%')-1;   
+   <TOKEN KEY LOOP> <
+                      "Get data set"
+      ALL      <IF (NS2.eq.0)NS2=NDSETS; >
+      APPEND:Y <LAPPEN=LTOKEN;>
+      LOG:Y    <LLOG =LTOKEN;>
+      NAME:S   <N_NAME=MAX(1,NSTRNG); C_NAME=STRNG(:N_NAME); >
+      POINTS   <CALL T2PNTS($INFO,$CARD,N1,N2);
+		IF (NS2.eq.0)NS2=NDSETS; >
+      SETS     <CALL T2NSET($INFO,$CARD,NS1,NS2);>
+      SELECT:S <C_SELECT=STRNG; N_SELECT=MAX(1,NSTRNG); >
+   >
+   IF ($ERROR) RETURN;
+   IPOINT=0;                         "Number of points to merge"
+   <ISET=NS1,NS2;
+	CALL T2GDSET(ISET,N1,N2,N3,N4,ISETD,HNONE,C_SELECT(:N_SELECT));
+	IF (.not. LAPPEN .and. IBTYPE.eq.2) THEN;
+	    ERROR OUT;'*** ERROR *** Can not merge mesh data'; RETURN;
+	ENDIF;
+	IPOINT=MAX(0,NP-N1+1)+IPOINT;
+   >
+   IF (IPOINT.le.0) THEN;
+      ERROR OUT;'*** ERROR *** No data to merge'; RETURN;
+   ENDIF;
+   IF (LAPPEN) THEN;
+	CALL T2NEWS(IPOINT,C_NAME(:N_NAME));	"New data set"
+	IF ($ERROR) RETURN;
+	JSET=NDSETS;
+   ELSE;
+	JSET=NS1;
+   ENDIF;
+   JOFF=0;
+   IPOINT=0;
+   <ISET=NS1,NS2;
+	CALL T2GDSET(JSET,IPOINT+1,$LARGE INTEGER
+		,1,$LARGE INTEGER,ISETD,HNONE,C_SELECT(:N_SELECT));
+	J7=IM;            "Starting point"
+	JBGDAT=IBGDAT;           "Header"
+	CALL T2GDSET(ISET-JOFF,N1,N2,N3,N4,ISETD,HNONE,C_SELECT(:N_SELECT));
+	IF (IBTYPE .eq.2) <NEXT>;
+	IF (.not.LAPPEN) NPOINT=NPOINT-(IENDAT-IM+1)/NINCR0;
+	NP=MAX(0,NP-N1+1);
+	NPOINT=NPOINT+NP;
+	IPOINT=IPOINT+NP;
+	IF (LLOG.and.NP.gt.0) WRITE($TERMINAL OUT,*)
+		'  Merged data set',ISET+JOFF,' into set',JSET;
+	<I=1,NINCR0*NP; DATBUF(J7)=DATBUF(IM); IM=IM+1; J7=J7+1; >
+	DATBUF(JBGDAT+2)=J7-JBGDAT;
+	IF (.not.LAPPEN) THEN;
+	    IF (NS1.ne.ISET) THEN; NDSETS=NDSETS-1; JOFF=JOFF+1; ENDIF;
+	    <I=IENDAT+1,$INEXTPTR-1; DATBUF(J7)=DATBUF(I); J7=J7+1; >
+	   $INEXTPTR=J7;
+	ENDIF;
+   >
+END;
+%E  SUBROUTINE T2_CREATE_MESH
+SUBROUTINE T2_CREATE_MESH($INFO,$CARD);
+"
+	Routine to create a mesh of data
+"
+   IMPLICIT NONE;
+   INTEGER INFOIN(10);
+   $BOOLEAN LMERR,LAPPEN;
+   CHARACTER*(*) CARDIN;
+   $SPECIFICATION;
+   $POINT ARRAYS($NPOINTS);
+   INTEGER IM(2),IPT,I,J,K;
+   EQUIVALENCE (IPT,ICPOIN(1));
+   REAL PARM(4,2);
+   I=0;
+   LMERR=.false.;
+   LAPPEN=(.not. FLAGS(28) .and. REVLEV.lt.3);
+   N_NAME=1; C_NAME(:1)=' ';
+   IM(1)=0; IM(2)=0;
+   <TOKEN KEY LOOP> <
+      APPEND:Y <LAPPEN=LTOKEN; >
+      WITH    < CONTINUE; >
+      ERROR:Y < LMERR=LTOKEN; >
+      NAME:S  < N_NAME=MAX(1,NSTRNG); C_NAME=STRNG(:N_NAME); >
+      X:1,Y:2,Z:3 <
+	IF (I.ge.2) THEN;
+	    ERROR OUT;'*** ERROR *** Too many coordinates';
+	ELSE;
+	    I=I+1; IM(I)=INTEG;
+	    IF (IM(1) .eq. IM(2)) THEN;
+		ERROR OUT;'*** ERROR *** Duplicate coordinates';
+	    ENDIF;
+	    CALL T2FTBY($INFO,$CARD,PARM(1,I),0);
+	ENDIF;
+	IF ($ERROR) RETURN;
+      >
+   >
+   I=1; IF (LMERR) I=2;
+   IF (.not.$ERROR) THEN;
+	IF (.not.LAPPEN) CALL T2PNTR;
+	CALL T2_CREATE_HIST(PARM,2,C_NAME(:N_NAME),I);
+	IF (.not. $ERROR) THEN;
+	     DATBUF($IMSPTR)=IM(1)+4*IM(2);		"Setup X/Y"
+	ENDIF;
+   ENDIF;
+   CALL T2MSCK($INFO,$CARD);     "Check for good values"
+END;
+%E  SUBROUTINE T2_CREATE_HIST
+SUBROUTINE T2_CREATE_HIST(PARAM,N,NAME,IERROR);
+   IMPLICIT NONE;
+   INTEGER N;
+   REAL PARAM(4,N);
+   CHARACTER*(*) NAME;
+   INTEGER IERROR;
+   INTEGER I,J,K,L;
+   $MAINSPEC;
+   $POINT ARRAYS($NPOINTS);
+   $SPECIFICATION;
+   $SPECIFYNONE;
+
+   IF (N .gt. 1) THEN;
+	IF (NINT(PARAM(4,2)) .ge. 1) THEN;
+	    CALL T2NEWM(IERROR,NINT(PARAM(4,1))+1,NINT(PARAM(4,2))+1,NAME);
+	ELSE;
+	    CALL T2NEWS(NINT(PARAM(4,1)),NAME);	"Start a new data set"
+	ENDIF;
+   ELSE;
+	CALL T2NEWS(NINT(PARAM(4,1)),NAME);	"Start a new data set"
+   ENDIF;
+   IF (.not. $ERROR) THEN;
+	CALL T2GDSET(NDSETS,1,$LARGE INTEGER,1,$LARGE INTEGER,
+		ISETD,HNONE,'*');
+	NINCR1=NINCR1*NINCR0;
+	IF (IBTYPE .gt. 1) THEN;
+	    <I=1,2;
+		K=ISETD(NCSIZE*(I-1)+NXDATA);				"Data"
+		L=ISETD(NCSIZE*(I-1)+NDXDATA);				"Error"
+		IF (K .gt. 1) THEN;				"Exists ?"
+		    <J=1,ISETD(I+NPDATA-1);			"All values"
+			DATBUF(K)=PARAM(1,I)+(J-1)*PARAM(3,I);	"Set Value"
+			K=K+ISETD(I+NINDAT-1);
+			IF (L .gt. 1) THEN;
+			    DATBUF(L)=(PARAM(3,I))/2;
+			    L=L+ISETD(I+NINDAT-1);		"Set Width"
+			ENDIF;
+		    >
+		ENDIF;
+	    >
+	ELSE;
+	    IF (I7 .gt. 1) THEN;
+		<J=1,NP; DATBUF(I7)=SYMBOL; I7=I7+NINCR0; >	"Set symbol"
+	    ENDIF;
+	    <I=1,MIN(N,3);
+		K=ISETD(NCSIZE*(I-1)+NXDATA);				"Data"
+		L=ISETD(NCSIZE*(I-1)+NDXDATA);				"Error"
+		IF (K .gt. 1) THEN;				"Exists ?"
+		    <J=1,NP;					"All values"
+			DATBUF(K)=PARAM(1,I)+(J-1)*PARAM(3,I);	"Set Value"
+			K=K+NINCR0;
+			IF (L .gt. 1) THEN;
+			    DATBUF(L)=ABS(PARAM(3,I))/2;
+			    L=L+ISETD(I+NINDAT-1);		"Set Width"
+			ENDIF;
+		    >
+		ENDIF;
+	    >
+	ENDIF;
+   ENDIF;
+   END;
+%E  SUBROUTINE T2XYZC
+SUBROUTINE T2XYZC($INFO,$CARD,TLIM,ILIM,NLIM);
+   "Routine to get from, to for limited option"
+   IMPLICIT NONE;
+   $SPECIFICATION;
+   $SPECIFYNONE;
+   CHARACTER*(*) CARDIN;
+   CHARACTER*6 CFRTO(2);DATA CFRTO/' FROM ',' TO '/;
+   CHARACTER*2 CXYZ(4);DATA CXYZ/'X=','Y=','Z=',' '/;
+   INTEGER INFOIN(10),IXYZ,IFT;
+   INTEGER I,ILIM,IT,IMIN,IMAX,J,JTEST1,JTEST2,K,N,NLIM,NMIN,NMAX;
+   INTEGER TXSYM;
+   REAL TLIM(3,ILIM);
+   REAL XYZ1(2),XYZ2(3),XYZ0(2),TEMP;
+   $BOOLEAN LF1,LF2,LFRTO(2),LSET,LVLOG,LRECUR,LEQUAL;
+   TEMP=$LARGE REAL;
+   LEQUAL=.true.;
+   <J=1,ILIM; TEMP=-TEMP;           "Initialize limits"
+      <I=1,3; TLIM(I,J)=TEMP;       "First set up wide limits"
+         K=MOD(J-1,2)+1;            "If data limits set, use them"
+         IF (FLAGS(2+K+2*I)) TLIM(I,J)=XYZLIM(I,K);
+      >
+   >
+   LVLOG=FLAGS(96).and.FLAGS(75);   "Video log ??"
+   IXYZ=1; IFT=1; LSET=.true.; NLIM=0; LFRTO(1)=.false.; LFRTO(2)=.false.;
+   <TOKEN LOOP> <
+      NUMBER:: < LSET=.true.;       "value for X,Y,Z limit"
+         LFRTO(IFT)=.true.;
+         IF (IXYZ.le.3) THEN;
+            TLIM(IXYZ,IFT+NLIM)=FLOTNG;
+            IF (LEQUAL) THEN;
+               TLIM(IXYZ,IFT+NLIM+1)=FLOTNG;
+               LFRTO(2)=.true.;
+            ENDIF;
+            IXYZ=IXYZ+1;
+         ELSE;
+            ERROR STRING; ('*** ERROR *** Extraneous number');
+         ENDIF;
+      >
+      KEY:: <
+         VLOG:Y < LVLOG=LTOKEN.and.XFRM14(1) .ne. 0;>  "Setup video log"
+         RECURSOR:1,CURSOR:0 <           "Use cursor"
+            IF (INTEG.ne.0) THEN;
+               LRECUR=.true.; NMIN=NLIM; NMAX=ILIM-1; IFT=1;
+            ELSE;
+               NMIN=1; NMAX=1; LRECUR=.false.;
+            ENDIF;
+            <N=NMIN,NMAX;
+               NSTJOU=LSTJOU;
+               JTEST1=ICHAR('X'); JTEST2=ICHAR('Y');
+               IF (.not.LSET) THEN;
+                  JTEST1=ICHAR(CXYZ(IXYZ)(1:1)); JTEST2=ICHAR(CXYZ(IXYZ)(2:2));
+               ENDIF;
+               CALL T2CURS(J,XYZ0,XYZ1,XYZ2,LF1,LF2);
+               IT=4;
+               IF((J.eq.ICHAR(' ').or.J.eq.JTEST1.or.J.eq.JTEST2).and.LF2) THEN;
+                  IF (LVLOG) CALL T2PLOT(XYZ2(1),XYZ2(2),HNONE,HNONE,HNONE,
+                     HNONE,TXSYM('1O'),1,1,0,HNONE,
+		     HNONE,HNONE,HNONE);
+                  IF(LSET) THEN;
+                     IMIN=1; IMAX=2;
+                     IF(J.eq.JTEST1) THEN; IT=1; IMAX=1; ENDIF;
+                     IF(J.eq.JTEST2) THEN; IT=2; IMIN=2; ENDIF;
+                  ELSE;
+                     IMIN=IXYZ; IMAX=IXYZ; IF(N.NE.NMIN) IT=IXYZ;
+                  ENDIF;
+                  <I=IMIN,IMAX; TLIM(I,IFT+NLIM)=XYZ2(I); >
+                  LFRTO(IFT)=.true.;
+                  J=11*(IMAX-IMIN+1)+4;
+                  IF( LSTJOU+J .le.LEN(STJOU)) THEN;
+                     WRITE(STJOU(LSTJOU+1:LSTJOU+J),'(1x,1p,4(A,G10.3))',
+                          ERR=:ERR2:)
+                        CXYZ(IT),(TLIM(I,IFT+NLIM),' ',I=IMIN,IMAX);
+                     CALL T2SQEZ(STJOU(LSTJOU+2:LSTJOU+J),J);
+                     NSTJOU=NSTJOU+J+1;
+                     :ERR2: CONTINUE;
+                  ENDIF;
+                  LSTJOU=NSTJOU;
+               ELSEIF(J.eq.0.or..not.LF2) THEN;
+                  ERROR OUT;('*** ERROR *** Missing cursor or Data frame');
+               ELSEIF (J.eq.ICHAR('Q') ) THEN; <EXIT>;
+               ENDIF;
+               IF (LRECUR) THEN;
+                  LSTJOU=NSTJOU;
+                  IFT=IFT+1;
+                  IF (IFT .gt.2 ) THEN;
+                     IF (LVLOG) CALL T2VLIM(TLIM(1,NLIM+1));
+                     IFT=1; NLIM=NLIM+2; LFRTO(1)=.false.; LFRTO(2)=.false.;
+                  ENDIF;
+                  J=6;
+                  IF( LSTJOU+J .le.LEN(STJOU)) THEN;
+                     STJOU(LSTJOU+1:LSTJOU+J)=CFRTO(IFT);
+                     CALL T2SQEZ(STJOU(LSTJOU+2:LSTJOU+J),J);
+                     NSTJOU=NSTJOU+J+1;
+                     LSTJOU=NSTJOU;
+                  ENDIF;
+               ENDIF;
+            >
+         >
+         FROM:1,TO:2 < LSET=.true.;        "Low/up limit ?"
+            IXYZ= 1;
+            IFT = INTEG;  "1,2 FOR FROM,TO"
+            IF (LFRTO(IFT).and. .not. LEQUAL) THEN;          "Repeat ??"
+               IF (LVLOG) CALL T2VLIM(TLIM(1,NLIM+1));
+               LFRTO(1)=.false.; LFRTO(2)=.false.;
+               IF (NLIM+4.gt.ILIM) THEN;
+                  ERROR OUT;('*** ERROR *** Too many limits');
+               ELSE;
+                  NLIM=NLIM+2;
+               ENDIF;
+            ENDIF;
+            LEQUAL=.false.;
+         >
+         X:1,Y:2,Z:3 <IXYZ=INTEG; LSET=.false.;> "Which coordinate ??"
+      >
+      ELSE:: <<READ SAME TOKEN>; <EXIT>;>        "Done ??"
+   >
+   IF(LFRTO(1).or.LFRTO(2)) THEN;
+      IF (LVLOG) CALL T2VLIM(TLIM(1,NLIM+1));
+      NLIM=MIN(ILIM,NLIM+2);
+   ENDIF;
+   <N=0,NLIM-1,2;
+      <I=1,3; TEMP=MIN(TLIM(I,1+N),TLIM(I,2+N));
+              TLIM(I,2+N)=MAX(TLIM(I,1+N),TLIM(I,2+N));
+              TLIM(I,1+N)=TEMP; >
+   >
+END;
+%E  SUBROUTINE T2VLIM;
+SUBROUTINE T2VLIM(TLIM);
+   "Routine to draw current limits from array TLIM"
+   IMPLICIT NONE;
+   REAL X(5),Y(5),TLIM(3,2);
+   $SPECIFICATION;
+   $SPECIFYNONE;
+   $MAINSPEC;
+   FLAGS(31)=.FALSE.;
+   X(1)=TLIM(1,1); Y(1)=TLIM(2,1);
+   X(2)=TLIM(1,2); Y(2)=TLIM(2,1);
+   X(3)=TLIM(1,2); Y(3)=TLIM(2,2);
+   X(4)=TLIM(1,1); Y(4)=TLIM(2,2);
+   X(5)=TLIM(1,1); Y(5)=TLIM(2,1);
+   CALL T2JOIN(X,Y,HNONE,64,1,5,1,HNONE);
+   CALL TXVOID;
+END;
+%E  SUBROUTINE T2SQEZ
+SUBROUTINE T2SQEZ(STRING,ISIZ);
+   "Squeeze out all the multiple blank characters"
+   IMPLICIT NONE;
+   CHARACTER*(*) STRING;
+   INTEGER ISIZ,I;
+   $BOOLEAN LBLANK;
+   ISIZ=0;  LBLANK=.false.;
+   <I=1,LEN(STRING);
+      IF (STRING(I:I).eq.'	') STRING(I:I)=' ';
+      IF (STRING(I:I).ne.' ') THEN;
+         IF (LBLANK) THEN;
+            ISIZ=ISIZ+1; STRING(ISIZ:ISIZ)=' ';
+         ENDIF;
+         ISIZ=ISIZ+1; STRING(ISIZ:ISIZ)=STRING(I:I); LBLANK=.false.;
+      ELSEIF (ISIZ.ne.0) THEN; LBLANK=.true.;
+      ENDIF;
+   >
+   IF (ISIZ.lt.LEN(STRING)) STRING(ISIZ+1:LEN(STRING))=' ';
+END;

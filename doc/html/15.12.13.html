@@ -1,0 +1,33 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.12.13</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.12.13  Example</H4></B> 
+
+     TD:<U>BOX</U> <U>AT</U> <U>6.5,5</U> <U>size=6.5,5</U>
+          or...
+     TD:<U>BOX</U> <U>6.5,5</U> <U>size</U> <U>6.5,5</U>
+          or...
+     TD:<U>BOX</U> <U>FROM</U> <U>3.25,2.5</U> <U>TO</U> <U>9.75,7.5</U>
+<A NAME="45">          or... </A>
+     TD:<U>BOX</U> <U>FROM</U> <U>3.25,2.5</U> <U>size=6.5,5</U>
+Draws a centered box half the size of the screen assuming the default size
+of 13x10.
+     TD:<U>Set</U> <U>limits</U> <U>X</U> <U>-100,100</U> <U>Y</U> <U>-100,100</U>
+     TD:<U>BOX</U> <U>0,0</U> <U>DATA</U> <U>size</U> <U>1</U>
+Draws a box centered on the data 1 inch square
+     TD:<U>Set</U> <U>limits</U> <U>X</U> <U>-100,100</U> <U>Y</U> <U>-100,100</U>
+     TD:<U>BOX</U> <U>50,50</U> <U>Dsize</U> <U>100,100</U>
+Draws a box around the upper right quadrant of the data.
+     TD:<U>BOX</U> <U>AT</U> <U>CURSOR</U> <U>TO</U> <U>CURSOR</U>
+Draws  a  box  centered  at the first cursor position with a corner at the
+second cursor.
+     TD:<U>BOX</U> <U>FROM</U> <U>CURSOR</U> <U>SIZE=2</U>
+Draws  a  box  with  the lower left corner at the cursor position 2 inches
+square.
+
+
+</PRE>
+</BODY>

@@ -1,0 +1,36 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.61.13</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.61.13  SUBSTITUTE</H4></B>   - This defines a pair of characters to delimit a
+substitution.  Substitutions may not be nested.  You define a string,  and
+then  it  will  be included in your text when the name is bracketed by the
+substitute pair.  When used with  the  escape  character,  you  can  build
+complicated  expressions  and  include  them  in  your  titles in a simple
+fashion.  If you need to output the begin substitute character you  should
+define a substitution for it.
+                                  example
+     TD:SET TITLE SUBSTITUTE="{}"
+     TD:DEFINE STRING curly "{"
+     TD:DEFINE STRING SEASONS "spring,summer,winter,fall"
+     TD:TITLE TOP "The seasons are {SEASONS}."
+Writes the title:
+"The seasons are spring,summer,winter,fall."
+     TD:TITLE TOP "A left curly bracket is {curly}"
+Writes the title:
+"A left curly bracket is {"
+     TD:SET TITLE SUBSTITUTE="\\"
+     TD:TITLE TOP "The seasons are \SEASONS\."
+Writes the title:
+"The seasons are spring,summer,winter,fall."
+     TD:SET TITLE SUBSTITUTE="\"
+     TD:TITLE TOP "The seasons are \SEASONS ."
+Writes the title:
+"The seasons are spring,summer,winter,fall."
+     NOTE:  in this example the trailing substitute char is a blank.
+
+
+</PRE>
+</BODY>

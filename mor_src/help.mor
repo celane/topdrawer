@@ -1,0 +1,556 @@
+%N
+%U+ TDMACROS.MOR
+%L
+%E --- These are only for the VAX
+$VAX;
+%'$STACK'='
+   PARAMETER (MAXST=50);
+   INTEGER IPSHST,ISTACK(MAXST);
+   COMMON /T2PSTK/IPSHST,ISTACK';
+%E  SUBROUTINE T2PSHI
+SUBROUTINE T2PSHI(I);
+   $STACK;
+   IF (IPSHST.ge.MAXST) CALL T2STOP('Stack overflow');
+   IPSHST=IPSHST+1;
+   ISTACK(IPSHST)=I;
+END;
+%E  SUBROUTINE T2POPI
+SUBROUTINE T2POPI(I);
+   $STACK;
+   IF (IPSHST.le.0) CALL T2STOP('Stack underflow');
+   I=ISTACK(IPSHST);
+   IPSHST=IPSHST-1;
+END;
+%E  SUBROUTINE T2_HANDL - Handles errors (VAX only)
+INTEGER*4 FUNCTION T2_HANDL(SIGARGS,MECHARGS);
+   "IMPLICIT NONE;"
+   EXTERNAL T2_NULL;
+   INCLUDE '($FORDEF)';       "Get parameters"
+   INCLUDE '($MTHDEF)';
+   INCLUDE '($SSDEF)';
+   INTEGER*4 SIGARGS(*),MECHARGS(5);
+   INTEGER*4 I_ERR(6),ICONV,NCHAR;
+   $SPECIFICATION;
+   DATA INCONV/0/;
+   INTEGER ISEVERE/10/;
+   T2_HANDL=SS$_RESIGNAL;
+   IF (LIB$MATCH_COND(SIGARGS(2),FOR$_OUTCONERR)) THEN;  "Format error ?"
+      ICONV=ICONV+1;                                     "Count them"
+      IF (ICONV.ge.0) THEN;
+         WRITE($TERMINAL OUT,*)
+            '*** WARNING *** Format conversion errors (99 suppressed)';
+         ICONV=-100;                       "Kill the next 99 errors"
+         IF ($TRACE) CALL LIB$SIGNAL(%VAL(0));    "Traceback ?"
+      ENDIF;
+      T2_HANDL=SS$_CONTINUE;                "Kill error"
+   ELSEIF ( ISEVERE.gt.0 .and. LIB$MATCH_COND(SIGARGS(2),
+         SS$_SUBRNG,	 SS$_ACCVIO,	 SS$_EXQUOTA,	SS$_NOPRIV,
+         SS$_FLTOVF,     SS$_FLTOVF_F,
+         SS$_FLTDIV,     SS$_FLTDIV_F,
+         SS$_FLTUND,     SS$_FLTUND_F,
+         SS$_INTDIV,     SS$_INTOVF,
+         FOR$_ENDDURREA, FOR$_FILNOTFOU, FOR$_ERRDURREA, FOR$_ERRDURWRI,
+         FOR$_FORVARMIS, FOR$_SYNERRFOR, 
+         FOR$_ADJARRDIM,
+         MTH$_INVARGMAT, MTH$_WRONUMARG,
+         MTH$_UNDEXP,    MTH$_SIGLOSMAT,  MTH$_FLOUNDMAT,
+         MTH$_SQUROONEG, MTH$_LOGZERNEG, MTH$_FLOOVEMAT) .ne.0) THEN;
+
+      "IF (IAND(SIGARGS(2),4) .ne. 0) ISEVERE=ISEVERE-1;"
+      IF (LSYERR) THEN;
+         ISYERR=ISYERR+1;
+         $TRAP=ISYERR.gt.20;
+      ELSE;
+         ISYERR=0;
+      ENDIF;
+      CALL SYS$GETMSG(%VAL(SIGARGS(2)),NCHAR,OUTSTR,%VAL(1),);
+      I=INDEX(OUTSTR(1:NCHAR),' at PC')-1;
+      IF (I.gt.0) NCHAR=I;
+      I=INDEX(OUTSTR(1:NCHAR),'!')-1;
+      IF (I.gt.0) NCHAR=I;
+      WRITE($TERMINAL OUT,*)CHAR(7),'*** ERROR *** ',OUTSTR(1:NCHAR);
+      IF (MECHARGS(3) .ne. 0 ) THEN;               "Return to caller ?"
+         ITEMP=MECHARGS(3);
+         IF ($TRACE) THEN;
+            CALL T2PSHI(ITEMP);
+            CALL LIB$SIGNAL(%VAL(0));              "Traceback ?"
+            CALL T2POPI(ITEMP);
+         ENDIF;
+         CALL SYS$UNWIND(ITEMP,);
+         T2_HANDL=SS$_CONTINUE;
+      ELSE;
+         IF ($TRACE) CALL LIB$SIGNAL(%VAL(0));     "Traceback ?"
+         CALL SYS$UNWIND(,);                       "Kill this subroutine"
+      ENDIF;
+      $ERROR=.true.; LSYERR=.true.;
+   ELSEIF (SIGARGS(2).ne.0) THEN;
+      $TRAP=.true.; $ERROR=.true.; LSYERR=.true.;
+   ENDIF;
+END;
+
+%FORTRAN
+%E  SUBROUTINE TDVAX_OPEN - Open the unified graphics dev.
+	SUBROUTINE TDVAX_OPEN
+c
+c	This routine opens the I/O files for the VAX
+c
+	CALL	TDVAX_ASSIGN
+	END
+%E  SUBROUTINES TDVAX_PLOT
+	SUBROUTINE	TDVAX_PLOT
+	CALL	TDVAX_ASSIGN
+	END
+%E  SUBROUTINES TDVAX_ASSIGN
+	SUBROUTINE	TDVAX_ASSIGN
+c
+c	First try PLOT_TERM for a device ?
+c		It must be of the standard UGSYS form
+c		ie. 'TEK4010,DDNAME=file,....'
+c
+	IMPLICIT NONE
+	INTEGER	T2BTRIM,INLEN,MAXSTR,I
+        INTEGER T2_GET_LOGICAL , ISTAT
+	CHARACTER*132	STRING/' '/
+	INTEGER	INFO(10)/10*0/
+	ISTAT = T2_GET_LOGICAL('PLOT_TERM',STRING,MAXSTR)	! Get string
+	IF (MAXSTR .le. 1) THEN	! No string
+	   ISTAT = T2_GET_LOGICAL('PLOT_DEVICE',STRING,MAXSTR)	! Get string
+	ENDIF
+	IF(MAXSTR .le. 1) THEN					! No string
+	  STRING = 'TEK4010,PERMANENT'				! Default
+	  MAXSTR = T2BTRIM(STRING)
+	ENDIF
+	I = INDEX(STRING,'REGIS')
+	IF( I .gt.0  ) THEN					! REGIS ?
+	    STRING(I:)='DECGIGI'//STRING(I+5:)
+	    MAXSTR=T2BTRIM(STRING)
+	ENDIF
+	I = INDEX(STRING,'GKS,')
+	IF( I .gt.0  ) THEN					! REGIS ?
+	    STRING(I:)='UGGKSWM,'//STRING(I+4:)
+	    MAXSTR=T2BTRIM(STRING)
+	ENDIF
+	INFO(1)=2+10+MAXSTR
+	CALL TXDEVC(INFO,('"PERMANENT,'//STRING(1:MAXSTR)//'"'))
+	END
+%E  FUNCTION INTRAC - Return .true. if running interactively
+        LOGICAL FUNCTION INTRAC(I)
+c
+c	This returns the value .true. if interactive program
+c
+c	This is same call format as in CERN library
+c
+	IMPLICIT NONE
+	INTEGER	I
+	LOGICAL ISTAT,LIB$GETJPI
+	INCLUDE '($JPIDEF)'			! definitions
+	INTEGER	MODE/0/
+	IF(MODE.eq.0) THEN			! No mode ?
+	    ISTAT=LIB$GETJPI(JPI$_MODE,,,MODE)	! Get mode of process
+	ENDIF
+	INTRAC=MODE .eq. JPI$K_INTERACTIVE
+	END
+
+%E  SUBROUTINES READPR - Performs a read with prompt
+	SUBROUTINE	READPR(prompt,string,ISIZE,ITMO)
+c
+c	This reads from system input and prompts
+c	INPUT:	prompt - string to prompt with
+c	OUTPUT:	string - string that has been read
+c		ISIZE= Length of string read
+c		     = -1 if end of file or other error
+c
+	IMPLICIT INTEGER(S)
+	INCLUDE '($SSDEF)'		! definitions
+	INCLUDE '($SMGDEF)'		! definitions
+	LOGICAL LTRAP
+	VOLATILE LTRAP
+	CHARACTER*(*) prompt,string
+	CHARACTER*256 outstr
+	CHARACTER*8  state1,STATE2
+	CHARACTER*12 KEY
+	INTEGER ISTATE(4)
+	CHARACTER*(*) CKEY
+	CHARACTER*12 CSTATE(4)
+	DATA ISTATE/SMG$V_KEY_NOECHO,SMG$V_KEY_TERMINATE,
+	1	SMG$V_KEY_LOCK,SMG$V_KEY_PROTECTED/
+	DATA CSTATE/'/noecho','/terminate','/lock','/protected'/
+	VOLATILE ID
+	CALL NOARG(NARGS)
+	ITIME_OUT=86400			!Default time out=24 hours
+	IF (NARGS.gt.3) ITIME_OUT=ITMO
+	ISIZE=0
+	IF(ID.eq.0) THEN
+	  IERR=SMG$CREATE_VIRTUAL_KEYBOARD(ID)
+	ENDIF
+	IF(IDKEY.eq.0) THEN
+	  IERR=SMG$CREATE_KEY_TABLE(IDKEY)
+	  IERR=SMG$DEFINE_KEY(IDKEY,
+	1	'DEFINE /KEY PF2 "HELP" /TERMINATE ')
+	  IERR=SMG$DEFINE_KEY(IDKEY,
+	1	'DEFINE /KEY PF1 " " /SET_STATE=gold')
+	ENDIF
+        IF(Prompt.ne. ' ') THEN
+	  IERR=SMG$READ_COMPOSED_LINE(ID,IDKEY,string,prompt,
+	1	ISIZE,,,,ITIME_OUT)
+        ELSE
+	  IERR=SMG$READ_COMPOSED_LINE(ID,IDKEY,string,,
+	1	ISIZE,,,,ITIME_OUT)
+        ENDIF
+	IF(.not.IERR) THEN
+	    IF (IERR.ne.SS$_TIMEOUT) ISIZE=-1
+	ENDIF
+	RETURN
+	ENTRY DEFKEY(string)
+	IF (.not.INTRAC(I)) RETURN		! Not interative
+	IF(IDKEY.eq.0) THEN
+	  IERR=SMG$CREATE_KEY_TABLE(IDKEY)
+	  IERR=SMG$DEFINE_KEY(IDKEY,
+	1	'DEFINE /KEY PF2 "HELP" /TERMINATE ')
+	  IERR=SMG$DEFINE_KEY(IDKEY,
+	1	'DEFINE /KEY PF1 " " /SET_STATE=gold')
+	ENDIF
+	IERR=SMG$DEFINE_KEY(IDKEY,string)
+	IF(IERR.ne.1)TYPE *,'*** ERROR in definition, key not defined'
+	RETURN
+	ENTRY T2SKEY(IUNIT,LTRAP,CKEY)
+	WRITE(IUNIT,*)' KEYS -	Definition'
+	IF (IDKEY.eq.0) THEN
+	   WRITE(IUNIT,*)'	---> No keys are defined'
+	   RETURN
+	ENDIF
+	J_KEY=0
+	IKEYMAX=LEN(CKEY)
+	DO 100 I=1,500
+	  IF (LTRAP) RETURN
+	  OUTSTR=' '
+	  ISTAT=SMG$LIST_KEY_DEFS(IDKEY,J_key,KEY,STATE1,IAT,OUTSTR,STATE2)
+	  IF (.not.ISTAT) RETURN
+	  IF (CKEY.eq.' '.or. CKEY.eq.'ALL'
+	1	.or. CKEY.eq.KEY(1:IKEYMAX)) THEN
+	    KMAX=1
+	    IMAX1=1
+	    IMAX2=2
+	    DO 90 K=1,LEN(OUTSTR)
+	        IF (OUTSTR(K:K).ne.' ') KMAX=K
+90	    CONTINUE
+            IK=MAX(1,INDEX(KEY,' ')-1)
+            IS=MAX(1,INDEX(STATE1,' ')-1)
+	    WRITE(IUNIT,*)'  ',KEY(1:IK),'(',STATE1(1:IS),')=',
+	1	'"'//OUTSTR(1:KMAX)//'"'
+	    N=1
+            K=INDEX(STATE2,' ')-1
+            IF (K.gt.0) THEN
+               OUTSTR(N:LEN(OUTSTR))='/set_state='//STATE2(1:K)
+               N=MIN(LEN(OUTSTR),N+K+11)
+            ENDIF
+	    DO 95 K=1,4
+	        IF (IBITS(IAT,ISTATE(K),1).ne.0) THEN
+	            OUTSTR(N:LEN(OUTSTR))=CSTATE(K)
+	            N=MIN(LEN(OUTSTR),N+INDEX(CSTATE(K),' ')-1)
+	        ENDIF
+95	    continue
+	    IF (N.gt.1) WRITE(IUNIT,*)'          (',OUTSTR(1:N-1),')'
+	  ENDIF
+100	CONTINUE
+	END
+
+%E  FUNCTION CPULIM - Returns the CPU time limit
+	function	CPULIM(TIME)
+c
+c	This function finds the current cpulimit - TIME in secs.
+c
+	external	jpi$_cpulim
+	Item	= %loc(JPI$_cpulim)
+	CALL	LIB$GETJPI(Item,,,itime)
+	CPULIM	= itime/100.-TIME
+	end
+
+%E  FUNCTION CPUTIM - Returns the cputime
+	function	CPUTIM(TIME)
+c
+c	This function finds the current cputime - TIME in secs.
+c
+	external	jpi$_cputim
+	Item	= %loc(JPI$_CPUTIM)
+	CALL	LIB$GETJPI(Item,,,itime)
+	CPUTIM	= itime/100.-TIME
+	end
+
+%E  SUBROUTINE HELP - Obtain help for user
+	SUBROUTINE HELP(args)
+c
+c AUTHOR:
+c	J.Clement - Mar 1986
+c	This code is highly dependent on a VAX running VMS
+c	all other systems must have new modules.
+c
+c	Accessing help file copied from Fortran Users Guide D-16
+c INPUT:
+c	Args	= string of arguments to pass to help
+c
+	IMPLICIT	INTEGER*4(A-Z)
+	character*(*)	args
+	EXTERNAL	LIB$PUT_OUTPUT,LIB$GET_INPUT
+	STATUS=LBR$OUTPUT_HELP(LIB$PUT_OUTPUT,,args,
+	1	'TOPDRAWER_HLB',,LIB$GET_INPUT)
+	IF( .not. status) type *,'Can not find TOPDRAWER_HLB'
+	END
+
+%E  FUNCTION MATCHC - Matches strings with wildcards
+	LOGICAL FUNCTION MATCHC(string,match)
+	implicit none
+	character*(*) string,match
+	logical str$match_wild
+	MATCHC=str$match_wild(string,match)
+	end
+
+%E  FUNCTION RELTIM - Returns the REAL time
+	REAL FUNCTION RELTIM(Offset)
+	IMPLICIT INTEGER*2(W),INTEGER*4(A-V,X-Z)	! W_=words
+	INCLUDE '($JPIDEF)'		! definitions
+	INCLUDE '($SSDEF)'
+	INCLUDE '($DVIDEF)'
+	INCLUDE '($SJCDEF)'
+	real		offset,temp
+	INTEGER*4	LOGIN_TIME(2),current_time(2),real_time(2)
+	CALL SYS$GETTIM(CURRENT_TIME)
+	CALL LIB$GETJPI(JPI$_LOGINTIM,,,login_time)
+	temp = current_time(1)
+	temp = temp-login_time(1)
+	if(current_time(1) .lt. 0) temp = temp+2.**32
+	if(login_time(1) .lt. 0) temp = temp-2.**32
+	temp = temp+(current_time(2)-login_time(2))*2.**32
+	temp = temp/10.**7
+	RELTIM = temp-offset
+	END
+
+%E  SUBROUTINE SPAWN --- Activate another DCL process
+	SUBROUTINE SPAWN(STR)
+	IMPLICIT NONE
+	CHARACTER*(*) STR
+	LOGICAL	ISTAT,LIB$SPAWN
+	IF (STR.eq.' ') THEN
+ 		ISTAT=lib$spawn()
+	ELSE
+		ISTAT=lib$spawn(str)
+	ENDIF
+	IF(.not.ISTAT) CALL SYS$PUTMSG(ISTAT)
+	END
+
+%E  SUBROUTINE TTSTAT - Gets terminal info
+	SUBROUTINE T2_TTSTAT(IWIDE,IHIGH)
+	IMPLICIT NONE
+	LOGICAL	INTRAC
+	INTEGER	IWIDE,IHIGH
+	INCLUDE '($DVIDEF)'
+	LOGICAL ISTAT,LIB$GETDVI
+	IF (INTRAC(0)) THEN
+	    ISTAT=LIB$GETDVI(DVI$_DEVBUFSIZ,,'TT:',Iwide)
+	    ISTAT=LIB$GETDVI(DVI$_TT_PAGE,,'TT:',IHIGH)
+	ELSE
+	    IWIDE=132
+	    IHIGH=66
+	ENDIF
+	END
+
+%E  SUBROUTINE T2_WAIT --- Waits for a fixed time
+	SUBROUTINE	T2_WAIT(SECS)
+c
+c	This subroutine waits for the specified number of secs.
+c	The number of seconds must be in the range of 0.0 to 200.
+c
+C		J. Clement
+C		Bonner Nuclear Lab, Physics dept., Rice University
+C		Box 1892, Houston, Tx.
+C
+	IMPLICIT	NONE
+	REAL	SECS
+c
+	INCLUDE '($JPIDEF)'		! definitions
+	INCLUDE '($SSDEF)'
+	INCLUDE '($DVIDEF)'
+	INCLUDE '($SJCDEF)'
+c
+	INTEGER*4	WATIME(2),RANGE(2)
+	DATA	RANGE/0,'7FFFFFFF'X/
+	WATIME(1)=-MIN(MAX(SECS,0.0),200.)*10**7
+        IF (SECS.le.0) WATIME(1)=-1
+	WATIME(2)=-1
+	CALL SYS$SCHDWK(,,WATIME,)
+	IF(SECS .gt. 9.99)
+	1	CALL SYS$PURGWS(RANGE)		!use minimum memory while waiting
+	CALL SYS$HIBER
+	END
+%MORTRAN
+
+$ELSE;
+
+%FORTRAN
+
+%E These routines are dummy or they need the CERN library
+C
+C	Universal routines
+C	These use the CERN library
+C	
+
+%E  FUNCTION CPULIM  --- Using CERN library
+	REAL FUNCTION CPULIM(OLDTIM)
+	IMPLICIT NONE
+	REAL OLDTIM,T
+	LOGICAL LFIRST
+	DATA LFIRST/.false./
+c
+C	RETURNS CURRENT ELAPSED CPU TIME MINUS OLDTIM
+C	PRECISION IS 0.01 SECS.
+C
+	IF (.not.LFIRST) THEN
+	   CALL TIMEST(999.0)
+	ENDIF
+	CALL TIMEL(T)			! Get time using CERN lib
+	CPULIM=T
+	END
+
+%E  FUNCTION CPUTIM --- Using Cern library
+	REAL FUNCTION CPUTIM(OLDTIM)
+	IMPLICIT NONE
+	REAL OLDTIM,T
+	LOGICAL LFIRST
+	DATA LFIRST/.false./
+c
+C	RETURNS CURRENT ELAPSED CPU TIME MINUS OLDTIM
+C	PRECISION IS 0.01 SECS.
+C
+	IF (.not.LFIRST) THEN
+	   CALL TIMEST(999.0)
+	ENDIF
+	CALL TIMEX(T)			! Get time using CERN lib
+	CPUTIM=T-OLDTIM
+	END
+
+%E  SUBROUTINE HELP --- Dummy routine
+	SUBROUTINE HELP(STR)
+	CHARACTER *(*) STR
+	END
+
+%MORTRAN
+
+%E  FUNCTION MATCHC - Matches strings with wildcards
+   LOGICAL FUNCTION MATCHC(string,match);
+   IMPLICIT NONE;
+   character*(*) string,match;
+   INTEGER I,J,IL,JL;
+   MATCHC=.true.;
+   I=1;
+   J=1;
+   IL=len(string);
+   JL=len(match);
+   if (match(J:J) .eq. '*') then;
+      J=J+1; if (J.gt.JL) return;
+      if (match(JL:JL) .eq. '*') THEN;
+         JL=JL-1; if (J.gt.JL) return;
+         MATCHC=index(string,match(J:JL)).gt.0;
+      else;
+         MATCHC=index(string,match(J:JL)).gt.0.or.len(match(J:JL)).gt.IL;
+      endif;
+   elseif (match(JL:JL) .eq. '*') then;
+      JL=JL-1;
+      IL=MIN(IL,JL);
+      MATCHC=string(1:IL) .eq. match(1:JL);
+   else;
+      MATCHC=string .eq. match;
+   endif;
+   return;
+   end;
+
+%E  SUBROUTINE READPR --- ANSI standard terminal read routine
+SUBROUTINE READPR(Prompt,line,isize);
+   IMPLICIT NONE;
+   CHARACTER*(*) prompt,line;
+   INTEGER     I, ISIZE;
+
+"   IF(prompt.ne.' ') WRITE($TERMINAL OUT,:F1:)prompt;
+:F1: FORMAT('$',A);
+   READ($INPUT FILE,:F2:,END=:F3:) ISIZE,line;
+:F2: FORMAT(Q,A)
+   RETURN;
+:F3: ISIZE=-1;
+"
+   IF ( PROMPT .NE. ' ' ) WRITE (*,*) PROMPT ;
+   READ ( *, '(A)', END=:F1:, ERR=:F2: ) LINE ;
+   ISIZE = 0 ;
+   DO I = 1 , LEN(LINE)-1 ;
+      IF ( LINE(I:I) .NE. ' ' ) ISIZE = MAX ( ISIZE , I ) ;
+   ENDDO ;
+   RETURN;
+:F1: WRITE (*,*) ' *READPR* endfile ' ; STOP;
+:F2: WRITE (*,*) ' *READPR* error   ' ; STOP;
+
+END; 
+
+%FORTRAN
+
+%E  SUBROUTINE DEFKEY --- Dummy
+        SUBROUTINE DEFKEY ( OPT )
+        CHARACTER*(*) OPT
+        RETURN
+        END
+
+%E  FUNCTION RELTIM  --- Using Cern lib
+	REAL FUNCTION RELTIM(OLDTIM)
+	IMPLICIT NONE
+	REAL CPUTIM , OLDTIM
+	RELTIM=CPUTIM(OLDTIM)
+	END
+
+%E  SUBROUTINE SPAWN --- Dummy
+	SUBROUTINE SPAWN(STR)
+	CHARACTER *(*) STR
+	END
+
+%E  SUBROUTINE T2SKEY --- Dummy
+        SUBROUTINE T2SKEY ( I ,  J , R )
+        RETURN
+        END
+
+%E  SUBROUTINE T2_TTSTAT --- Dummy
+	SUBROUTINE T2_TTSTAT(IWIDE,IHIGH)
+	IMPLICIT NONE
+	INTEGER IWIDE,IHIGH
+	IWIDE=80
+	IHIGH=24
+	END
+
+%E  SUBROUTINE WAIT --- By wasting CPU time
+	SUBROUTINE T2_WAIT(SECS)
+	IMPLICIT NONE
+	REAL T , SECS , RELTIM
+	T=RELTIM(0.0)
+10	CONTINUE
+	IF (RELTIM(T).lt.SECS) GOTO 10
+	END
+
+%E  SUBROUTINE TDTIME  --- Using Unix FDATE
+	SUBROUTINE TDTIME(STR)
+	CHARACTER*(*)  STR
+	CHARACTER*24  FSTR
+
+        CALL FDATE (  FSTR )
+        STR =         FSTR (12:19)
+
+	END
+
+%E  SUBROUTINE DATE --- Using Unix FDATE
+	SUBROUTINE DATE(STR)
+	CHARACTER *(*)  STR
+        CHARACTER*24   FSTR
+*  Format of FSTR is  "Day Mon dd hh:mm:ss yyyy"
+
+        CALL FDATE (   FSTR )
+        STR = FSTR(9:10) //'-'// FSTR(5:7) //'-'// FSTR(23:24)
+        RETURN
+ 
+	END
+
+%MORTRAN
+$END;

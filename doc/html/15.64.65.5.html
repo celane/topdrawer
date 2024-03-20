@@ -1,0 +1,27 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.65.5</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.65.5  Labels</H4></B>   - Normally space for labels is allocated according to
+the current AXES, and LABEL settings.  For example if you SET LABELS  LEFT
+OFF, no space will be allocated for labels on the left side, so the window
+will be larger.  If you need to have several plots all  sharing  the  same
+scale,  use  either  negative  windows or absolute windows.  For example 2
+plots which share the same X axis may be plotted.
+     TD:<U>SET</U> <U>WINDOW</U> <U>Y</U> <U>1.2</U> <U>OF</U> <U>-2.6</U>
+     TD:<U>PLOT</U> <U>SET=1</U>
+     TD:<U>SET</U> <U>LABELS</U> <U>BOTTOM</U> <U>OFF</U>
+     TD:<U>SET</U> <U>WINDOW</U> <U>Y</U> <U>2.2</U>
+     TD:<U>PLOT</U> <U>SET=2</U>
+Only 1 bottom axes is plotted for both windows.
+
+It is assumed that LEFT or RIGHT labels will occupy 6 characters.  If this
+is incorrect you may adjust this value when you set the  window  with  the
+CHARACTERS parameter.
+     TD:<U>SET</U> <U>LABEL</U> <U>CHARACTERS=4</U>
+allocates  only  4  characters for the labels.  This gives you more usable
+plotting area.
+</PRE>
+</BODY>

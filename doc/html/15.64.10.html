@@ -1,0 +1,26 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.10</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.10  CHARACTER</H4></B> 
+
+<U>SE</U>T <U>CH</U>ARACTER {<U>TE</U>RMINATOR|<U>SE</U>PARATOR|<U>SP</U>ECIAL|<U>AL</U>PHA|<U>IL</U>LEGAL|<U>CO</U>MMENT |
+          <U>ENDCO</U>MMENT} "characters"
+This  redefines the input character set.  You may not redefine the letters
+"A" to "Z", the numbers "0" to "9", the period "." or the minus  and  plus
+signs "-+".  The current definitions are:
+     1.  SEPARATORS = ",/="
+     2.  TERMINATOR = ";"
+     3.  SPECIAL = "@!#$%^&*~`{}|\[]"
+     4.  COMMENT = "("
+     5.  ENDCOMMENT = "("
+     6.  ALPHA = "_"
+     7.  ILLEGAL = all non printable characters.
+Special  characters  may  be imbedded inside an option, but may not be the
+first character in an option.
+
+
+</PRE>
+</BODY>

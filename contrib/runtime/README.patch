@@ -1,0 +1,20 @@
+Patch の説明
+1998/07/28  H. Otsu
+
+1.
+  td.f のmain routine をリンクしない方法が分らなかったので、
+これを % cp td.f td_rtl.f と名前をかえてこのうち program の
+メインプログラムをコメントアウトしました。
+2.
+  あとは、使うサブルーチンの引数が省略可能のものについて、
+それぞれ entry xxxx_narg(narg_c) の部分とその宣言を書き加え
+ただけです。つくられたpatch file は td_rtl_patch.diff で、
+(/home/common/)topdrawer のディレクトリで、
+% patch -p0 < td_rtl_patch.diff 
+とすればいいはずです。
+
+3.
+  ここでは src/ 以下のImakefile, Makefile.tmpl を書き換えて
+いますが、この書き換えによって、td 自身をつくる部分がかきか
+えられています。(力不足のため。ご了承下さい。)
+

@@ -1,0 +1,23 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.22</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.22  ERRORS</H4></B> 
+
+<U>SE</U>T <U>ERR</U>ORS [{<U>DE</U>FERRED|<U>IM</U>MEDIATE|<U>LI</U>ST}] [<U>WA</U>IT|<U>PA</U>USE[=<U>ON</U>|<U>OF</U>F]]
+
+     1.  DEFERRED - The error messages appear after the plot is finished.
+     2.  IMMEDIATE  -  The  error  messages  appear  when  the  command is
+         entered.
+     3.  LIST - The error messages appear only in the listing file.
+     4.  WAIT  -  When error messages are immediate, WAIT causes TOPDRAWER
+         to wait after each message.  PAUSE is a synonym for wait.
+
+This option remains the same until changed by a SET ERRORS command.
+(Default:IMMEDIATE,NOWAIT)
+
+
+</PRE>
+</BODY>

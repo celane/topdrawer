@@ -1,0 +1,26 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.37.9</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.37.9  EXPONENTIAL</H4></B> 
+
+Does a fit to:
+     Y=EXP( a0+a1*(x-offset)) + Polynomial when NONLINEAR=ON (Default)
+          or ...
+     LN(Y)=series(x-offset)
+for data points with Y&gt;0.0.
+Where series is either POLY,SINE,COSINE or LEGENDRE.
+If  you  wish to fit data which has negative or zero data points, you must
+either SMOOTH the data to get rid of them, or use the BIN command to rebin
+the  data  into large bins.  If all y data is less than zero, you may make
+it positive with the command:
+     TD:Y=Y TIMES -1
+
+When  a NONLINEAR fit is used, and NTERMS=n is greater than 2 a polynomial
+background of n-2 terms is added to the exponential.
+
+
+</PRE>
+</BODY>

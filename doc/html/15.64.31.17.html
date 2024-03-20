@@ -1,0 +1,27 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.31.17</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.31.17  SELECT</H4></B>   - NAME='hist_name'  Selects the histogram by name or
+title.  The data in the histogram is loaded into  the  data  buffer.   The
+entire list of histograms is searched starting at the first one for a name
+matching the hist_name.  If a histogram has more characters  in  its  name
+than the hist_name, the extra characters are ignored.  If the option NEXT,
+PREVIOUS, FIRST, or LAST  is  used,  the  search  begins  from  the  NEXT,
+PREVIOUS,  FIRST,  or  LAST  histogram.  Percent '%' and star '*' are wild
+characters.  '%' means any single character while '*' means any  character
+string.    For   example  NAME='*ENERGY'  will  select  a  histogram  name
+containing the word ENERGY.  However NAME='ENERGY' will select a histogram
+beginning   with   the  word  ENERGY.   NAME='*PI*ENERGY'  will  find  all
+histograms with the name containing the string 'PI' followed by  the  word
+ENERGY  separated  by any number of characters.  The case of the hist_name
+is ignored.
+
+If  more  than  1  histogram match the selected name, a warning message is
+issued.
+
+
+</PRE>
+</BODY>

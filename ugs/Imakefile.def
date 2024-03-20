@@ -1,0 +1,76 @@
+/*
+ *  Local Configuration File
+ */
+
+/* #define LinuxAoutArchitecture */
+/* #define LinuxElfArchitecture */
+/* #define SunArchitecture */
+/* #define DigitalArchitecture */
+#define FreeBSDArchitecture 
+
+MAKE	= sleep 1; make            /* timestamps need time! */
+
+/*-------------- Do not change the followings ---------------*/
+
+ARCH    =
+
+#if defined(LinuxAoutArchitecture) || defined(LinuxElfArchitecture)
+#if defined(LinuxAoutArchitecture)
+ARCH    = __LINUX_AOUT
+#else
+ARCH    = __LINUX_ELF
+#endif
+FC      = fort77
+FFLAGS  = -O2 -Nq300 -\!bs
+GFLAGS  = -O2 -fno-backslash
+CFLAGS  = -O2
+AR      = ar
+ARFLAGS = rvs
+RANCMD  =
+BITLIB  = src/bit
+#endif
+
+#if defined(SunArchitecture)
+ARCH    = __SUNOS
+FFLAGS  = -O3 -Nl100 -Nq300 -w -libmil -xl
+CFLAGS  = -O2
+AR      = ar
+ARFLAGS = rv
+#if defined(RANLIB)
+RANCMD  = $(RANLIB) $(LIB)
+#else
+RANCMD  =
+#endif
+#endif
+
+#if defined(DigitalArchitecture)
+ARCH    = __OSF1
+FFLAGS  = -O1 -assume backslash
+CFLAGS  = -O2
+AR      = ar
+ARFLAGS = rv
+RANCMD  =
+#endif
+
+#if defined(FreeBSDArchitecture)
+ARCH    = __LINUX_ELF
+FC      = g77 
+FFLAGS  = -O2 -fno-automatic -finit-local-zero -fno-backslash
+CFLAGS  = -O2 -I/usr/X11R6/include
+AR      = ar
+ARFLAGS = rv
+RANCMD  = $(RANLIB) $(LIB)
+BITLIB  = src/bit
+#endif
+
+/*--------------------- General Rules ------------------------*/
+
+.f.o:;\
+        $(FC) $(FFLAGS) -c           $*.f  
+
+.F.o:;\
+        $(FC) $(FFLAGS) -c -D$(ARCH) $*.F  
+
+.c.o:;\
+        $(CC) $(CFLAGS) -c -D$(ARCH) $*.c  
+

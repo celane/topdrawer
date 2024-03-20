@@ -1,0 +1,30 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.78.12</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.78.12  TIMES</H4></B> 
+
+Multiplies  the  selected  coordinate  by  the selected value.  If you are
+multiplying X,Y, or Z by a constant the DX,DY, or DZ are  also  multiplied
+by  the  constant.   In  addition if ERROR was specified then the final Dn
+will be modified  by  the  specified  error.   DY=SQRT(DY**2+(e*n/c)**2)*c
+where C is the specified constant.
+
+If  a coordinate and a number are specified, but no operator then TIMES is
+assumed.
+                                  example
+To multiply y by 2+-0.1
+     Y=Y TIMES 2 ERROR=.1
+          or...
+     Y=Y * 2 ERROR=.1 To multiply y by 2 with no error on the value 2.
+     Y=2 Y
+          or...
+     Y=2 TIMES Y
+          or...
+     Y=2 * Y
+
+
+</PRE>
+</BODY>

@@ -1,0 +1,794 @@
+
+                       T O P D R A W E R
+                         Version 5. 12
+                              on
+                           L I N U X
+                          Release 1.4c
+
+                                                       H. Okamura
+                                            Department of Physics
+                                              University of Tokyo
+
+
+This is a port of Topdrawer 5.12 to Linux with a  number  of  en-
+hanced features (most of them are the revival of ones lost in the
+FNAL   version).     Please    report    problems    to    okamu-
+ra@timshel.riken.go.jp.  This is a private release and is NOT of-
+ficially supported by Univ. of Tokyo or by RIKEN.
+
+See the bottom of this document for the resent upgrade.  The lat-
+est release is available from ftp://iris.riken.go.jp/pub/topdraw-
+er/ .
+
+
+1. Introduction
+
+
+Topdrawer is  a  keyword-driven  interface  designed  to  produce
+physics  graphs  with  minimal specifications.  It was originally
+developed by R.B. Chaffee at SLAC.  The Unified  Graphics  System
+(UGS),  which  was also developed at SLAC by R.C. Beach, was used
+for the graphics primitives and thus the various  platforms  were
+supported at that time.
+
+Later  the  function  was significantly enhanced by J. Clement at
+Bonner Lab., RICE University.  A number of fancy features such as
+3-dimensional  plot  and  function-fitting were introduced.  This
+new version was implemented on VAX/VMS making  most  of  its  ad-
+vanced system libraries, but deteriorating the portability at the
+same time.
+
+As the major operating system had shifted from VAX/VMS to UNIX on
+RISC  workstations,  Topdrawer  5.12, the latest version in 1993,
+was ported to UNICES by A.E. Kreymer at FNAL.  It is a great task
+(imagine, the device-dependent module for the X Window System was
+written by Fortran in the original version !!)  but  some  impor-
+tant features, such as interactive execution, were omitted.
+
+In the present port to Linux, some features lost in the FNAL ver-
+sion have been restored.  Also some enhancements which were  made
+at  KEK  and at University of Tokyo for the VMS version have been
+incorporated.  Consideration has been paid also for the portabil-
+ity.   The  source  can be compiled by f2c and g77 (f2c is enough
+for most part).  The device-dependent module  for  the  X  Window
+System  has been extensively re-written and the Motif widget, the
+use of which requires the license, has been excluded.  The  plat-
+form-dependence  is solved by using Imake, like the most GNU-ori-
+ented softwares.  The program has been  exported  back  to  OSF/1
+(Digital  Unix)  and to SunOS.  I expect ports to other platforms
+will be also easy and straightforward.
+
+
+This document has not been completed.  For a quick  survey,  some
+enhanced features will be demonstrated by invoking
+
+    % td $(TOPDRAW_DIR)/examples/whatsnew.top
+
+The complete description of Topdrawer 5.12 can be found in $(TOP-
+DRAW_DIR)/doc/topdrawer.{doc,html}.  But please note they are for
+the  VMS (Bonner Lab.) version and some parts contradict with the
+present version.
+
+
+The interactive execution and the online help have been  incorpo-
+rated  by using a part of GNUPLOT source.  I desire to express my
+appreciation to the authors of GNUPLOT.
+
+
+2. Functions restored from FNAL version
+
+
+o Interactive execution
+
+The present version of topdrawer can be invoked in the  following
+three ways:
+
+    % td             # command-name alone
+
+    % td file-spec   # command-name followed by a filename
+
+    % td < file-spec # redirecting stdin
+
+In  the  first  case, topdrawer is invoked in an interactive-mode
+and the prompting string "TD: " will  appear.   Ordinary  editing
+controls by arrow keys, various control characters such as ^A, ^E
+etc, as well as history recall, are available.  If you  feel  the
+prompting string is annoying in "cut & paste" work, it can be set
+to null by the command
+
+    SET PROMPT MAIN ""
+
+In the second case, topdrawer is invoked in a batch mode and  the
+content  of  file  will  be executed.  It pauses, however, at the
+page break which is specified by NEW_FRAME or EXIT command  if  X
+Window  System or Tektronix 4010 is used as a plotting device.  A
+prompting string "PAUSE: " will appear on the tty.  The execution
+will  be  continued simply by pressing RETURN or by entering CON-
+TINUE command, and will be stopped by entering EXIT or HALT  com-
+mand.
+
+In  the third case, topdrawer is invoked in a batch mode but does
+not pause at the page break (*).  On X Window System, all figures
+are  drawn  successively and you will not be able to catch up de-
+tails before the window is closed :-< This type of  invoke-method
+was  prepared  not  for using the topdrawer in a stand-alone mode
+but for using it as a  subprocess  of  another  interpreter.   In
+Tcl/Tk,  for example, all the drawing ability of topdrawer can be
+utilized in the following way:
+
+    set fd [open |td w]
+    puts $fd <topdrawer-commands>
+
+(*) This feature can be modified by '-w' option.  If  the  device
+is  an  interactive one such as X11, topdrawer will wait for SIG-
+NALs when it encounters a NEW_FRAME command or an EOF  of  input.
+SIGUSR1 is used for CONTINUE and SIGUSR2 for STOP.  Other SIGNALs
+will be ignored (if it is maskable).  "-w" is used in  Emacs-Lisp
+"td.el"  which  allows one to invoke td from within Emacs without
+saving buffers.  See contrib/elisp/README.elisp for details.
+
+
+o Online help
+
+Type HELP  to invoke online help.  The location of the help  file
+"topdrawer.gih"  has  to be specified by the environment variable
+TD_HELP, and the pager by PAGER.
+
+
+o SPAWN (invoking sub-shell)
+
+A sub-shell, which  is  specified  by  the  environment  variable
+SHELL,  is  invoked  simply  by typing SPAWN.  If any argument is
+provided, it will be executed in the sub-shell.  The argument can
+consists  of  several  words but do NOT enclose them by quotation
+marks ("").  The "pseudo pipe" described later will be practical-
+ly more useful in many cases.
+
+It  should  be  noted that the command delimiter ";" for ordinary
+shells is also a delimiter (command terminator) for the topdrawer
+by  default.   In  order  to  execute several shell commands at a
+time, the command terminator of topdrawer has to be modified like
+in the following way:
+
+    SET CHARACTER TERMINATOR "&"  (new terminator is &)
+    SET CHARACTER SPECIAL    ";"  (SPECIAL means meaningless :-)
+
+BTW,  SET  CHARACTER  command is also useful in modifying comment
+characters, the default of which is a pair of "(" and ")", e.g.
+
+    SET CHARACTER COMMENT    "!"  (like VMS DCL)
+    SET CHARACTER COMMENT    "#"  (like UNIX script)
+    SET CHARACTER COMMENT    "*"  (like FORTRAN free format)
+    SET CHARACTER COMMENT    "{"  (like Pascal)
+    SET CHARACTER ENDCOMMENT "}"
+
+But let me suggest you that the most practical method to  comment
+out some block of statements is to use the (ridiculous) IF state-
+ment:
+
+    IF 0 .NE. 0 THEN
+      ....
+    ENDIF
+
+
+o Command definition
+
+Local commands can be defined like in the following way:
+
+    DEFINE COMMAND INCLUDE "SET FILE INPUT="
+
+By this declaration, INCLUDE <filename> works in the same way  as
+SET  FILE INPUT=<filename>.  The same job can be done by defining
+an environment variable before invoking td, e.g.
+
+    % setenv TD_C_INCLUDE "SET FILE INPUT="  (csh)
+
+    $ export TD_C_INCLUDE "SET FILE INPUT="  (bsh)
+
+Local commands currently defined are listed by
+
+    SHOW COMMAND
+
+Unfortunately, abbreviation  of  the  local  command,  which  was
+available in the VMS version, does not work.  Namely, the defini-
+tion
+
+    DEFINE COMMAND INC*LUDE "SET FILE INPUT="
+
+which used to allow both the command  INCLUDE  and  INC,  is  not
+available.
+
+The argument for the local command can be referred to in the same
+way as for the alias command on the Unix shell, i.e.  by using
+
+    !:n   n-th argument
+    !^    1-st argument
+    !$    last argument
+    !*    all arguments
+
+
+o Lexical definition
+
+Local variables (referred to as LEXICAL according to VMS DCL) can
+be  defined  by  DEFINE  VALUE for a numeric value, and by DEFINE
+STRING for a character string, e.g.
+
+    DEFINE VALUE THETA=0
+
+    DEFINE STRING NAME="Yumiko"
+
+By these declarations, their contents can be referred to like  in
+the following way:
+
+    SET LIMIT X FROM V_THETA TO 360
+
+    TITLE TOP 'My name is ' S_NAME
+
+It  should be noted that lexicals defined by DEFINE VALUE command
+can be referred also as strings by prefixing 'S_', for example,
+
+    DEFINE VALUE TMP=<SIN(30)>
+    TYPE S_TMP
+
+prints the value of sine 30-degree.
+
+Like the local command, lexicals can be also defined by  environ-
+ment variables of the shell:
+
+    % setenv TD_V_THETA .0
+
+    % setenv TD_S_NAME  Yumiko
+
+Lexicals currently defined are listed by
+
+    SHOW VALUES
+
+    SHOW STRINGS
+
+But they do NOT show the "system" variables, which are listed by
+
+    HELP LEXICAL_VALUES LIST_OF_NAMES
+
+It should be noted that values can be set to the system variables
+which will lead to unexpected results.
+
+Lexicals can be used anywhere constant values/strings are allowed
+to  be  placed.  In addition, a formula enclosed by a pair of an-
+gle-brackets (< >) is evaluated before it is  referred  to.   For
+example,
+
+    REPEAT "V_THETA <SIN(THETA)>; -
+            DEFINE VALUE THETA=<THETA+1>" 361
+
+creates a set of data for the sine function.  As can be seen from
+example, the prefix 'V_' is not required for  referring  lexicals
+in  the  angle-brackets  calculation.  Please note the "-" at the
+end of a line stands for the continuing mark, like  in  VMS  DCL.
+Also  "\"  can be used, like in Unix shells.  However, the length
+of command line is  limited  to  be  less  than  512  characters.
+Please  use DEFINE COMMAND to give a longer command line, but the
+length of strings fed to DEFINE COMMAND is  also  limited  to  be
+less than 512 characters.
+
+
+o Initialization
+
+The file ~/.topdrawrc, if it exists, will be executed at the time
+td is invoked.  It is convenient to modify  the  default  values,
+such  as the comment character, or to define some local commands.
+
+
+o Cursor readout
+
+An interactive method for obtaining the logical/physical  coordi-
+nate is provided, but only for X Window System.  Type
+
+    SHOW CURSOR
+
+and  see  what  happens.  Look up the reference manual to see ad-
+vanced usages of the mouse-cursor.
+
+
+o Bitmap font on X Window System
+
+Although the DUPLEX font has better  quality  in  the  PostScript
+output, the BITMAP (raw) font, in X Window System, has advantages
+in the drawing speed and in the readability  for  small  figures.
+Enter the commands
+
+    SET FONT BASIC
+    SET MODE VECTOR=OFF
+
+and  see the raw font is used.  X font can be modified by editing
+the resource file (see below).  Currently it can not  be  dynami-
+cally  changed.   In a strict sense, the font "pattern" is speci-
+fied in the resource file.  A specific font is automatically  se-
+lected depending on the character size required by UGS.
+
+Unlike the original X11 library, the raw font can be drawn at any
+angles.  This feature is implemented by using  xvertext-5.0  con-
+tained  in  X11R5/contrib, as well as its patch made in xfig-3.x.
+I express my appreciation to the authors of these free-wares.
+
+
+o Scatter plot of 2-dimensional histogram
+
+Some serious bugs (both in FNAL and Bonner Lab.  implementations)
+have been fixed.  Try
+
+    SET THREE OFF
+    PLOT RANDOM=10
+
+and see it works fine for 2-dimensional data.
+
+
+3. Special features
+
+
+o Enhanced duplex fonts
+
+Following 'CASE' specifications have been newly introduced, using
+"Hershey database" by Alan Hershey.  They are available, however,
+only for DUPLEX font.  It should be noted that these case-modifi-
+cations can be applied BOTH for the lower and upper case  charac-
+ters,  unlike the original ones which should be used only for up-
+per case characters.
+
+    I  italic
+    J  script
+    1  sans-serif
+    2  gothic
+    3  bold-roman
+    4  bold-italic
+
+BTW the hyphen, i.e. short "-", has been introduced as "-"  case-
+modified  by "1", because the ordinary "-" sign is too long for a
+hyphen.
+
+In addition, the default font (including numeric labels)  can  be
+specified  by the SECOND argument of "set font" command, but only
+"I", "J", "1", "2", "3", and "4" are valid values.  For example,
+
+    SET FONT DUPLEX I
+
+sets the default font to be italic.
+
+
+o X resource specification
+
+Like the most X-applications, the resource  can  be  modified  by
+$(X11)/app-defaults/Ugs  or ~/.Xdefaults.  The resource names and
+their default values are following:
+
+    Ugs*width:       768         # window size.
+    Ugs*height:      585
+    Ugs*white:       White       # color palette.
+    Ugs*red:         Red         # valid keyword is
+    Ugs*green:       Green       # names in xrgb
+    Ugs*blue:        Blue        # or #RRGGBB(hex)
+    Ugs*yellow:      Yellow
+    Ugs*magenta:     Magenta
+    Ugs*cyan:        Cyan
+    Ugs*background:  Black
+    Ugs*fontPattern:
+                  -adobe-helvetica-medium-r-normal--*-*-75-75-*
+    Ugs*title:       UGS on X Window System    # title bar
+    Ugs*iconName:    UGS
+    Ugs*geometry:   (null)       # +0+0 means upper-left corner
+
+Unlike ordinary X-applications, the resource  specification  from
+the command line is not supported.
+
+
+o Additional symbols
+
+In  addition to ordinary symbols specified by [0-9] case-modified
+by "P" (SLAC-convention) or by "O" (Bonner-Lab.),  following  new
+symbols  have been introduced.  Closed symbols are supported only
+for the X Window System and PostScript.
+
+    A  closed circle
+    B  open   circle
+    C  closed square
+    D  open   square
+    E  closed rhomb
+    F  open   rhomb
+    G  closed triangle
+    H  open   triangle
+    I  closed reverse-triangle
+    J  open   reverse-triangle
+    K  closed star
+    L  open   star
+    X  scale-break mark for X-axis
+    Y  scale-break mark for Y-axis
+
+It should be noted that the open symbol is not a simple  skeleton
+but  its  inner part is filled with the background color, so that
+overlapping symbols appear preferable.
+
+
+o Escape sequence for switching VT100 <=> TEK4010 for Xterm
+
+
+o Command line options for Lexicals
+
+Lexicals can be pre-defined in the command line options,  -V  for
+numerical  values  and -S for character strings, like in the fol-
+lowing way:
+
+    % td -V value=0.1 -S name="Yumiko"
+
+Be careful not to insert any space before or after  "=".   Essen-
+tially the same job can be done by defining environment variables
+of the shell, but this method  is  more  convenient  because  you
+don't  have  to  care about the case of variable name (upper case
+character have to be used for environment variable).
+
+
+o Pseudo pipe input
+
+If the file name specified by SET FILE INPUT='...' command begins
+with '|', the remaining string is passed to sub-shell and the re-
+sultant stream is read in as topdrawer commands.  A useful  exam-
+ple is to use gzip:
+
+    SET FILE INPUT='| gunzip -c filename.dat.gz'
+
+Another  somewhat  tricky example is to get full-path of the cur-
+rent directory and draw as a title:
+
+    SET FILE INPUT='| echo define string dir=\"`pwd`\"'
+    TITLE TOP S_DIR "/filename.tdr"
+
+"Pseudo" means that this feature is not implemented as  an  ordi-
+nary  UNIX  pipe, but in a DOS-like manner by using the temporary
+file created by OPEN(STATUS="SCRATCH"...)  Fortran statement...
+
+
+o Additional color BLACK
+
+BLACK stands for the background color.  Combining with FILL  com-
+mand, this allows you to place a "PasteIt" on the figure.  Unfor-
+tunately, BLACK is useless in the drawing commands  (JOIN,  PLOT,
+etc)  and  SET  command since 3-bit encoding is used for color in
+these commands.  BLACK is adequate only in SET COLOR command and,
+exceptionally, in TITLE command.
+
+
+o Intensity (line-width) range
+
+The  original range of line-width, 1-5, has been extended like in
+the following:
+
+    SET INTENSITY command               .....  1-9
+
+    INTENSITY modifier in drawing commands,
+        such as JOIN and HISTOGRAM      .....  1-7
+
+The intensity 8 and 9, however, can be troublesome in some cases.
+
+
+o Extended device-dependent commands for PostScript
+
+Following  device-dependent commands have been introduced for the
+POSTSCR device:
+
+    FONT=<font>
+    WHITE=<rgb>
+    RED=<rgb>
+    GREEN=.... and so on
+
+Here, <rgb> stands  for  6-  or  12-digit  hexadecimal  character
+string  describing RGB color and <font> should be one of the fol-
+lowing strings:
+
+    Times-Roman
+    Times-Italic
+    Times-Bold
+    Times-BoldItalic
+    Helvetica
+    Helvetica-Oblique
+    Helvetica-Bold
+    Helvetica-BoldOblique
+    Courier
+    Courier-Oblique
+    Courier-Bold
+    Courier-BoldOblique
+    Symbol
+
+<font> and <rgb> are case-blind.  Their default values are:
+    FONT=Helvetia,
+     WHITE=FFFFFF,     RED=FF0000, GREEN=00FF00, BLUE=0000FF,
+    YELLOW=FFFF00, MAGENTA=FF00FF, CYAN=00FFFF, BLACK=000000.
+
+These commands should be used in the device specification.  With-
+in the topdrawer, for example,
+
+    SET DEVICE POSTSCR "FONT=HELVETICA-OBLIQUE,RED=FF2211"
+
+It  should be noted that the device-dependent commands have to be
+enclosed by quotation marks (").  In the command line option, you
+have to ESCAPE the quotation mark like in the following way:
+
+    % td -d postscr,\"font=times-roman,cyan=11eeee\"
+
+because the shell interprets the quotation mark.
+
+<font>  is the hardware font generated in the PostScript printer,
+so you have to declare the followings to use them:
+
+    SET FONT BASIC
+    SET MODE VECTOR=OFF
+
+
+4. Change of some conventions
+
+
+o Device specification
+
+Like ordinary Unix commands, the device is specified by using  an
+option "-d":
+
+    % td -d <DEV>
+
+Available <DEV>s are
+
+    xwindow, xw,  or simply x    : X Window System
+    tek4010, tek, or simply t    : Tektronix 4010
+    postscr, ps                  : PostScript
+    epsf   , ep                  : see below
+
+The default device, if -d is omitted, is X Window System.
+
+The device name can be followed by some options which are allowed
+in SET DEVICE command.  Options have to be separated by comma (,)
+and NEVER insert any white space.  For example,
+
+    % td -d postscr,sideways
+
+
+o File-name specified in topdrawer
+
+Interpretation  of  environment variables (strings beginning with
+$) and ~ (tilde: home-directory specified by $HOME) has been  in-
+corporated.
+
+
+o CASE
+
+The  convention  of case-modification has been changed back to be
+compatible with the original SLAC version !!  (I  have  a  pretty
+amount  of  inheritance using this ...)  It is easily switched to
+be compatible with Bonner Lab.  version, namely  UGS  convention,
+by invoking td with an option "-b":
+
+    % td -b
+
+
+o SIDEWAYS
+
+SET  SIDEWAYS  (and/or  ROTATE,  PORTRAIT etc) rotates the figure
+counterclockwise, while the rotation was clockwise in the  origi-
+nal  version.   This  is preferable in previewing the figure with
+GhostScript  and  in  including  the  figure  to  TeX  file  with
+eclepsf.sty.
+
+BTW,  the  use of SET SIZE SIDEWAYS is recommended instead of SET
+DEVICE SIDEWAYS.  If SET DEVICE is used  without  specifying  any
+device,  a  confusion  of  file  name  will  be  caused  for  the
+PostScript output.
+
+
+o EPSF device
+
+This device is the same as POSTSCR escept for the figure is drawn
+in  the  lower half of the portrait paper shrinked by 0.7 and ro-
+tated  counterclockwise.   This  is  essentially  the   same   as
+POSTSCR,SIDEWAYS.
+
+
+o Default resolution of the PostScript driver
+
+The  default resolution has been changed from 300 dpi to 600 dpi,
+leading to the better expression particularly of duplex fonts and
+circle symbols.  Also a bug which causes a dependence of the line
+width on the resolution has been  fixed.   The  unit  line  width
+specified  by SET INTENSITY 1 is set to be 1/300 in. for compati-
+bility.  FYI, The device-dependent parameters and  their  default
+values,  concerning the resolution and drawing area, are the fol-
+lowing:
+    RUCMX = 600/2.54  RUCMY = 600/2.54 ; Rusters/cm
+    XMIN  =  300      YMIN  =  300     ; Minimum in ruster unit
+    XMAX  = 6300      YMAX  = 4800     ; Maximum in ruster unit
+
+
+5. Limitations inherited from FNAL version
+
+
+o Supported devices are only X Window System, PostScript and
+  Tektronix 4010.
+
+o HBOOK or HandyPak file can not be treated.
+
+o Shared memory is not supported.
+
+o Data storage area is statically allocated.
+  The size of current version is extended to 1 mega bytes.
+
+o Subroutine library (TDHIST, TDJOIN, etc.) is not supported.
+  For a Fortran-callable graphics library, I would like to
+  recommend PGPLOT which is more powerful and widely distributed
+  rather than Topdrawer.
+
+o Some known bugs (?)
+
+
+6. Change log
+
+
+o Release 0.1  10-Sep-95
+
+Release of the first version.  It also worked on OSF/1.
+
+
+o Release 0.2--0.4 ?????
+
+
+o Release 0.5  20-Jan-96
+
+Enhancement of X resource specification.
+
+
+o Release 0.6   3-Feb-96
+
+A number of bugs, originating from the  difference  between  VMS-
+and  Unix-Fortrans, have been fixed.  Significantly improved sta-
+bility.
+
+
+o Release 0.7  25-Feb-96
+
+Straight make by using Imakefile.  Prepared some  documents  (IN-
+STALL, topdrawer.html etc).
+
+
+o Release 0.8  19-May-96
+
+Straight  make for Linux-ELF system (thanks to g77-0.5.18 !!).  A
+number of minor bugs are fixed.  Prepared of case.html.
+
+
+o Release 0.9  31-Jul-96
+
+Command line options for Lexicals.  Fixed a small (but fatal) bug
+for  SunOS Imakefile.  Preparation of English document (this file
+:-).
+
+o Release 1.0  16-Aug-96
+
+Intensity level has been increased from 5 to 9  (7).   Device-de-
+pendent  commands for PostScript (FONT, WHITE,...)  have been in-
+troduced.
+
+o Release 1.1  23-Aug-96
+
+Concerning files read in td, meaningless default has been deleted
+and  interpretation of environment variables as well as ~ (tilde)
+has been incorporated.
+
+o Release 1.1a 13-Sep-96
+
+Dependence of the extended symbols (circle, square, etc.)  on the
+texture has been excluded.
+
+o Release 1.2  20-Nov-96
+
+Fixed  a  bug deteriorating the lexical definition on OSF/1 (that
+was introduced in the original Bonner Lab. version).  Inhibit the
+upper-case conversion of the file name given by DDNAME.  "-w" op-
+tion to wait for SIGNALs, when td  is  invoked  with  redirecting
+stdin,  has been introduced so that the Emacs-Lisp "td.el" works.
+td.el, contributed by Ohnishi, Univ. of Tokyo, is  located  under
+contrib/elisp/.
+
+o Release 1.2a 23-Nov-96
+
+Fixed  a  bug  of  "td.el"  in  specifying  a  complete  path for
+PostScript output file.   The  device-dependent  description  for
+EPSF driver has been fixed.
+
+o Release 1.2b 30-Nov-96
+
+The  limit of filename-length (80-char for topdrawer, 64-char for
+UGS) has been extended to 256-char.  Updated the HTML version  of
+reference  manual (into small pieces of files, using FRAME).  Up-
+dated "td.el" (kill old process at invoking \C-t\C-d twice,  sup-
+port descriptions of the Bonner Lab. CASE convention and the com-
+plete path of executable).
+
+o Release 1.2c 11-Dec-96
+
+Fixed a bug deteriorating the continuation mark  '-'  at  End-Of-
+Line in case for using stdin.  Fixed a bug of SET FILL ANGLE com-
+mand (change unit from radian to degree ;-).  Fixed a bug deteri-
+orating FILL modifier for ARROW, BOX... commands in a logarithmic
+scale.  All these bugs originated in Bonner Lab. version.
+
+o Release 1.3  14-Dec-96
+
+The X11 driver of UGS has been refined.  Eventually
+  * Cursor bug on SunOS has been fixed.
+  * CPU load for processing exposure-event becomes smaller.
+  * Open symbols with error bars are drawn "as expected" without
+    using any tricks.
+
+o Release 1.3a 28-Dec-96
+
+The default resolution of the PostScript driver has been  changed
+from 300 dpi to 600 dpi.  Fixed a bug which causes the dependence
+of the line width on the resolution.  Fixed a  bug  for  treating
+".ps"  or ".eps" extension in case that the original extension is
+not ".top" or ".tdr" (introduced since the release 1.2b).
+
+o Release 1.3b 7-Jan-97
+
+Fixed a bug of the PostScript driver producing a broken  Bounding
+Box  for  the resolution other than 300dpi.  Fixed a bug of td.el
+for PostScript output in case that the file name contains  a  de-
+limiter such as hyphen.
+
+o Release 1.3c 19-May-97
+
+Fixed bugs of "SHOW DATA" and "SHOW CURSOR" commands, originating
+from Bonner Lab. version.  Support of SunOS5 (Solaris) has start-
+ed, though no modification of source was required.
+
+o Release 1.3d 24-May-97
+
+Fixed  a  bug  of td.el causing error in output of PostScript for
+unnamed buffer.   Broken  doc/topdrawer.tex  has  been  restored.
+doc/topdrawer4.0.hlp and doc/doc2gih.f have been modified so that
+bold and/or underlined characters are properly displayed.
+
+o Release 1.3e 27-May-97
+
+Fixed a bug for BOX, CIRCLE, ELLIPSE,  and  DIAMOND  commands  in
+case that coordinates for FROM|TO are given in data system.
+
+o Release 1.3f 17-Aug-97
+
+Fixed  bugs  for  arguments passed to a command defined by DEFINE
+COMMAND and for inverse of trigonometric functions.
+
+o Release 1.3g 22-Aug-97
+
+Changed argument-passing scheme to a command  defined  by  DEFINE
+COMMAND, allowing use of multi-statements.
+
+o Release 1.3h 18-Sep-97
+
+Fixed  a  bug  (introduced  in  1.3g)  specifying the name 'ugde-
+vice.xx' in case that no filename is given for PostScript output.
+Corrected wrong grammars of html document.
+
+o Release 1.4  20-Sep-97
+
+Rotation  of  X11-bitmap  font and extended symbols has been sup-
+ported.
+
+o Release 1.4a 26-Sep-97
+
+Implemented pseudo pipe.
+
+o Release 1.4b 23-Jan-98
+
+Fixed a bug (originating from Bonner Lab. version) of SET  SHIELD
+which   does  not  work  properly  for  SIDEWAYS/ROTATED/ORIENTA-
+TION=1,2,3.
+
+o Release 1.4c 20-Mar-98
+
+Workaround to avoid problems of SIGNAL-processing in  STDIO,  for
+OSF1, Solaris, and Linux with libc-5.4.38 and later.  Libc-5.4.38
+itself, however, is buggy and STRONGLY recommended to replace  to
+5.4.44 or later.

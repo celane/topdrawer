@@ -1,0 +1,30 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.58.10</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.58.10  RANDOM</H4></B> 
+
+RANDOM=n  -  Sets  the maximum number of points per bin for a scatter plot
+(3-d) If RANDOM is not specified The number of points  in  a  bin  is  the
+value  in the bin-Zmin+1.  The default RANDOM is limited to the range 1 to
+10.  If Zmax is less than 1.0 then the default RANDOM is  set  to  5.   No
+points are produced when the data equals ZMIN.  Zmin for a scatter plot is
+zero unless set by a SET LIMITS command.
+
+If  the  contents of the bins range from 0 to 100 and RANDOM=10, Then each
+dot represents the value 10.  Any bin with values less than or equal to  0
+will  have no points plotted.  0.00001 to 10.0 will get 1 dot, 10.00001 to
+20 will have 2 dots and so on.
+
+If  the  Z  axis  is  logarithmic  then  the  number  of  points  will  be
+proportional to ALOG10(Z)-ALOG10(ZMIN).
+
+NORANDOM  modifies a scatter plot so that only one point is plotted in the
+center of each bin.  This option should be used  with  either  the  option
+LIMITED or VARIABLE.
+
+
+</PRE>
+</BODY>

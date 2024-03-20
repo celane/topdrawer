@@ -1,0 +1,30 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 18.30</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>18.30  TDTEXT</H4></B> 
+
+Outputs titles
+     CALL TDTEXT('options','title','case'[,x[,y[,z]]])
+This puts the title at the specified x,y,z
+
+     1.  options  - This is a string specifying the options.  These may be
+         any options used by the TITLE command.   Some  available  options
+         are:
+              TOP, BOTTOM, RIGHT, LEFT, DATA, ANGLE=n, X, Y, Z, SIZE=n
+<A NAME="232">     2.  title - text to put on the screen. </A>
+     3.  case - The case string.  If ' ' is used then the text consists of
+         normal ASCII characters
+     4.  x,y,z  -  Specify  the  title  position  in TEXT coordinates.  If
+         omitted and no options are specified, the current title is placed
+         under the last.
+
+This  is  a  Fortran-77  compatible  subroutine.  Do not use %REF with the
+option, title, or case strings.  Options, title, and case must  be  either
+literals or character variables.
+
+
+</PRE>
+</BODY>

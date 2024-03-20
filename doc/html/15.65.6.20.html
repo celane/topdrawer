@@ -1,0 +1,29 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.65.6.20</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.65.6.20  Example</H4></B>  - 
+     TD:<U>SHOW</U> <U>HIST</U> <U>BRIEF</U>
+Lists just the IDs of all available histograms.
+     TD:<U>SHOW</U> <U>HIST</U> <U>ID=5</U> <U>FULL</U>
+Types all information about histogram ID number 5.
+     TD:<U>SHOW</U> <U>HIST</U> <U>FROM</U> <U>10</U> <U>SELECT='ENERGY'</U>
+Types the names and ids of all histograms with ID above 9 which have names
+beginning with 'ENERGY'.
+     TD:<U>SHOW</U> <U>HIST</U> <U>SELECT='*ENERGY'</U>
+Types on your screen the names of all histograms with names containing the
+word 'ENERGY'.
+     TD:<U>SHOW</U> <U>HIST</U> <U>SELECT='*PI*ENERGY'</U>
+<U>Types</U> <U>the</U> <U>names</U> <U>of</U> <U>all</U> <U>histograms</U> <U>containing</U> <U>'PI...ENERGY'</U> <U>in</U> <U>the</U> <U>name.</U>
+     <U>TD:SHOW</U> <U>HIST</U> <U>SELECT='*ENERGY'</U> <U>MESH</U>
+<A NAME="200">Types on your screen the names of all 3-d histograms with names containing </A>
+the word 'ENERGY'.
+     TD:<U>SHOW</U> <U>HIST</U> <U>SELECT='*ENERGY'</U> <U>MESH</U> <U>BRIEF</U>
+Types  on  your screen the IDs of all 3-d histograms with names containing
+the word 'ENERGY'.
+
+
+</PRE>
+</BODY>

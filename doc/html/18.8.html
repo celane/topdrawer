@@ -1,0 +1,25 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 18.8</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>18.8  CPULIM</H4></B> 
+
+TIME = CPULIM(OTIME)
+
+     This  call  will  give  you  the  difference  in  cputime between the
+remaining cpu time and the previous time (OTIME) in seconds.  If otime=0.0
+then the total time limit since the start of your process is returned.  If
+CPULIM(0.0) is zero then there is no time limit on your process.
+
+                                  Example
+     TIME=CPULIM(CPUTIM(0.0))
+This gives you the time remaining.  If this is negative, then there was no
+limit.
+
+This subroutine is independent from the rest of TOPDRAWER
+
+
+</PRE>
+</BODY>

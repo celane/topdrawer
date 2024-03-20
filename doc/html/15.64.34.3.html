@@ -1,0 +1,27 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.34.3</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.34.3  CHARACTERS</H4></B>   - CHARACTERS=n  specifies  the  maximum number of
+characters in left or right titles.  When setting up the windows  room  is
+allocated  for  the  specified  number  of  characters.   The room is only
+allocated if the corresponding axis and labels are enabled.   If  negative
+the  actual number of characters needed is used to locate titles.  LEFT or
+RIGHT titles are only  moved  over  according  to  the  number  of  actual
+characters if they are plotted after the corresponding axes.
+
+                                  Example
+     TD:<U>SET</U> <U>LABELS</U> <U>CHARACTERS=4</U> <U>PERMANENT</U>
+All plots will allocate room for 4 character labels on the left and right.
+     TD:<U>SET</U> <U>LABELS</U> <U>CHARACTERS=-6</U>
+     TD:<U>PLOT</U> <U>AXES</U>
+     TD:<U>TITLE</U> <U>LEFT</U> <U>'Flush</U> <U>title</U>
+First  the  window  is  allocated  leaving room for 6 characters, then the
+title is located according to the actual number of characters used to form
+the labels.
+
+
+</PRE>
+</BODY>

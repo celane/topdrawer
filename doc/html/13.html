@@ -1,0 +1,39 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual Chapter 13</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>Chapter 13  3-DIMENSIONAL_PLOTS</H4></B>
+<A NAME="26"> </A>
+TOPDRAWER will do a variety of 3-d  plots.   You  can  plot  a  series  of
+separate graphs superimposed on a third axis, or you can enter an array of
+data to be plotted with hidden line removal.  The array of data is entered
+by the READ MESH command.  The mesh is then plotted by the HISTOGRAM ,JOIN
+or PLOT commands.
+     1.  HISTOGRAM BLOCK produces a block or "Lego" plot of mesh data.
+     2.  JOIN produces a mesh surface.
+     3.  SET THREE OFF;PLOT produces a scatter plot of mesh data.
+     4.  CONTOUR produces a contour plot.
+
+     Axes  are  not  automatically added to 3-d graphs so you must use the
+command PLOT AXES.  You may turn each axis on  separately  using  the  SET
+AXIS  command  and then PLOT AXES X,Y,Z to place each axis in a convenient
+location.
+
+     The  command  SET  THREE  is used to specify the "viewpoint" of a 3-d
+plot.  SET SCALE is also used to specify the range and type  of  scale  to
+use along each of the X,Y,Z axes.
+
+     3-d  plots  may also be built from a series of 2-d plots.  To do this
+you must provide z values and:
+     TD:<U>SET</U> <U>THREE</U> <U>ON</U>
+Then  either JOIN, HISTOGRAM or PLOT is used to plot the data.  Normally Z
+is the dependent variable, and X,Y are the independent variables.  If this
+rule is violated, 3-d histograms will not be correctly plotted.  Your data
+may be moved with the SWAP command if you need to get it into the  correct
+variables.
+
+
+</PRE>
+</BODY>

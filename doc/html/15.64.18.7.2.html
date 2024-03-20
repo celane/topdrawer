@@ -1,0 +1,47 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.18.7.2</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.18.7.2  Devices</H4></B>  - In addition a whole set of devices are defined to
+interface through DEC GKS.  You may specify these instead of GKS.   If  it
+is  both sequential an interactive you may specify SEQUENTIAL.  Sequential
+output is sent to the default file if you have not specified a  file  name
+(FILE=xxxx).  These are:
+     1.  METAFILE WSTYPE=2 (SEQUENTIAL) File=UGDEVICE.AGM
+     2.  CGM WSTYPE=7 (SEQUENTIAL) File=UGDEVICE.CGM
+     3.  VT125 WSTYPE=11 (SEQUENTIAL,INTERACTIVE) File=UGDEVICE.SIX
+     4.  VT125BW WSTYPE=12 (INTERACTIVE)
+     5.  VT240 WSTYPE=13 - VT-240 color (INTERACTIVE)
+     6.  VT240BW WSTYPE=14 - VT-240 in Black and white mode (INTERACTIVE)
+     7.  LCP01 WSTYPE=15 (SEQUENTIAL) File=UGDEVICE.SIX
+     8.  VT330 WSTYPE=16 (INTERACTIVE)
+     9.  VT340 WSTYPE=17 (INTERACTIVE)
+    10.  VSXXX   WSTYPE=41   -   A  variety  of  VAX  stations  using  UIS
+         (INTERACTIVE)
+    11.  LVP16A WSTYPE=51 (SEQUENTIAL) File=UGDEVICE.SIX
+    12.  LVP16B WSTYPE=52 (SEQUENTIAL) File=UGDEVICE.SIX
+    13.  HP7550 WSTYPE=53 (SEQUENTIAL) File=UGDEVICE.HP
+    14.  HP7580 WSTYPE=54 (SEQUENTIAL) File=UGDEVICE.HP
+    15.  HP7585 WSTYPE=56 (SEQUENTIAL) File=UGDEVICE.HP
+    16.  GPOSTSCRIPT WSTYPE=61 (SEQUENTIAL) File=UGDEVICE.PS
+    17.  EPS WSTYPE=65 (SEQUENTIAL) File=UGDEVICE.EPS
+    18.  TEK4107 WSTYPE=83 (SEQUENTIAL,INTERACTIVE) File=UGDEVICE.TEK
+    19.  TEK4207 WSTYPE=83 (SEQUENTIAL,INTERACTIVE) File=UGDEVICE.TEK
+    20.  TEK4128 WSTYPE=85 (SEQUENTIAL,INTERACTIVE) File=UGDEVICE.TEK
+    21.  TEK4129 WSTYPE=85 (SEQUENTIAL,INTERACTIVE) File=UGDEVICE.TEK
+    22.  LJ250 (SEQUENTIAL) File=UGDEVICE.LJ
+    23.  LJ250_180DPI (SEQUENTIAL) File=UGDEVICE.LJ
+    24.  XWINDOW  WSTYPE=211  - X or (DEC) window (SEQUENTIAL,INTERACTIVE)
+         This uses the logical DECW$DISPLAY to specify the connection.  To
+         do this you must:
+              $ DEFINE DECW$DISPLAY nodename::0.0
+For example you may select interactive XWINDOWS (DEC windows) by:
+     TD:SET  DEVICE  XWINDOW  To  select  VT125  output  to  a  file named
+<A NAME="132">"VT125.PLOT" </A>
+     TD:SET DEVICE VT125 SEQUENTIAL FILE=VT125.PLOT
+
+
+</PRE>
+</BODY>

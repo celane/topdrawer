@@ -1,0 +1,28 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 16.4</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>16.4  EXAMPLES</H4></B> 
+
+     TD:<U>TITLE</U> <U>TOP</U> <U>'Mean='</U> <U>T_MEAN</U>
+Writes the mean of our data at the top of the current plot.
+     TD:<U>SET</U> <U>ORDER</U> <U>X</U> <U>Y</U> <U>DX</U> <U>DY</U>
+     TD:<U>DATA</U> <U>SET</U>
+     TD:<U>V_MEAN,V_SUM,V_ESTD,V_ESUM</U>
+     TD:<U>DELETE</U> <U>SET=FIRST</U>
+Creates  a  new data set containing the Y=SUM, X=MEAN, DX=STD, DY=error on
+SUM, then deletes the old data set.
+     TD:<U>IF</U> <U>V_FIT[1]</U> <U>.gt.</U>  <U>0</U> <U>TITLE</U> <U>'Coef(1)=',T_COEFFICIENT[1]</U>
+Writes coefficient 1 if it has been fit.
+     TD:<U>SET</U> <U>STATISTICS</U> <U>LIMITED</U> <U>FROM</U> <U>0,1</U> <U>to</U> <U>5,10</U>
+     TD:<U>TITLE</U> <U>TOP</U> <U>'Sum=',T_SUM,'</U> <U>between</U> <U>x=0,5</U> <U>y=1,10'</U>
+Plot a title with the sum over the data between limits on x,y.
+     TD:<U>SET</U> <U>STATISTICS</U> <U>SET=2</U>
+     TD:<U>TITLE</U> <U>TOP</U> <U>'Sum=',T_SUM,'</U> <U>for</U> <U>data</U> <U>set</U> <U>2'</U>
+Plot a title with the sum over data set 2.
+
+
+</PRE>
+</BODY>

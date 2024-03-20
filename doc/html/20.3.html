@@ -1,0 +1,98 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 20.3</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>20.3  87</H4></B> 
+
+     1.  1-Feb-1987  - Typing Ctrl_C will abort the current plot or print.
+         The SET HISTOGRAM command may select histograms by  substring  in
+         the  title.   NEXT|PREVIOUS  may be combined with NAME= to select
+         the next hist which matches the name.   NEXT|PREVIOUS  will  wrap
+         around the end of the histogram list unless WRAP OFF is specified
+         or in BATCH mode.
+     2.  12-Feb-1987  -  The journal file will contain coordinates entered
+         by  cursor.   The  AUTOPLOT  mode  was  added.    The   condition
+         INTERACTIVE  may  be  tested  by  the IF command.  MARGINS may be
+         specified in addition to the SCREEN size in the SET SIZE command.
+     3.  26-Feb-1987  -  Added  DEFINE  COMMAND and SHOW HIST may now show
+         more information.  The option CURRENT  has  been  added  to  SHOW
+         HIST.
+     4.  10-Mar-1987  -  Added  option  APPEND to SET HIST.  Added options
+         POINTS, and SETS to BIN.  Histogramming speed was  optimized  for
+         cases  with  a  series  of  identical  Y values.  SHOW DATA gives
+         errors on statistics, and statistics are generated for each  data
+         set  separately.   Fixed problem with histogramming data withou Z
+         values as 3-d plot.
+     5.  7-Apr-1987  -  Added  commands  DELETE, FIT.  Fixed some problems
+         with separate data sets.
+     6.  30-Apr-1987  -  Added option ADD to SET HIST.  If a mesh was read
+         with one axes increasing and the other decreasing, it  would  not
+         plot properly.  This has been fixed.
+<A NAME="240">     7.  8-May-1987  -  Added  contour  plotting, and LOG_ERROR routine to </A>
+         trap arithmetic errors.  The error handling returns to the T2MAIN
+         program.
+     8.  19-May-1987 - Virtual memory added to VAX version.
+     9.  5-Jun-1987  - Fixed hidden line algorithm.  It used wrong average
+         X,Y to calculate the vertical.  As a result it treated as  hidden
+         many lines incorrectly.
+    10.  11-Jun-1987  - Fixed infinite loop in T2MSFV.  Rewrote T2MESH for
+         better hidden line removal.  The old  algorithm  would  leave  in
+         hidden  lines, or omit visible line segments that are bisected by
+         sharp peaks.  The new algorith fixes these errors with less  than
+         a 5% loss in cpu speed.
+    11.  17-Jun-1987  -  Fixed problems with title overflow for small page
+         sizes.  Added LINES parameter to  SET  TITLE  and  SHIFT  to  SET
+         LABELS.   Added  numbered  windows.   Negative  SCRD will produce
+         constant view of mesh.  Dot plots and mesh plots  were  optimized
+         for  max  speed.   Essentially  the  user can select windows more
+         easily.
+    12.  23-Jun-1987  - Fixed problems with 3-d text.  The DUPLEX font did
+         not work for 3-d text, it  caused  array  overflows  or  spurious
+         lines.   3-d  text processing was somewhat optimized.  The syntax
+         of the SET GRID  command  has  been  brought  in  line  with  set
+         AXES,LABEL,TITLE commands.
+    13.  16-Jul-1987 - Fixed SET THREE to conform to documentation.
+    14.  23-Jul-1987 - Modified T2TLAB so that labels may be generated for
+         data with a large range.  Some changes were also made in  T2CNTR.
+         Added  Table  generation  for  1/2-d  data.  Limit generation was
+         modified to keep the limits within reasonable  values,  when  the
+         data  has  very  small  relative variation.  Title generation was
+         modified to keep long titles on the screen.  The  character  size
+         is  reduced  by  up  to a factor of 4 if the title is too long to
+         fit.
+    15.  30-Jul-1987  -  Modified YEAR/MONTH scale so that all days occupy
+         equal space.
+    16.  30-Aug-1987
+         A.  Lexicals  were  added  as  input  to allow access to internal
+             numbers.
+         B.  The  SET STATISTICS command allows the user to set the actual
+             statistical data used by the lexicals.
+         C.  SET DIGITS  determines  the number of digits used for output.
+             DIGITS options in  titles  allow  formatting  of  numbers  in
+             titles.
+         D.  PLOT TABLE - plots the data as a table of numbers.
+         E.  PLOT AXES/GRID - Has options X,Y,Z...  to allow absolute user
+             control over axes/grid generation.
+         F.  INHIBIT  option has been added to SET LABELS, SET AXES...  To
+             allow inhibiting axes generation while  still  leaveing  room
+             for the axes.
+    17.  16-Sep-1987 - Added mesh data handling to X,Y,Z commands, as well
+         as MINUS and DIVIDE options.  MULTIPLY and DIVIDE commands may be
+         used  to  manipulate  histograms  or spectra.  The X,Y,Z commands
+         were modified to handle DX,DY, and DZ automatically.
+    18.  14-Oct-1987  -  Added Lexicals for external histogram parameters.
+         Modified PLOT command so that the current texture applies to  the
+         error  bars.  DEFINE VALUE and DEFINE STRING commands were added.
+         S_ lexicals were added for access to string lexicals.
+    19.  31-Oct-1987 - Added LOG option to BIN, SWAP, X, SMOOTH, SET HIST,
+         DEFINE  HIST,  ADD,  MULTIPLY,  and   DIVIDE   commands.    Added
+<A NAME="241">         SET MODE LOG  for automatic logging.  Added SET WINDOW LEVEL=n to </A>
+         make inset windows easier.  Added INSIDE option to SET LABELS  to
+         make packed windows easy to create.
+
+
+
+</PRE>
+</BODY>

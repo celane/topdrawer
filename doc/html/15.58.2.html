@@ -1,0 +1,32 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.58.2</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.58.2  AXES|GRID</H4></B> 
+
+     <U>PL</U>OT   {<U>AX</U>ES|<U>GR</U>ID}   [<U>AT</U> [x [y [z]]]]  [[<U>TO</U>P|<U>BO</U>TTOM|<U>RI</U>GHT|<U>LE</U>FT|<U>X</U>|<U>Y</U>|<U>Z</U>]
+[[<U>LA</U>BELS|<U>TI</U>CKS]   [<U>SH</U>ORT|<U>LO</U>NG]   [n1,n2,n3.....]    [<U>FR</U>OM n <U>TO</U> n <U>BY</U> n <U>N</U> n]
+[<U>FF</U>ORMAT|<U>GF</U>ORMAT|<U>EF</U>ORMAT|<U>YE</U>RS |<U>MO</U>NTHS|<U>DA</U>YS|<U>TI</U>ME]]
+Puts Axes and grid on the plot, but does not plot points.  This command is
+not usually necessary as axes are added to  the  picture  when  the  first
+PLOT,  HISTOGRAM,  or  JOIN  command is executed.  If you use this command
+before a PLOT, HISTOGRAM or JOIN command, then the automatic axes are  not
+produced.   The limits of the axes are determined either from the existing
+data or from the the SET LIMITS command, or by the LIMITED  options.   The
+<A NAME="104">format  of  the axes is determined by the SET AXES command.  The origin of </A>
+the axes may be specified after the option AT.
+
+     This command is mainly useful for special graphs where 2 sets of axes
+with different scales are needed.  This is also used to plot axes on  a  3
+dimensional plot where x,y,z specify the origin of the axes.  3-d plots do
+not automatically produce axes, so you must use the PLOT AXES command.
+
+     The  origin  may  also be specified by the command SET THREE.  If not
+already specified by SET AXES,  LABELS,  or  TICKS  commands,  the  color,
+texture, and intensity options will be used in plotting the axes.
+
+
+</PRE>
+</BODY>

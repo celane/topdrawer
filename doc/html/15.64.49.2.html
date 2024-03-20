@@ -1,0 +1,20 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.49.2</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.49.2  BASE</H4></B>       - 
+     BASE=n - Selects the base for the plot.
+  *  LINEAR  this  is useful for non-decimal units.  The labeled ticks are
+     put at locations BASE*ROUND*POWER where:
+          POWER = a power of 10 1,10,100
+          ROUND = 1.0,1.0,2.5, or 5.0
+  *  LOG  scaling  large  ticks  are  put  at  powers  of  the base.  This
+     determines where ticks are put.  BASE 2 would put labels at 1, 2,  4,
+     8, 16,....  If exponential notation is selected then the base is used
+     in the notation.
+
+
+</PRE>
+</BODY>

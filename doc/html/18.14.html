@@ -1,0 +1,23 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 18.14</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>18.14  DEFKEY</H4></B> 
+
+This defines a key on the keypad.
+     CALL DEFKEY(string)
+
+The  keypad  key  is  defined  in  a  manner similar to the DEFINE/KEY VMS
+command.  All of the ASK routines and READPR  will  interpret  the  keypad
+keys,  according  to  the  DEFKEY routine.  DEFKEY and READPR are routines
+which work together.
+
+                                  Example
+     CALL DEFKEY('/KEY PF2 "HELP"/TERMINATE')
+This is the default definition of PF2
+
+
+</PRE>
+</BODY>

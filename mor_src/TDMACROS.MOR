@@ -1,0 +1,992 @@
+"%E  ****** TOP DRAWER macros Jan 1 1987 ******"
+%L0				"Turn off listings"
+%J 0				"Suppress sequence numbers"
+%V 1				"Literals are not converted to hollerith"
+%C 80				"Length of input line"
+%'$DATE'='''@ND''';
+"
+	Where are we? This table defines the target processor
+"
+   %'$ENGLISH'='<GENERATE>';	"Default system of units"
+   %'$CUNIT'='';		"Will be character unit conversion"
+   %'$ROT'='<NOGENERATE>';	"Use graphics package for scissoring..."
+
+"	Debugging support "
+
+   %'$DBG'='<NOGENERATE>';	"To get rid of debug code"
+
+"	Convenient abbreviations "
+
+   %'$END'='<ENDGENERATE>';
+   %'$ELSE'='<ELSEGENERATE>';
+
+"	One of the following systems should be set to <GENERATE>  "
+
+   %'$TOPS'      = '<NOGENERATE>';
+   %'$UNIX'      = '<GENERATE>'  ;
+   %'$VAX'       = '<NOGENERATE>';
+   %'$VM'        = '<NOGENERATE>';
+
+"	Select this if VAXFortran extensions are available "
+
+   %'$VAXFORTRAN'= '<NOGENERATE>';
+
+"	Histogram packages "
+
+   %'$RICE'='<NOGENERATE>';	"For Rice hist package"
+   %'$HBOOK'='<GENERATE>';	"For HBOOK - Cern hist package"
+   %'$HANDY'='<NOGENERATE>';	"For HANDYPAK - SLAC hist package"
+
+   %'$DELTA'='"0.0000002"';	"Min difference to judge it is zero"
+   %'$DELTX'='"0.001"';		"Min X distance that is visible =1 mil"
+   %'$DIGITS'='"6"';		"Maximum significant digits for a number"
+   %'$SMALLINTEGER'='"-2 147 483 648"';
+   %'$LARGEINTEGER'='" 2 147 483 647"';
+   %'$MESHSEPARATOR'='"2.0E35"';	"Data set separator"
+   %'$SEPARATOR'='"1.0E35"';	"Data set separator"
+
+%E  File assignments
+   %'$SCRATCHFILE'='"1"';	"Fortran unit for scratch I/O"
+   %'$HISTFILE'='"2"';		"Fortran unit for direct access hists"
+   %'$TERMINALOUT'='"6"';	"Fortran unit for terminal output"
+   %'$JOURNALFILE'='"7"';	"Fortran Unit for log file"
+   %'$OUTPUTFILE'='"8"';	"Fortran unit for td output"
+   %'$INPUTFILE'='"9"';		"Fortran unit for td command input"
+   %'$TERMINALIN'='"9"';	"Fortran unit for terminal input"
+   %'$ERRFILE'='"86"';		"Fortran unit for errfil"
+
+%'$VIRT'='<NOGENERATE>';
+
+   $VIRT;
+	%'$NPOINTS'='"10"'	"Size of point buffers (nominal)"
+   $ELSE;
+	%'$NPOINTS'='"10248"'	"Size of point buffers"
+   $END;
+
+   %'$CHARS'='"4"';		"Characters/floating variable"
+   %'$NAMED'='<GENERATE>';	"Do not generate data set names"
+
+"	System dependencies "
+
+   $TOPS;
+	%'<W,$TERMINALOUT>#;'='@LG@LS0TYPE@LC00,#1;@LC00FORMAT@LU';
+	%'<W,$TERMINALOUT>;'='@LG@LS0TYPE@LC00;@LC00FORMAT@LU';
+	%'$SHORTINTEGER'='"INTEGER"';
+	%'$LONGINTEGER'='"INTEGER"';
+	%'$BOOLEAN'='"LOGICAL"';
+	%'$TABLE'='"INTEGER"';
+   $END;
+
+   $UNIX;
+	%'<TRACE#>'='';
+	%'$SHORTINTEGER'='"INTEGER*2"';	"Define variables/precision"
+	%'$LONGINTEGER'='"INTEGER*4"';
+	%'$BOOLEAN'='"LOGICAL"';
+	%'$LARGEREAL'='"1.0E35"';
+	%'$MAXREAL'='"1.70E37"';
+	%'$SMALLREAL'='"1.0E-35"';
+	%'$MINREAL'='"0.30E-37"';
+	%'$LARGEDOUBLE'='"1.0D35"';
+	%'$SMALLDOUBLE'='"1.0D-35"';
+	%'$TABLE'='"BYTE"';
+	%'$TTRECL'='"256"';
+	%'$READONLY'='"READONLY,"';
+	%'$ACCESS'='",ACCESS=C_ACCESS"';
+   $END;
+
+   $VAX;
+	%'<TRACE#>'='';
+	%'$SHORTINTEGER'='"INTEGER*2"';	"Define variables/precision"
+	%'$LONGINTEGER'='"INTEGER*4"';
+	%'$BOOLEAN'='"LOGICAL"';
+	%'$LARGEREAL'='"1.0E35"';
+	%'$MAXREAL'='"1.70E37"';
+	%'$SMALLREAL'='"1.0E-35"';
+	%'$MINREAL'='"0.30E-37"';
+	%'$LARGEDOUBLE'='"1.0D35"';
+	%'$SMALLDOUBLE'='"1.0D-35"';
+	%'$TABLE'='"BYTE"';
+	%'$TTRECL'='"256"';
+	%'$READONLY'='"READONLY,"';
+	%'$ACCESS'='",ACCESS=C_ACCESS"';
+   $ELSE;
+	%'$READONLY'='';
+   $END;
+
+   $VM;
+	%'<TRACE#>'='';
+	%'$LARGEREAL'='"1.E60"';
+	%'$MAXREAL'='"1.E62"';
+	%'$SMALLREAL'='"1.E-60"';
+	%'$MINREAL'='"1.E-62"';
+	%'$LARGEDOUBLE'='"1.D60"';
+	%'$SMALLDOUBLE'='"1.D-60"';
+	%'$SHORTINTEGER'='"INTEGER*2"';
+	%'$LONGINTEGER'='"INTEGER*4"';
+	%'$BOOLEAN'='"LOGICAL*1"';
+	%'$ASCII'='<NOGENERATE>';	"Generate EBCDIC"
+	%'$TABLE'='"LOGICAL*1"';
+	%'$DELTA'='"0.000002"';	"Min difference to judge it is zero"
+   $ELSE;
+	%'$ASCII'='<GENERATE>';	"All others use ASCII"
+   $END;
+
+"General error message for macros"
+   %'%MESSAGE(#)'='#1@NM';
+"Null lines"
+   %'\'='';
+
+%';+#;'=';#1=#1+1;';
+"
+	Define parameters for TOPDRAWER
+"
+   %'$IFMAX'='"10"';			"Maximum IF nesting"
+   %'$DATDATSIZ'='"8"';			"Data statistics array"
+   %'$BUFSIZ'='"400"';			"Temporary buffer"
+   %'$MAXTIT'='"512"';			"Size of title string in T2MAIN,TDTEXT"
+   %'$MAXNAM'='"400"';			"Maximum size of data name"
+   %'$MAXSTR'='"512"';			"Size of string in /TOKENC/"
+	"Note:  if MAXSTR is changed, then Format must be changed also"
+   %'$PATMAX'='"20"';			"Number of pattern size"
+   %'$PATN'='"30"';			"Number of stored patterns"
+   %'$MAXCOR'='"19"';			"Maximum number of coordinates"
+   %'$MAXVAR'='"19"';			"Maximum number of variables"
+   %'$MAXVPTR'='"15"';	 		"Maximum variable pointers"
+   %'$DEBUG'='"FLAGS(29)"';
+   %'$ERROR'='"FLAGS(23)"';
+   %'$WARN'='"FLAGS(58)"';
+   %'$ABORT'='"FLAGS(92)"';
+   %'$APPEND'='"FLAGS(106)"';
+   %'$MONITOR'='"FLAGS(107)"';
+   %'$TITLE'='"FLAGS(108)"';		"Automatic title ?"
+   %'$NEW'='"FLAGS(109)"';		"Automatic newplot ?"
+   %'$TRACE'='"FLAGS(18)"';		"Trace when error"
+   %'$3D'='"FLAGS(56)"';
+   %'$POLAR'='"FLAGS(27)"';
+   %'$SPHERICAL'='"FLAGS(91)"';
+   %'$OPEN'='"FLAGS(24)"';
+   %'$INTERACTIVE'='"FLAGS(99)"';
+   %'$MODEEXPAND'='"FLAGS(17)"';	"Expand the plot?"
+   %'$DEFTEXT'='"FLAGS(73)"';		"Text frame defined ?"
+   %'$DEFWINDOW'='"FLAGS(74)"';		"WIndow defined ?"
+   %'$DEFDATA'='"FLAGS(75)"';		"Data frame defined ?"
+   %'$MODELOG'='"FLAGS(95)"';		"Log results of operation?"
+   %'$MODEPATTERNED'='"FLAGS(101)"';	"Patterned mode flag"
+   %'$MODEVECTOR'='"FLAGS(102)"';	"Vector plot flag"
+   %'$MODETREE'='"FLAGS(103)"';		"Tree search flag"
+   %'$MODECONFIRM'='"FLAGS(104)"';	"Confirmation flag"
+   %'$MODECHECK'='"FLAGS(105)"';	"Check data before operation?"
+%'<W,#>#;'='@LG@LS1IF(#1.gt.0) THEN;
+    WRITE(#1,@LC10)#2;
+    IF(#1.le.NINMAX)NINP(#1)=NINP(#1)+1;
+    ENDIF;
+    @LC10FORMAT@LU1';
+%'<W>'='<W,6>';
+"
+	The error output format
+"
+   %'ERROROUT;#;'='CALL T2ERR($INFO,$CARD,#1,4);';
+   %'ERRORTOKEN#;'='@LG@LS1WRITE(OUTSTR,@LC10)#1;
+     CALL T2ERR($INFO,$CARD,OUTSTR,4);
+     @LC10FORMAT@LU1';
+   %'ERRORMESSAGE#;'='@LG@LS1WRITE(OUTSTR,@LC10)#1;
+     CALL T2ERR(0,'' '',OUTSTR,-3);
+     @LC10FORMAT@LU1';
+   %'ERROR$MESSAGE#;'='WRITE(OUTSTR,*)#1;CALL T2ERR($INFO,$CARD,OUTSTR,-4);';
+   %'ERRORSTRING;#;'='CALL T2ERR(0,'' '',#1,3);';
+
+%'DONOTHING'='"CONTINUE";';
+%';DONOTHING'=';';
+
+   %'UNTREATEDPOINTS'='"(.NOT.FLAGS(28).AND.NPOINT.NE.0)"';
+   %'$PXELWORDS'='"1000"'		"Number of words to store segments"
+
+%'$POINT ARRAYS(#)'='"
+   INTEGER LISTPT,NPTMAX,NDSETS;
+   REAL DATBUF"(#1)";
+   COMMON /T2XPNT/ LISTPT,NPTMAX,NDSETS,DATBUF;"';
+%'$PFREE'='(NPTMAX-$INEXTPTR+1)/NINCR'	"Free number of points"
+%'$PMAX'='(NPTMAX-$IBASEPTR+1)/NINCR-1'	"Max point storage"
+%'$MFREE'='(NPTMAX-$INEXTPTR+1)'	"Free virtual memory"
+		"Define point storage pointer array"
+
+%'$SELECTSPEC'='
+   $BOOLEAN "LAPPEN, LCONF, LMONITOR, LCHECK, LLOG;
+   INTEGER N1,N2,N3,N4,NS1,NS2;
+   REAL TLIM(3,2);
+   COMMON /T2SELECT/N1 ,N2 ,N3 ,N4 ,NS1 ,NS2 ,TLIM
+	,LMONITOR ,LAPPEN ,LCONF ,LLOG ,LCHECK;
+"'
+%'$MAINSPEC'='"
+   INTEGER    NSETD ;
+   PARAMETER (NSETD="$MAXCOR"+9);
+   INTEGER ISETD(NSETD),NINCR0,NINCR1,NINCR2,IBTYPE;
+   INTEGER I1,I2,I3,I4,I5,I6,I7,IM,NP,NL,IENDAT,IBGDAT;
+   INTEGER I_NDX,I_NDY,I_NDZ;
+
+   INTEGER N_SYMBOL   ;
+   INTEGER N_XDATA    ;
+   INTEGER N_DXDATA   ;
+   INTEGER N_NDXDATA  ;
+   INTEGER N_YDATA    ;
+   INTEGER N_DYDATA   ;
+   INTEGER N_NDYDATA  ;
+   INTEGER N_ZDATA    ;
+   INTEGER N_DZDATA   ;
+   INTEGER N_NDZDATA  ;
+   INTEGER N_UDATA    ;
+   INTEGER N_DUDATA   ;
+   INTEGER N_NDUDATA  ;
+   INTEGER N_VDATA    ;
+   INTEGER N_DVDATA   ;
+   INTEGER N_NDVDATA  ;
+   INTEGER N_WDATA    ;
+   INTEGER N_DWDATA   ;
+   INTEGER N_NDWDATA  ;
+   INTEGER NCMAX      ;
+   INTEGER NCSIZE     ;
+   INTEGER NBTYPE     ;
+   INTEGER NINDAT     ;
+   INTEGER NSDATA     ;
+   INTEGER NXDATA     ;
+   INTEGER NDXDATA    ;
+   INTEGER NNDXDATA   ;
+   INTEGER NYDATA     ;
+   INTEGER NDYDATA    ;
+   INTEGER NNDYDATA   ;
+   INTEGER NZDATA     ;
+   INTEGER NDZDATA    ;
+   INTEGER NNDZDATA   ;
+   INTEGER NPDATA     ;
+   INTEGER NLDATA     ;
+   INTEGER NMDATA     ;
+   INTEGER NBGDAT     ;
+   INTEGER NENDAT     ;
+
+   PARAMETER (N_SYMBOL=1)              ;
+   PARAMETER (N_XDATA=2)               ;
+   PARAMETER (N_DXDATA=3)              ;
+   PARAMETER (N_NDXDATA=4)             ;
+   PARAMETER (N_YDATA=5)               ;
+   PARAMETER (N_DYDATA=6)              ;
+   PARAMETER (N_NDYDATA=7)             ;
+   PARAMETER (N_ZDATA=8)               ;
+   PARAMETER (N_DZDATA=9)              ;
+   PARAMETER (N_NDZDATA=10)            ;
+   PARAMETER (N_UDATA=11)              ;
+   PARAMETER (N_DUDATA=12)             ;
+   PARAMETER (N_NDUDATA=13)            ;
+   PARAMETER (N_VDATA=14)              ;
+   PARAMETER (N_DVDATA=15)             ;
+   PARAMETER (N_NDVDATA=16)            ;
+   PARAMETER (N_WDATA=17)              ;
+   PARAMETER (N_DWDATA=18)             ;
+   PARAMETER (N_NDWDATA=19)            ;
+   PARAMETER (NCMAX=6)                 ;
+   PARAMETER (NCSIZE=3)                ;
+   PARAMETER (NBTYPE=1)                ;
+   PARAMETER (NINDAT=2)                ;
+   PARAMETER (NSDATA=5)                ;
+   PARAMETER (NXDATA=NSDATA+1)         ;
+   PARAMETER (NDXDATA=NXDATA+1)        ;
+   PARAMETER (NNDXDATA=NXDATA+2)       ;
+   PARAMETER (NYDATA=NXDATA+NCSIZE)    ;
+   PARAMETER (NDYDATA=NYDATA+1)        ;
+   PARAMETER (NNDYDATA=NYDATA+2)       ;
+   PARAMETER (NZDATA=NYDATA+NCSIZE)    ;
+   PARAMETER (NDZDATA=NZDATA+1)        ;
+   PARAMETER (NNDZDATA=NZDATA+2)       ;
+   PARAMETER (NPDATA=NSDATA+"$MAXCOR") ;
+   PARAMETER (NLDATA=NPDATA+1)         ;
+   PARAMETER (NMDATA=NLDATA+1)         ;
+   PARAMETER (NBGDAT=NMDATA+1)         ;
+   PARAMETER (NENDAT=NBGDAT+1)         ;
+
+   EQUIVALENCE (IBTYPE,ISETD(NBTYPE));
+   EQUIVALENCE (NINCR0,ISETD(NINDAT));
+   EQUIVALENCE (NINCR1,ISETD(NINDAT+1));
+   EQUIVALENCE (NINCR2,ISETD(NINDAT+2));
+   EQUIVALENCE (I7,ISETD(NSDATA));
+   EQUIVALENCE (I1,ISETD(NXDATA));
+   EQUIVALENCE (I4,ISETD(NDXDATA));
+   EQUIVALENCE (I2,ISETD(NYDATA));
+   EQUIVALENCE (I5,ISETD(NDYDATA));
+   EQUIVALENCE (I3,ISETD(NZDATA));
+   EQUIVALENCE (I6,ISETD(NDZDATA));
+   EQUIVALENCE (I_NDX,ISETD(NNDXDATA));   
+   EQUIVALENCE (I_NDY,ISETD(NNDYDATA));   
+   EQUIVALENCE (I_NDZ,ISETD(NNDZDATA));   
+   EQUIVALENCE (NP,ISETD(NPDATA));
+   EQUIVALENCE (NL,ISETD(NLDATA));
+   EQUIVALENCE (IM,ISETD(NMDATA));
+   EQUIVALENCE (IBGDAT,ISETD(NBGDAT));
+   EQUIVALENCE (IENDAT,ISETD(NENDAT));"';
+
+	"Macro to check the number of arguments passed to subroutine"
+%'$CHECKARGS(#,#)'='"
+	INTEGER NERR/0/,NARG/0/;
+	CALL NOARG(NARG)";
+	IF (NARG.LT.#1 .OR. NARG.GT.#2) THEN;
+		NERR=NERR+1;
+		CALL T2ERRA(NERR,NARG);
+		RETURN;
+	ENDIF;'
+
+%'$SPECIFICATION'='$FLAGS;$SPECIFY2;$SPECIFY1;$SPECIFYLUN;$SPECIFYTOK';
+   %'$TRAP'='LTRAP';
+$VAX;
+   %'$FLAGS'='
+        INTEGER    RELFLAG     ;
+	PARAMETER (RELFLAG=151);
+	$BOOLEAN "FLAGS,LTRAP,LHANDL,LSYERR,LSCREV(3),LSYABO;
+	COMMON /T2FLGC/ FLAGS(200), LTRAP,LHANDL,LSYERR,LSCREV,LSYABO;
+	VOLATILE  LTRAP,LHANDL,LSYERR,LSYABO;"'
+$ELSE;
+   %',READONLY,'=',';
+   %',DEFAULTFILE=#,'=',';
+   %'$FLAGS'='"
+	COMMON /T2FLGC/ FLAGS(200), LTRAP,LHANDL,LSYERR,LSCREV;
+	"$BOOLEAN" FLAGS, LTRAP,LHANDL,LSYERR,LSCREV(3);
+        INTEGER    RELFLAG     ;
+	PARAMETER (RELFLAG=151);"'
+$END;
+
+%'$MEMSIZ'='300000';			"Memory size for HBOOK histograms"
+
+%'$SPECIFYHBOOK'='"
+        INTEGER    MINTUPL , MAXTUPL , SIZTUPL ;
+	PARAMETER (MINTUPL=-6)                 ;
+	PARAMETER (MAXTUPL=128)                ;
+	PARAMETER (SIZTUPL=MAXTUPL-MINTUPL+1)  ;
+	CHARACTER*8 CTUPL(MINTUPL:MAXTUPL)     ;
+	REAL    VTUPL(MINTUPL:MAXTUPL,4),LIMTUPL(MINTUPL:MAXTUPL,2);
+	EQUIVALENCE (VTUPL(1,3),LIMTUPL(1,1));
+	COMMON /T2HBOOK/VTUPL;
+	COMMON /T2HBOOKS/CTUPL;
+   "'
+
+%'$SPECIFYFIT'='"
+   INTEGER   MAXTER, MAX_FIT_LIM ;
+   PARAMETER ( MAXTER      = 20 );
+   PARAMETER ( MAX_FIT_LIM = 12 );
+
+   DOUBLE PRECISION COFF(MAXTER), DCOFF(MAXTER), ACOEF(MAXTER);
+   DOUBLE PRECISION CHISQR, FTEST, XF(MAXTER), DACOEF(MAXTER), RMUL;
+   DOUBLE PRECISION EMATRX(MAXTER,MAXTER),D_CHISQ;
+   REAL XOFF, FIT_LIM(3,MAX_FIT_LIM);
+   INTEGER NTERMS, IFIT, NFIT, NPFIT, NCOFF, NEXTER, NEXPR(MAXTER+1);
+   INTEGER I_FIT(2,MAXTER), IDEP_FIT;
+   INTEGER N1_FIT, N2_FIT, N3_FIT, N4_FIT, NS1_FIT, NS2_FIT;
+   INTEGER N_FIT_LIM, IMESH_FIT;
+   "$BOOLEAN" LCOF1(MAXTER), LCOFF(MAXTER), LFIT(MAXTER), LXLOG, LYLOG;
+   "$BOOLEAN" LDY_FIT;
+
+   COMMON /T2FITS/
+         COFF, DCOFF, ACOEF,
+         CHISQR, FTEST, XF, DACOEF, RMUL,
+         EMATRX, D_CHISQ,
+         XOFF, FIT_LIM,
+         NTERMS, IFIT, NFIT, NPFIT, NCOFF, NEXTER, NEXPR,
+         I_FIT, IDEP_FIT,
+	 N1_FIT, N2_FIT, N3_FIT, N4_FIT, NS1_FIT, NS2_FIT,
+         N_FIT_LIM, IMESH_FIT,
+         LCOF1, LCOFF, LFIT, LXLOG, LYLOG,
+         LDY_FIT ;
+
+   CHARACTER*80 FITSTR;
+   CHARACTER*"($MAXSTR+8+2*MAXTER)" SEXPR;
+   COMMON /T2FITT/FITSTR, SEXPR;"'
+
+%'$SPECIFY1'='"
+   COMMON /T2COM/
+	PXNAME, REDUCE, TITX, TITY
+	,XFRM12, XFRM13, XFRM14, XFRM23
+	,XFRM24, XFRM34
+	,XVARSX
+	,TITSIZ, GRDSYM, GRDSIZ, CIRSIZ, ASIZE, AFLARE
+	,SMSZDF, ORAXES, EYEDIR, VUEDIR, VUECEN
+	,VERTCL, EYESEP, SCRD, SCRZ, EYEDIS, EYEPNT
+	,XYPART, BARSIZ, TIKSIZ, XYZBAS, TTHETA
+	,TPHI, FRELBL, IPATRN, NPATRN, PATRN
+	,SCLPRM, WINDOW, SCREEN, SYMBOL, NOSYMB
+	,FACTXY, LBLSIZ, SYMSIZ, XYZLIM, WORLD
+	,RADRMX, RADRMN, RADAMN, RADANG, RADX0, RADY0, XUNUSD
+	,USRKBD, USRSCR, PLTFIL
+	,ITITDT, LENCRD
+	,INPFMT, GRDTYP, LINWID, LINCOL, LINTEX, TITCON, ITCNTR
+	,IUNUSD, NXYZ1, NXYZ2
+	,LBLCHR, NDIMNS, IBLKTP, IDIMNS
+	,NMESH1, NMESH2, MESH1, MESH2, MESH3, NFIELD
+	,IFIELD, NINCR
+	,IVARBL, IVRPTR
+	,LINEAR, NONLIN
+	,NPOINT, LETSET
+	,MXECHO, LINES, MAXLNS
+	,AXANG, MESH2D, REDFAC, GRDTEX, OUTTEX, IAXTEX, TITEX, DSCAL
+	,OUTSTR, IPROP, IHTEX, IBLINK, IERASE, LABTEX, TICTEX, NXYLIM, PATSZ
+	,MARGIN, PSCR, ITXPRI, ITXSEC, OREAL, OCPU, CSCRD, OUTSID
+	,TITLIN, TITINX, TITZ, TITX1, TITY1, LTDATA, NPLOTS, REVLEV
+	,LBLFMT, IYEAR, IMONTH, IDAY, ISIGFG
+	,DATPTS, ERRPTS, DATXMN, DATXMX, DATYMN, DATYMX, DATZMN, DATZMX
+	,DATSUM, ERRSUM, DATAVE, ERRAVE, DATCEN, ERRCEN, DATSTD, ERRSTD
+	,NCSETS, NCCOL, NCROW, FMARKER, H2STAT, TITFAC, TITLOC, TITMAR
+	,TIKFAC, IWINLEV, WINREL, WINABS, WINLIM
+	,ICPOIN, LEVREP, IREPCT, SYDIR, GRDIR, NMESH0, EXYZLIM, IVPTR
+	,TITLMX, NXYZDEF1, NXYZDEF2, IFILE_CASE, N_CYCLE, ITX_CYCLE
+	,SYM_CYCLE, PLOT_EXTENT, FILL_ANGLE, FILL_WIDTH, FILL_TEX
+	,FILL_INDEX ,N_LINES ,DSLOPE ,MAX_SUBST, BARBRK
+	,I_VORDER,SHADOWTYP,SHADOWTEX;
+   COMMON /T2SCRT/ BUFFER, IBUFFR, N_FILE,N_NAME,N_SELECT, ICHSAVE;
+   COMMON /T2_CHAR/ C_TIT_ESCAPE,C_TIT_SUBSTITUTE;
+   COMMON /T2_SCRT/ C_FILE, C_NAME, C_SELECT";'
+%'$SPECIFYLUN'='"
+	INTEGER JOUFIL, ERRFIL, OUTFIL, DBGFIL, INPFIL, NINMAX;
+	PARAMETER (NINMAX=20);
+	INTEGER NINP(NINMAX);
+	COMMON /T2TRBK/NINP, JOUFIL, ERRFIL, OUTFIL, DBGFIL, INPFIL;"'
+%'$SPECIFYP'='"
+	CHARACTER*80 PRMP1, PRMP2;
+	INTEGER NPRMP1, NPRMP2;
+	COMMON /T2PRMP/NPRMP1, PRMP1, NPRMP2, PRMP2;"'
+%'$SPECIFYD'='
+    $BOOLEAN" DFLAGS(200),DSCREV(3);
+    COMMON /T2FLGD/DFLAGS,DSCREV;
+    REAL DTITLIN(4), DTITFAC(4), DTITMAR(4);
+    INTEGER DGRDTYP, DGRDTEX, DOUTTEX, IDAXTEX, DTITEX,
+	DSHADOWTYP,DSHADOWTEX,
+	IFLDDF("$MAXVAR"), NDDIMNS, IDTXPRI, IDTXSEC,
+	LINCLF, LINTXF, LINWDF,
+	DNONLN(3), DNXYZ1(3), DNXYZ2(3), DLABTEX, DTICTEX, DNPATRN("$PATN"),
+	DLBLCHR(3),
+	ND_CYCLE, IDTX_CYCLE(MAX_CYCLE);
+     REAL DSYM_CYCLE(MAX_CYCLE);
+     REAL
+	DTITSIZ, DGRDSYM, DGRDSIZ, DCIRSIZ(2,3), DASIZE, DAFLARE,
+	DSMSZDF, DORAXES(3), DEYEDIR(3), DVUEDIR(3), DVUECEN(3),
+	DVERTCL(3), DEYESEP, DSCRD, DSCRZ, DEYEDIS, DEYEPNT(3),
+	DBARSIZ(3), DBARBRK(3), DTIKSIZ(3), DXYZBS(3), DTTHETA,
+	DTPHI, DFRELBL(4), DPATRN("$PATMAX","$PATN"),
+	DSCLPRM(10,3), DWINDOW(4), DSCREEN(2), DSYMBOL, DNOSYMB,
+	DAXANG(3), DLBLSIZ, DSYMSIZ, DXYZLIM(3,2),
+	DFACTXY("$MAXVAR"),
+	DRADANG, DDSCAL,
+	DPATSZ,
+	DTITINX, DTIKFAC, DSYDIR(3), DGRDIR(3);
+     COMMON /T2COMD/
+	DTITSIZ, DGRDSYM, DGRDSIZ, DCIRSIZ, DASIZE, DAFLARE,
+	DSMSZDF, DORAXES, DEYEDIR, DVUEDIR, DVUECEN,
+	DVERTCL, DEYESEP, DSCRD, DSCRZ, DEYEDIS, DEYEPNT,
+	DBARSIZ, DTIKSIZ, DXYZBS, DTTHETA,
+	DTPHI, DFRELBL, DNPATRN, DPATRN,
+	DSCLPRM, DWINDOW, DSCREEN, DSYMBOL, DNOSYMB,
+	DAXANG, DLBLSIZ, DSYMSIZ, DXYZLIM, DGRDTYP,
+	DFACTXY, IFLDDF, NDDIMNS, DGRDTEX, DOUTTEX, IDAXTEX, DTITEX,
+	DRADANG, DDSCAL, DNONLN, DNXYZ1, DNXYZ2,
+	LINCLF, LINTXF, LINWDF, DLABTEX, DTICTEX, DPATSZ, IDTXPRI, IDTXSEC,
+	DTITLIN, DTITINX, DLBLCHR, DTITFAC, DTITMAR, DTIKFAC,
+	DSYDIR, DGRDIR, ND_CYCLE, IDTX_CYCLE, DSYM_CYCLE, DBARBRK,
+	 DSHADOWTYP,DSHADOWTEX;"'
+
+%'$SPECIFY2'='"
+   INTEGER IWINLEV ;
+   INTEGER    NWINLEV , MAX_FILL  ;
+   PARAMETER (NWINLEV =4);
+   PARAMETER (MAX_FILL=4);
+   REAL
+	GRDSYM, GRDSIZ,
+	DATDAT(2,"$DATDATSIZ"),
+	H2STAT(12),
+	TITLIN(4), TITFAC(4), TITLOC(4), TITMAR(4), TITLMX(4), TIKFAC,
+	TITINX, TITX1, TITY1, TITX, TITY, TITZ, TITSIZ, TITCON(5),
+	REVLEV,
+	REDUCE(5),
+	XFRM12(12), XFRM13(12), XFRM14(12), XFRM23(12),
+	XFRM24(12), XFRM34(6), XVARSX(20),
+	CIRSIZ(2,3), ASIZE, AFLARE,
+	SMSZDF, ORAXES(3), EYEDIR(3), VUEDIR(3), VUECEN(3),
+	VERTCL(3), EYESEP, SCRD, SCRZ, EYEDIS, EYEPNT(3),
+	XYPART(2, 2), BARSIZ(3), BARBRK(3), TIKSIZ(3), XYZBAS(3), TTHETA,
+	TPHI, FRELBL(4), PATRN("$PATMAX","$PATN"),
+	SCLPRM(10,3), WINDOW(4), SCREEN(2), SYMBOL, NOSYMB,
+	FACTXY("$MAXVAR"), LBLSIZ, SYMSIZ, XYZLIM(3,2), WORLD(3),
+	RADRMX, RADRMN, RADAMN, RADANG, RADX0, RADY0, XUNUSD(6),
+	AXANG(3), REDFAC, DSCAL,
+	PATSZ,
+	MARGIN(4), PSCR(2), OREAL, OCPU, CSCRD,
+	DATPTS, ERRPTS, DATXMN, DATXMX, DATYMN, DATYMX, DATZMN, DATZMX,
+	DATSUM, ERRSUM, DATAVE, ERRAVE, DATCEN, ERRCEN, DATSTD, ERRSTD,
+	WINREL(2,2,NWINLEV),WINABS(2,2,NWINLEV),WINLIM(2,2),
+	FMARKER(3,8), SYDIR(3), GRDIR(3), EXYZLIM(3,2), DSLOPE(2,2);
+	REAL PLOT_EXTENT(2,2),FILL_ANGLE(MAX_FILL),FILL_WIDTH(MAX_FILL);
+	INTEGER FILL_INDEX, FILL_TEX(MAX_FILL), N_LINES(6);
+   EQUIVALENCE (DATDAT, DATPTS);
+   INTEGER    MAXREP;
+   PARAMETER (MAXREP=5);
+   INTEGER
+	IPATRN, NPATRN("$PATN"), NXYLIM(3,2), NPLOTS, NCSETS, NCCOL, NCROW,
+	IYEAR, IMONTH, IDAY, ISIGFG,
+	ITXPRI, ITXSEC,
+	ITITDT(3), LENCRD,
+	IPROP, IHTEX, IBLINK, IERASE,
+	ITCNTR,
+	IUNUSD, NXYZ1(3), NXYZ2(3),
+	LBLFMT(3), LBLCHR(3),
+	NDIMNS(3), IBLKTP, IDIMNS,
+	NMESH0, NMESH1, NMESH2, MESH1, MESH2, MESH3, MESH2D, MESHN(3), NMESHN(2),
+	NFIELD, IFIELD("$MAXVAR"), NINCR, NPOINT,
+	IVARBL("$MAXVAR"), IVPTR("$MAXVAR"), I_VORDER("$MAXVAR",2),
+	LINEAR(4), NONLIN(4),
+	MXECHO, LINES, MAXLNS,
+	USRKBD, USRSCR, PLTFIL,
+	LINWID, LINCOL, LINTEX,
+	ICPOIN(3), IREPCT(MAXREP), LEVREP,
+	GRDTYP, GRDTEX, OUTTEX, IAXTEX, TITEX, LETSET, LABTEX, TICTEX,
+	SHADOWTYP,SHADOWTEX,
+	NXYZDEF1(10), NXYZDEF2(10), IFILE_CASE ,MAX_SUBST;
+    INTEGER    MAX_CYCLE;
+    PARAMETER (MAX_CYCLE=20);
+    INTEGER N_CYCLE, ITX_CYCLE(MAX_CYCLE);
+    REAL SYM_CYCLE(MAX_CYCLE);
+    EQUIVALENCE (NMESH1,NMESHN);
+    EQUIVALENCE (MESH1,MESHN);
+    INTEGER IBUFFR("$BUFSIZ");
+    REAL BUFFER("$BUFSIZ");
+    INTEGER    NCHSAVE              ;
+    PARAMETER (NCHSAVE=2*"$MAXSTR") ;
+    "$LONG INTEGER" ICHSAVE(NCHSAVE);
+    "$LONG INTEGER" IVRPTR("$MAXVPTR");
+    CHARACTER*"$MAXTIT" OUTSTR,C_FILE, C_NAME, C_SELECT;
+    CHARACTER C_TIT_ESCAPE*1,C_TIT_SUBSTITUTE*2;
+    INTEGER N_FILE, N_NAME, N_SELECT;
+    CHARACTER*8 PXNAME;
+    CHARACTER*64 INPFMT;
+    "$BOOLEAN" LTDATA, OUTSID(4);"'
+	"USRKBD, USRSCR, PLTFIL,???"
+%'$SPECIFYTOK'='"
+   CHARACTER*"$MAXSTR" STRNG, STJOU;
+   "$BOOLEAN" LTOKEN;
+   REAL FLOTNG;
+   INTEGER INTERP, KEYORD, NSTRNG, MAXSTR, NSTJOU, LSTJOU, NTOKEN;
+   "$LONG INTEGER" INTEG;
+   COMMON /TOKENC/ INTERP, INTEG, FLOTNG, KEYORD, NSTRNG, MAXSTR,
+	STRNG, NSTJOU, LSTJOU, STJOU, LTOKEN, NTOKEN;"'
+"
+	Equivalences in common
+"
+   %'$ISMPTR'='"IVRPTR(1)"'		"Current SYmbol,X,DX,Y,DY..."
+   %'$IXPTR'='"IVRPTR(2)"'
+   %'$IDXPTR'='"IVRPTR(3)"'
+   %'$IYPTR'='"IVRPTR(4)"'
+   %'$IDYPTR'='"IVRPTR(5)"'
+   %'$IZPTR'='"IVRPTR(6)"'
+   %'$IDZPTR'='"IVRPTR(7)"'
+   %'$IMSPTR'='"IVRPTR(8)"'		"Current mesh/begin of data"
+   %'$IVTEMP1'='"IVRPTR(9)"'		"Spare pointers"
+   %'$IVTEMP2'='"IVRPTR(10)"'
+   %'$IVTEMP3'='"IVRPTR(11)"'
+   %'$INEXTPTR'='"IVRPTR(12)"'		"Next free memory location"
+   %'$IENDPTR'='"IVRPTR(13)"'		"End of current data set"
+   %'$IBASEPTR'='"IVRPTR(14)"'		"Beginning of memory"
+   %'$ILASTPTR'='"IVRPTR(15)"'		"Begin of last data set"
+
+   %'$TITSIZE'='"TITCON(1)"'
+   %'$TITANGLE'='"TITCON(2)"'
+   %'$TITSPACE'='"TITCON(3)"'
+   %'$TITINDEX'='"TITCON(4)"'
+   %'$TITLINES'='"TITCON(5)"'
+
+%'$EQUIVALENCE;'=';'
+%'$DATA;'=';'
+"
+  The following common block is used only in the graphics package,
+  i.e. TXLINE and the lower-level driver packages.
+"
+%'$TXCOM'='"
+   REAL PLIM(4,4),ZSCRN(2),XLLINE,YLLINE,XTLINE,YTLINE,XFRMFC,
+	PAT("$PATMAX"),PATCUM,PATTOT,PATMOD,CCSCIS(4),DISPL, RESOL(2);
+   INTEGER NPTS,IDDEVC,IPAT,NPAT,LMOVE,IROTAX,IROTAF;
+   COMMON/TXCOM/PLIM,ZSCRN,
+	XLLINE,YLLINE,XTLINE,YTLINE,XFRMFC,
+	IPAT,NPAT,PAT,PATTOT,
+	NPTS,IDDEVC,CCSCIS,LMOVE,IROTAX,DISPL,IROTAF,PATCUM,PATMOD,
+	RESOL;"'
+
+%'$TXCOMD'='"
+    INTEGER IXX ;
+
+    INTEGER PXELWORDS, MAX_QOPN, QOPNSIZ ;
+    PARAMETER (PXELWORDS=2000);
+    PARAMETER (MAX_QOPN=8);
+    PARAMETER (QOPNSIZ=200);
+
+    INTEGER IOPEN(10);
+    "$BOOLEAN" L_IDOPEN(10);
+    INTEGER VIRGIN ,ISEGMN ,JSEGMN, DFTSEG, JPROP, IACT;
+    "$BOOLEAN" LCLEAR ,LERAS ,LINTF, LPROP;
+    REAL DFTANG ,DFTSIZ ,URSIZE, WDOW(4);
+    INTEGER DFTWID ,DFTTEX ,DFTCOL ,DFTVEC ,DFTFNT ,DFTBLK ,DFTPRP ,DFTSTR
+    ,DFTQUI ,PXEL(PXELWORDS);
+    COMMON /TXCOMD/PXEL ,LCLEAR ,VIRGIN ,ISEGMN ,JSEGMN
+        ,URSIZE ,DFTCOL ,DFTTEX ,DFTWID ,DFTQUI ,DFTFNT
+        ,DFTANG ,DFTSIZ ,DFTVEC ,LERAS
+        ,DFTPRP ,DFTBLK ,DFTSEG ,LINTF ,IOPEN, L_IDOPEN
+        ,JPROP, LPROP, WDOW, IACT;
+    INTEGER NQOPNF ,NQTXT;
+    CHARACTER*(QOPNSIZ) QOPNF;
+    CHARACTER*(QOPNSIZ) QOPN(MAX_QOPN);
+    INTEGER      NQOPN(MAX_QOPN);
+    CHARACTER*80       QTXT;
+    COMMON/TXCOMV/NQOPN ,QOPN ,NQTXT ,QTXT ,NQOPNF ,QOPNF;
+"'
+
+%'$HNONE'='"-666.666"';
+%'$SPECIFYNONE'='
+   REAL HNONE;
+   DATA HNONE /$HNONE/'
+%E
+	"DEBUG OUTPUT"
+"TRACEBACK--calls system routines to list subroutine call chain"
+$DBG;
+   %'TRACEBACK'='"CALL TRACE"'
+   %'<DEBUG:'='<IF> ($DEBUG) <<W,DBGFIL>'
+$ELSE;
+   %'TRACEBACK'=''
+   %'<DEBUG:#;#;'='<'	" ditto "
+$END;
+
+"'CARD' input"
+"Loading card buffer (use token conventions)"
+   %'<READCARD>'='CALL TOKRED($INFO,$CARD,LENCRD,INPFIL,INPFMT);'
+   %'<ENDCARD>'='$INFO(3)=LEN($CARD);'
+   %'ENDOFINPUTFILE'='($INFO(1).LT.0)'
+   %'<PRINTCARD>'='IF (OUTFIL.gt.0) CALL T2ERR($INFO,$CARD,'' '',6);'
+"Set flag to 're-read' token on next <token> statement"
+   %'READSAMETOKEN'='$INFO(9)=-1;'
+   "%'READSAMETOKEN'='$INFO(3)=$INFO(4);NSTJOU=LSTJOU;'"
+"Set flag to re-read card on next <read card> statement"
+   %'READSAMECARD'='$INFO(9)=1;NSTJOU=0;'
+"Code to be executed for input error"
+   %'<TOKENERROR>'='CALL T2ERR($INFO,$CARD,'' '',5);'
+"<TOKEN> MACROS.  These macros implement the <TOKEN> and
+   <TOKEN LOOP> case statements used for interpretation of
+   the input cards.
+   I assume a subroutine TOKEN(INFO,CARD,KEYWORDS),
+   which is used by the macros for interpretation.
+   output from subroutine token is returned in /TOKENC/
+  "
+"CARD variables for token calls--format is:
+   '<TOKEN USING INFO,CARD>' "
+   %'<TOKENUSING#,#>'='%''$INFO''=''#1'' %''$CARD''=''#2'' '
+   %'$INFO'='INFOIN' %'$CARD'='CARDIN' "Initial values"
+"Token input with only one type of token"
+   %'<TOKENNUMBER><'='CALL TOKEN($INFO,$CARD,'';'');
+      <IF>(INTERP.NE.3.AND.INTERP.NE.4)<<TOKENERROR>;><ELSE><'
+   %'<TOKENIFNUMBER><'='CALL TOKEN($INFO,$CARD,'';'');
+      <IF>(INTERP.NE.3.AND.INTERP.NE.4)<<READ SAME TOKEN>;><ELSE><'
+   %'<TOKENINTEGER><'='CALL TOKEN($INFO,$CARD,'';'');
+      <IF>(INTERP.NE.3)<<TOKENERROR>;><ELSE><'
+   %'<TOKENSTRING><'='CALL TOKEN($INFO,$CARD,'';'');
+      <IF>(INTERP.NE.5)<<TOKENERROR>;><ELSE><'
+   %'<TOKENIDENTIFIER><'='CALL TOKEN($INFO,$CARD,'';'');
+      <IF>(INTERP.NE.6)<<TOKENERROR>;><ELSE><'
+"Token manipulation to skip a given word (must be in ' ')"
+   %'<TOKENSKIP#>'='CALL TOKEN($INFO,$CARD,#1);
+      IF (INTERP.NE.2) <READ SAME TOKEN>;'
+   %'<TOKENEND>'='
+        <LOOP> <CALL TOKEN($INFO,$CARD,'';'');IF (INTERP.eq.1)<EXIT>;>'
+"
+ <TOKEN> and <TOKEN LOOP> stack labels for the
+   target labels for the different results possible--
+   LC00 thru LC90 for:
+     00--Base label, used for unchanging targets
+     10--Ambiguous keyword
+     20--Keyword recognized
+     30--After blocks.  <next> for <tokenloop>, <exit> for <token>
+     40--Floating point number
+     50--(Quoted) string
+     60--Identifier
+     70--Error
+     80--End of card
+     90--Integer
+      (Ambiguous keyword is not accessible as a block--@LC10
+       prints a message and goes to the keyword block.
+       Special character is not used in T.D. and the label is
+       not stacked.)
+   Originally, these all point to the 'ELSE' block
+   if the corresponding construct is found, the
+   label is replaced by a label
+   at the construct.
+   In addition, the macro TK%K is started with an opening '
+   if keywords are used they will be catenated to this.
+   when the <TOKEN> block is closed, TK%K is closed with ;'
+
+   LC00 is also stacked, and used for stationary targets
+   LC90 is also stacked.  This is the target used after the
+   NUMBER::, KEY::, ETC. blocks.  For <TOKEN>, it is the
+   exit label, LC23.  for <TOKENLOOP>, it is a restart,
+   given by @LC01.
+
+   Each construct (ENDOFCARD::, INTEGER::, etc) ends with
+   ::. As it is recognized, it is replaced by TOK::.
+   This may be followed by < to open the block to
+   be executed, or by a comma and another construct.
+
+   @@G closes most CASE:: blocks (except ENDOFCARD:: and KEY::)
+      This gives 'GOTO @LC03'.
+      For <TOKENLOOP> @LC03 is a restart.
+      For <TOKEN> @LC03 is an exit.
+   TK%E is the default ELSE:: block. It starts as
+      @LC05<TOKEN ERROR>, but is changed to null if an
+      ELSE:: block is defined.
+
+   @LC07 is the target for an ambiguous keyword.  T2ERR is
+      called for a warning message, and then it falls thru to
+      the normal KEY:: block.
+
+   If ENDOFCARD:: block is defined, it is closed by an exit
+      (GO TO @LC02) for both <TOKEN> and <TOKENLOOP>.
+      If it is not defined, ENDOFCARD:: goes to the ELSE::
+      block (or the default else, which is an error message)
+      for <TOKEN>. However, it exits directly for <TOKENLOOP>,
+      which is the normal route for exiting the <TOKENLOOP> block.
+"
+   %'<TOKEN><'='START TOKEN MORE TOKEN;'
+   %'<TOKENLOOP><'='START TOKEN MORE TOKLP;'
+   %'MORE TOKEN'='@LC02@LS3 @LC05@LS8'
+   %'MORE TOKLP'='@LC01@LS3 @LC02@LS8'
+   %'START TOKEN'='@MSB @LG@LS0
+     @LC05@LS1
+     @LC05@LS2
+     @LC05@LS3
+     @LC05@LS4
+     @LC05@LS5
+     @LC05@LS6
+     @LC05@LS7
+      %''TK%K''=''''''''
+      %''TK%E''=''@LC05<TOKENERROR>;GOTO @@LC30;''
+      GOTO @LC01;'
+   %'::'='"::"%MESSAGE(???---UNRECOGNIZED INPUT TYPE);'
+   %';ENDOFCARD::<'=';@LU8@LG@LS8 @LC80@MSHCONTINUE;'
+   %';INTEGER::'=';@LU9@LG@LS9 @LC90TOK::'
+   %';REAL::'=';@LU4@LG@LS4 @LC40TOK::'
+   %';STRING::'=';@LU5@LG@LS5 @LC50TOK::'
+   %';IDENTIFIER::'=';@LU6@LG@LS6 @LC60TOK::'
+   %';ERROR::'=';@LU7@LG@LS7 @LC70TOK::'
+   %';NUMBER::'=';@LU4 @LG@LS4 @LU9 @LC40@LS9 @LC40TOK::'
+"
+ ELSE:: block processing. the default else block,
+   specified by TK%E, comes at the end of the <TOKEN> block
+"
+   %';ELSE::'='%''TK%E''=/%''TK%E''='';'' @LC05TOK::'
+   %'TOK::'=
+      '%MESSAGE(???---TYPE MUST BE FOLLOWED BY BLOCK OR ANOTHER TYPE)'
+   %'TOK::,'='CONTINUE;'
+   %'TOK::<'='@MSGCONTINUE;'
+   "@@B closes <TOKEN> block>"
+      %'@@B'=' %''TK%K''=*'';''''''
+         @LC01CALL TOKEN($INFO,$CARD,TK%K);
+     "GOTO ("@LC80,@LC20,@LC90,@LC40,@LC50,@LC60,@LC70,@LC20,@LC05),INTERP;
+         TK%E;
+         @LC02CONTINUE;
+         TOKEN END'
+   "TOKEN END deletes macros for closing <TOKEN> and <TOKEN LOOP>"
+      %'TOKEN END' =
+        '@LU9@LU8@LU7@LU6@LU5@LU4@LU3@LU2@LU1@LU0
+         %''TK%E''=/
+         %''TK%K''=/
+        '
+"
+   KEY::< block processing
+   the KEY:: blocks are special. The syntax is:
+      KEY::<KEYWORD1<BLOCK1>KEYWORD2,KEYWORD3<BLOCK2,3>>
+
+      KEY::< is closed by @@E, which makes a label for the
+         keyword case of the CALL TOKEN(...) computed GOTO,
+         and makes a GOTO (...),KEYORD; for the individual
+         keyword which was recognized.
+      KEYWORD< is closed by @@F, which generates a GOTO out
+         of the <TOKEN> block and resets to read another
+         keyword, or the end of the KEY::< block.
+
+         TKEY% signifies that I am in a KEY::< block, ready to
+            start a keyword list.
+         TKY%  Signifies that I am reading the keyword list, one
+            word (followed by a comma) at a time.
+"
+      %';KEY::'='%MESSAGE(???---MISSING BLOCK)'
+      %';KEY::<'=';@MSE @LU2 @LG@LS2 @LU1 @LG@LS1
+         %''TK%N''='' '' TKEY%'
+      %'TKEY%#<'='@LG@LS0 @MSF TKY%#1,<;'
+      %'TKEY%>'='>'
+      %'TKEY%<'='%MESSAGE(???---NEED A KEYWORD TO OPEN THE BLOCK);'
+      %'TKY%'='%MESSAGE(???---NEED A BLOCK OR ANOTHER KEYWORD);'
+      %'TKY%#,'=
+        '%''TK%N''=*''@LC00,''
+         %''TK%K''=*''#1,'' TKY%'
+      %'TKY%<'='@LC00CONTINUE;@LU0;'
+      %'TKY%%E'='TKY%'			"Eliminate %E in string"
+      %'@@E'='@LC20"GOTO ("TK%N@LC05),KEYORD; %''TK%N''=/ '
+      %'@@F;'=';GOTO @LC30;TKEY%'	"Close keyword< block"
+      %'@@G'='GOTO @LC30;'		"Close most CASE::< blocks"
+      %'@@H'='GOTO @LC02;'		"Close ENDOFCARD:: block"
+"<TOKEN KEY> STUFF"
+   %'<TOKENKEY><'='@MSC @LG@LS0@LG@LS1@LG@LS2@LC02@LS3GOTO @LC01;
+      %''TK%K''=''''''''
+      %''TK%N''='' '' TKEY%'
+   %'<TOKENKEYLOOP><'='@MSD @LG@LS0@LG@LS1@LG@LS2@LC01@LS3GOTO @LC01;
+      %''TK%K''=''''''''
+      %''TK%N''='' '' TKEY%'
+   %'@@C'=' %''TK%K''=*'';''''''
+      @LC01CALL TOKEN($INFO,$CARD,TK%K);
+      "GOTO ("@LC05,@LC07,@LC05,@LC05,@LC05,@LC05,@LC02,@LC07,
+         @LC05),INTERP;
+      @LC05<TOKEN ERROR>;
+      GOTO @LC02;
+      @LC07"GOTO ("TK%N@LC05),KEYORD;
+      @LC02CONTINUE;
+      @LU3@LU2@LU1@LU0
+      %''TK%K''=/  %''TK%N''=/
+   '
+   %'@@D'=' %''TK%K''=*'';''''''
+      @LC01CALL TOKEN($INFO,$CARD,TK%K);
+      "GOTO ("@LC02,@LC07,@LC05,@LC05,@LC05,@LC05,@LC01,@LC07,
+         @LC05),INTERP;
+      @LC05<TOKEN ERROR>; GOTO @LC01;
+      @LC07"GOTO ("TK%N@LC05),KEYORD;
+      @LC02CONTINUE;
+      @LU3@LU2@LU1@LU0
+      %''TK%K''=/  %''TK%N''=/
+   '
+%E
+"
+CASE STATEMENT
+      <CASE> expression <OF> :LABEL1:,:LABEL2:,...,:LABELN: <
+            Out of range code.....
+         :LABEL1: <...>
+         :LABEL2:,:LABEL3: <...>
+      >
+   Will translate as:
+      GOTO (LABEL1,LABEL2,...,LABELN),expression;
+      GOTO EXITTARGET;
+      LABEL1 <...> GOTO EXITTARGET;
+      LABEL2 CONTINUE
+      LABEL3 <...> GOTO EXITTARGET;
+        ...
+      LABELN <...> GOTO EXITTARGET;
+      EXITTARGET  CONTINUE;
+   Restrictions:
+      Nesting of cases is ok.
+      Reusing the labels, even in nested blocks, is ok.
+      The labels are not normal mortran labels, and may
+      not be referred to except as shown.  E.G. GOTO :LABEL1:;
+      is not allowed.
+      <CASE> may be labeled, and <EXIT>:LABEL: skips to the end.
+         <NEXT> is not allowed.  (It produces a transfer
+         to a missing statement number.)
+   Inner workings of the macros:
+      <CASE> ---> @LG?<CASE>
+      LABEL?<CASE> INTEGER <OF> LABELLIST <
+         Make & stack a label for EXITTARGET
+         Replace by $%CASE <LABELLIST,$$>
+         Set the counter to 0
+      PEEL THE LABELLIST 1 AT A TIME:
+      $%CASE <:LABELI:,LABELLIST$$LISTOFNUMBERS>INTEGER<
+         gets $%CASE <LABELLIST$$LISTOFNUMBERS,NEWNUMBER,>INTEGER<
+         And a macro is generated which makes
+            ;:LABELI: --> ;NEWNUMBER CONTINUE; $$CASE
+         And the current $$ENDCASE is extended to delete ;:LABELI:
+            %';:LABELI:' =/
+         And the counter is incremented
+      When the labellist is exhausted,
+      $%CASE <$$LISTOFNUMBERS,>INTEGER<
+         ---> <IF> (INTEGER OUT OF RANGE) <WRITE MESSAGE;STOP 777;>
+         ---> GOTO (LISTOFNUMBERS),INTEGER;
+
+      When a label is found--
+         ;:LABELI: --> NEWNUMBER CONTINUE; $$CASE
+         $$CASE, disappears, to be followed by another label.
+         $$CASE< opens the individual case block (stack letter Q)
+         $$CASE with neither < nor , gives an error message.
+      @@Q which closes the individual case block, gives <EXIT>;
+      @@R which closes the entire case block, gives a target
+         for the exit (@LC02 CONTINUE;)
+         and inserts $$ENDCASE@LC00, deleting all label macros
+         and unstacks the label.
+"
+%E
+"<CASE> STATEMENT--process leading label"
+   %'<CASE>#<OF>#<'='@LG?<CASE>#1<OF>#2<'
+"Initial statement"
+   %'@#@1?<CASE>#<OF>#<'='@MSR@#1@LS0@LC00$%CASE<#3,$$>#2<@I0'
+"Peel the label list"
+   %'$%CASE<#$$#>'=';%MESSAGE(???---MISSING : IN CASE LIST);'
+   %'$%CASE<:#:,#$$#>' =
+      '@LG@LS0%'';:#1:''='';@LC00CONTINUE;$$CASE''%''$$ENDCASE@LC10''
+ =* ''%'''';:#1:''''=/''$%CASE<#2$$#3@LC00,>@LU0@I+'
+    " '@LG@LS0
+         %'';:#1:''='';@LC00CONTINUE;$$CASE''
+         %''$$ENDCASE@LC10''=*''%'''';:#1:''''=/''
+         $%CASE<#2$$#3@LC00,>
+         @LU0 @I+ '  "
+"Final processing of <CASE> statement"
+   %'$%CASE<$$#,>#<' = '"GOTO ("#1),#2;'
+"Individual case"
+   %'$$CASE' = ';%MESSAGE(???---MISSING LEFT BRACKET FOR THIS CASE);'
+   %'$$CASE,' = ';'
+   %'$$CASE<' = '@MSQ;'
+"End of <CASE> block"
+   %'@@R' = '$$ENDCASE@LC00; @LC02CONTINUE;@LU0'
+"End of individual case block"
+   %'@@Q' = ';GOTO @LC02;'
+"Message macro for error messages"
+   %'%MESSAGE(#)'='#1@NM'
+%E
+"BETWEEN(A,B,C) is used as a logical expression.  It is
+   true if A < B < C  or IF A > B > C.  A=B or B=C is not
+   well defined, and might give either true or false, depending
+   on how i implement it.  Implementation must be robust,
+   which rules out multiplication and division
+"
+   %'BETWEEN(#,#,#)'='(SIGN(1.,#1-#2).EQ.SIGN(1.,#2-#3)
+     .OR.#1.eq.#2.OR.#3.eq.#2)'
+
+"
+	Now set up the ends of block to get rid of extra GOTOs
+"
+
+      %';<EXIT>;>'=';<EXIT>;@MU;'	"Clean exits from <LOOP>S"
+      %';<EXIT>#;>'=';<EXIT>#1;@MU;'    "Clean exits from <LOOP>S"
+      %';RETURN;>'=';RETURN;@MU;'	"Clean returns from <LOOP>S"
+      %';GOTO#;>'=';GOTO #1;@MU;'	"Clean goto from <LOOP>S"
+      %';RETURN;@@F;'=';RETURN;TKEY%'   "Keyword block"
+      %';RETURN;@@G'=';RETURN;'		"CASE:: (NUMBER::, ...) blocks"
+      %';RETURN;@@H'=';RETURN;'		"ENDOFCARD block"
+      %';RETURN;@@Q'=';RETURN;'		"Case blocks"
+      %';<EXIT>:#:;@@F;'=';GOTO :#1:@@S@@S;TKEY%'
+      %';<EXIT>:#:;@@G'=';GOTO :#1:@@S@@S;'
+      %';<EXIT>:#:;@@H'=';GOTO :#1:@@S@@S;'
+      %';<EXIT>:#:;@@Q'=';GOTO :#1:@@S@@S;'
+      %';<EXIT>;@@F;'=';GOTO @LC30;TKEY%'
+      %';<EXIT>;@@G'=';GOTO @LC02;'
+      %';<EXIT>;@@H'=';GOTO @LC02;'
+      %';<EXIT>;@@Q'=';GOTO @LC02;'
+      %';GOTO#;@@F;'=';GOTO #1;TKEY%'
+      %';GOTO#;@@G'=';GOTO #1;'
+      %';GOTO#;@@H'=';GOTO #1;'
+      %';GOTO#;@@Q'=';GOTO #1;'
+"
+    Common block for TOKEN, T2SET, T2SHOW
+"
+   %'$T2TOKNC'='"
+      "$TABLE" TYPTAB(256),TYPTB2(256);
+      CHARACTER*256 UPCHAR,OKCHAR,DNCHAR;
+      INTEGER INFOTOKK(3),IINDEX(3);
+      COMMON /T2TOKNC/ TYPTAB,TYPTB2,INFOTOKK,IINDEX;
+      COMMON /T2UPCH/ UPCHAR,OKCHAR,DNCHAR;"'
+
+"
+	User modifiable options
+"
+" ------------- END OF 'T2MACRO' PACKAGE --------------"
+%L3					"Turn on listings"
+%%

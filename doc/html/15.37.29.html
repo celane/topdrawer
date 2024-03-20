@@ -1,0 +1,28 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.37.29</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.37.29  Warning</H4></B>     
+
+A  fit  may  fail with floating point overflow when the number of terms is
+large.  Sometimes you may avoid this be rescaling the data  to  a  smaller
+range,  and fitting the rescaled data.  Selecting an offset for X may also
+prevent errors.
+
+For example you have data with X ranging from 1 to 100 and Y from 0 to 10.
+When you try to fit the data with more  than  9  terms  you  get  floating
+overflow.   This may be prevented by rescaling X to be in the range .01 to
+1.
+     TD:<U>X=X</U> <U>TIMES</U> <U>0.01</U>
+Then try performing the fit again.
+
+Even  if  there  is no overflow, a fit may fail if a large number of terms
+are selected, and the limit  of  the  computer  accuracy  is  reached  (14
+digits).   Polynomials are particularly sensative to this type of problem.
+In general polynomials should not be fitted to more than 9 terms.
+
+
+</PRE>
+</BODY>

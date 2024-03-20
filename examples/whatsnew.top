@@ -1,0 +1,98 @@
+set character comment "!"
+set character comment "#"
+
+# Features restored
+!    These are described in the manual of Bonner Lab. version, 
+!    but were disregarded in the FNAL version.  
+!
+! 1. Interactive mode
+!      Type 'td' without finename to invoke topdrawer in interactive mode.  
+! 2. On-Line Help
+!      Type 'help' in the interactive mode.  
+!      Set shell variable 'TD_HELP" to the path to 'topdrawer**.gih'
+! 3. 'SPAWN' command to invoke sub-shell
+! 4. User Command
+!      ex.  define command include "set file input="
+!      Arguments are refered by !:1, !:2, ...!:9, !^, !$, !*
+!      like the command defined by 'alias'.  
+! 5. Lexical definition
+!      ex. A. define value theta_min=0
+!             set limit x from v_theta_min to 360
+!          B. repeat "v_theta <sin(v_theta)>; -
+!                    define value theta=<v_theta+1>" 361
+!          C. define string name="Yumiko"
+!             title top 'My name is ' s_name
+! 6. X-window font
+       set font basic
+       set mode vector=off
+       0 0 ; 1 1 ; join 1
+       title top "SET FONT BASIC"
+! 7. Readout coordinate by mouse cursor
+       title 3 7 "Move mouse cursor," red
+       title     "click here, and read the value" red
+       show cursor
+       title 6 5 "How about here." green
+       show cursor
+       title 7 3 "Press <RET> and continue." blue
+       new
+       set mode vector=on
+
+# Features newly introduced
+!
+! 1. ~/.topdrawrc  ... the file invoked at startup
+! 2. some new fonts
+       set title size 2.4 permanent
+       set label size 2.6 permanent
+       set font duplex I
+       join 1
+       title top "SET FONT DUPLEX I"
+       new
+       set font duplex J
+       join 1
+       title top "SET FONT DUPLEX J"
+       new
+       set font duplex 1
+       join 1
+       title top "SET FONT DUPLEX 1"
+       new
+       set font duplex 2
+       join 1
+       title top "SET FONT DUPLEX 2"
+       new
+       set font duplex 3
+       join 1
+       title top "SET FONT DUPLEX 3"
+       new
+       set font duplex 4
+       join 1
+       title top "SET FONT DUPLEX 4"
+       new
+! 3. X-window resources available in ~/.Xdefaults
+!      The default values are following...
+!         Ugs*width:       768         # width of window
+!         Ugs*height:      585         # width of height
+!         Ugs*white:       White       # color specification can be modified
+!         Ugs*red:         Red         # such as 'DarkSlateBlue' found in 
+!         Ugs*green:       Green       # /usr/X11R6/lib/X11/rgb.txt 
+!         Ugs*blue:        Blue        # or #RRGGBB
+!         Ugs*yellow:      Yellow
+!         Ugs*magenta:     Magenta
+!         Ugs*cyan:        Cyan
+!         Ugs*background:  Black
+!         Ugs*fontPattern: -adobe-helvetica-medium-r-normal--*-*-75-75-*
+!         Ugs*title:       UGS on X Window System    # title bar
+!         Ugs*iconName:    UGS
+!         Ugs*geometry:    # default=nothing
+!                          # ex. +0+0 : open window at upper-left corner
+! 4. new symbols
+       set fill full
+       box from 1 1 to 12 8 fill=on solid yellow
+       set font basic ; set mode vector off
+       title 2 7 "New Symbols"
+       set font duplex ; set mode vector on
+!      SLAC convension
+       title 2 5 "A B C D E F G H I J K L X Y" size 3
+       case      "P P P P P P P P P P P P P P"
+!      -b convension
+       title 2 3 "A B C D E F G H I J K L X Y" size 3
+       case      "O O O O O O O O O O O O O O"

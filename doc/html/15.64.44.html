@@ -1,0 +1,38 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.44</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.44  POLAR</H4></B> 
+
+<U>SE</U>T <U>PO</U>LAR [<U>ON</U>|<U>OF</U>F] [<U>DE</U>GREES|<U>RA</U>DIANS|<U>GR</U>AD|<U>PERC</U>ENT|<U>FU</U>LLCIRCLE=n] [<U>PERM</U>ANENT]
+
+This  sets  up  to plot in polar coordinates.  Coordinates are (R,THETA,Z)
+<A NAME="165">representaton.   This  affects not only the plotting of data, but also the </A>
+FFT and TRANSFORM commands.
+     1.  ON|OFF turn the polar coordinates on or off.  (Default:ON)
+     2.  PERMANENT - Sets these parameters permanently.
+     3.  DEGREES...  - Selects angle representation (Default:DEGREES)
+         A.  GRAD - (0-400)
+         B.  DEGREES - (0-360)
+         C.  PERCENT - (0-100)
+         D.  RADIANS - (0-6.2831853)
+         E.  FULLCIRCLE=n - (0-n)
+
+This  feature is not fully implemented.  You still set the limits in X,Y,Z
+coordinates, and automatic scaling centers the origin.  When you plot, the
+axes  are  not  automatically  generated if polar coordinates are on.  You
+must manually plot the axes with the command:  PLOT AXES.  If you wish the
+X and Y axes to be scaled the same way you should.
+     TD:<U>SET</U> <U>LIMITS</U> <U>SCALE</U>
+See commands:X,SET ORDER,SET STORAGE,SET SPHERICAL
+
+                                  Example
+
+     TD:<U>SET</U> <U>POLAR</U> <U>FULL=1.0</U>
+Angles represented by a number from 0 to 1.0 range from 0 to 360 degrees.
+
+
+</PRE>
+</BODY>

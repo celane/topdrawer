@@ -1,0 +1,79 @@
+#############################################################
+#       Makefile for UGS2 on a generic Unix system.         #
+#############################################################
+
+MAKE = make
+
+ifeq ($(strip $(ARCH)),)
+default: linux
+endif
+
+#------------------------------------------------
+
+all: ugs_obj ugs_drive ugs_dummy
+	ls -lF  ugs.a
+
+ugs_obj:
+	cd src ;\
+	$(MAKE)
+
+ugs_drive:
+	cd src/drivers ;\
+	$(MAKE)
+
+ugs_dummy:
+	cd src/dummies ;\
+	$(MAKE)
+
+clean:
+	rm -f ugs.a                          ;\
+	rm -f src/*.o         src/*~         ;\
+	rm -f src/dummies/*.o src/dummies/*~ ;\
+	rm -f src/drivers/*.o src/drivers/*~
+
+#-------- Platform dependent parameters ---------
+
+linux:
+	$(MAKE) \
+	"ARCH = LINUX" \
+	"F77 = fort77 -O2 -Nq300 -\!bs" \
+	"G77 = g77 -O2" \
+	"CC  = gcc -O2" \
+	"AR  = ar  rvs"
+
+osf1:
+	$(MAKE) \
+	"ARCH = OSF1"   \
+	"F77 = f77 -O4 -assume backslash" \
+	"CC  = cc  -O2" \
+	"AR  = ar  rv"
+
+ultrix:
+	$(MAKE) \
+	"ARCH = ULTRIX" \
+	"F77 = f77 -O1 -w -Olimit 1500 -static -assume backslash" \
+	"CC  = cc  -O2" \
+	"AR  = ar  rvs"
+
+sunos:
+	$(MAKE) \
+	"ARCH = SUNOS"  \
+	"F77 = f77 -O3 -Nl100 -Nq300 -w -libmil -xl" \
+	"CC  = cc  -O2 -I/usr/openwin/include" \
+	"AR  = ar  rv"  \
+	"RAN = ranlib"
+
+aix:
+	$(MAKE) \
+	"ARCH = AIX"    \
+	"F77 = xlf -NQ20000 -qextname -qrndsngl -qcharlen=4096" \
+	"CC  = cc  -O2" \
+	"AR  = ar  rv"
+
+irix:
+	$(MAKE) \
+	"ARCH = IRIX"   \
+	"F77 = f77 -O0 -backslash -nocpp -g1 -trapuv -static" \
+	"CC  = cc  -O2" \
+	"AR  = ar  rv"
+

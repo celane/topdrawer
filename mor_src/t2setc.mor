@@ -1,0 +1,1127 @@
+%N
+%U+ TDMACROS.MOR
+%L
+%E  Common definition - Reset routine - Error handling
+%E  Variable documentation
+"	FLAGS	Usage
+	  1	Plot started
+	  2	Outline plotted
+	  3	Ticks/labels plotted
+	  4	???
+	  5-10	Limits set
+	 11
+	 12	Order=packed
+	 13	X,Y same scale ??????
+	 14,15	TRACER
+	 16	SHOW on (autoshow)
+	 17	Expand on
+	 18	$TRACE
+	 19-22	Axes on (LEFT,BOTTOM,RIGHT,TOP)
+	 23	$Errors
+	 24	$Open
+	 25	Vector
+	 26	Error wait
+	 27	Polar
+	 28	Data plotted
+	 29	$DEBUG
+	 30	TDEND ----
+	 31	T2MAIN - Text
+	 32-35	Ticks on   (LEFT,BOTTOM,RIGHT,TOP)
+	 36-39	Labels on  (LEFT,BOTTOM,RIGHT,TOP)
+	 40-43	Outline on (LEFT,BOTTOM,RIGHT,TOP)
+	 44-46	Ticks on   (X,Y,Z)
+	 47-49	Labels on  (X,Y,Z)
+	 50-52	Axes on    (X,Y,Z)
+	 53	Hardcopy
+	 54	Flush
+	 55	Direction/PHI
+	 56	$3D
+	 57	$POLAR
+	 58	$WARN - Warning messages in file
+	 59	Return on STOP ?
+	 60	Delayed/Immediate erase
+	 61	$3d used.
+	 62-64	Scale
+	 65-70	User scale limits set.
+	 71	GRDSIZ set
+	 72	SYMSIZ set
+	 73	Text frame set
+	 74	Window set
+	 75	Data frame set
+	 76	TITSIZ set
+	 77	LBLSIZ set
+	 78	TIKSIZ set
+	 79-81	BARSIZ set
+	 82	Origin
+	 83	Quick
+	 84	Horizon in 3-d
+	 85-90	Radius-Polar coor.
+	 91	Spherical coordinates.
+	 92	Error abort
+	 93	Screen size must be set
+	 94	Labels must be outside !
+	 95	LOG - Logging after command MODE LOG
+	 96	VLOG Video logging
+	 97	Autoplot
+	 98	Pattern must be set
+	 99	Immediate kill
+	100	CTRL_Z Enabled
+	101	Mode Patterned
+	102	Mode VECTOR
+	103	Mode TREE
+	104	Mode CONFIRM
+	105	Mode CHECK
+	106	Mode APPEND
+	107	Mode MONITOR
+	108	Mode Title
+	109	Mode New
+	101-119	For modes
+	120	Perspective on
+	121	Segments data
+	122		axes
+	123		labels
+	124		ticks
+	125		outline
+	126		points
+	127		lines
+	130	Exact match for names
+	131	Suppress error bars outside of symbols.
+	132	Front axes.
+	133	Both axes.
+	134	3-D AXES
+	151-170	Order (RX vs DX)
+"
+%E  BLOCK DATA T2SETC - Block data (defines initial params)
+BLOCK DATA T2SETC;
+   IMPLICIT NONE;
+   $BOOLEAN T,F;
+   PARAMETER (T=.TRUE.);
+   PARAMETER (F=.FALSE.);
+   $SPECIFICATION;
+   $SPECIFYNONE;
+   $SPECIFYFIT;
+   $SPECIFYD;
+   $SPECIFYP;
+   $MAINSPEC;
+   $TXCOM;
+   $POINT ARRAYS($NPOINTS);
+   $EQUIVALENCE;
+   $DATA;
+"Following are initial values that should not be changed"
+   DATA EXYZLIM(1,1) /$HNONE/;
+   EQUIVALENCE (DATBUF(1),HNONE);
+   DATA LISTPT/2/;			"Initial Location of data in buffer"
+   DATA NPTMAX/$NPOINTS/;		"Initially zero size for buffer"
+   DATA IBLKTP/1/;			"Type of data !"
+   DATA BUFFER/$BUFSIZ*0.0/;		"Buffer used only by T2PLOT"
+		"This holds data temporarily when plotting it"
+   DATA MAXSTR/0/;			"Length of string in /TOKENC/"
+   DATA LINEAR/-1,-1,-1,0/;
+   DATA NONLIN/-1,-1,-1,1/;
+   DATA $TRAP /.false./;		"Default trap"
+   DATA LSYERR/.false./;		"True when system error (overflow..."
+   DATA NDSETS/0/;			"Number of data sets"
+"$BUFSIZ,$MAXSTR, and $NPOINTS may be changed in TDMACROS.MOR, but then
+ all routines should be regenerated from the .MOR sources"
+
+"Following are initial values, and may be changed"
+
+$ENGLISH;				"Size in ENGLISH (inches) units"
+   %'$TITLESIZ'='2.0'
+   %'$TIKSIZ'='0.1'
+$ELSE;					"Size in metric (cm)"
+   %'$TITLESIZ'='5.0'
+   %'$TIKSIZ'='0.25'
+$END;
+   DATA SEXPR/' '/;			"Initially no expressions"
+   DATA NEXTER/0/;
+   DATA NTERMS/0/;			"Initially no fit"
+   DATA REVLEV/5.12/;			"Revision level (version)"
+   DATA LEVREP/0/;			"Initially no repeats"
+   DATA IREPCT/MAXREP*0/;		"And zero count"
+   DATA STRNG/' '/;			"String passing"
+   DATA NSTRNG/0/;			"String length"
+   DATA STJOU/' '/;			"Journal string"
+   DATA NSTJOU/0/;			"Journal string length"
+   DATA NPRMP1/3/,PRMP1/'TD:'/;		"Prompt for input"
+   DATA NPRMP2/6/,PRMP2/'PAUSE:'/;	"Prompt after NEW DATA"
+   DATA NPOINT/0/;			"Number of data points"
+   DATA NMESH0,NMESH1,NMESH2/1,0,0/;	"Number of mesh points"
+   DATA IVRPTR/11*1,3*2,$NPOINTS/;	"Data storage"
+	"index --> location"
+   DATA I_VORDER(1,1)	/N_SYMBOL/;
+   DATA I_VORDER(2,1)	/N_XDATA/;
+   DATA I_VORDER(3,1)	/N_DXDATA/;
+   DATA I_VORDER(4,1)	/N_YDATA/;
+   DATA I_VORDER(5,1)	/N_DYDATA/;
+   DATA I_VORDER(6,1)	/N_ZDATA/;
+   DATA I_VORDER(7,1)	/N_DZDATA/;
+   DATA I_VORDER(8,1)	/N_NDXDATA/;
+   DATA I_VORDER(9,1)	/N_NDYDATA/;
+   DATA I_VORDER(10,1)	/N_NDZDATA/;
+   DATA I_VORDER(11,1)	/N_UDATA/;
+   DATA I_VORDER(12,1)	/N_DUDATA/;
+   DATA I_VORDER(13,1)	/N_NDUDATA/;
+   DATA I_VORDER(14,1)	/N_VDATA/;
+   DATA I_VORDER(15,1)	/N_DVDATA/;
+   DATA I_VORDER(16,1)	/N_NDVDATA/;
+   DATA I_VORDER(17,1)	/N_WDATA/;
+   DATA I_VORDER(18,1)	/N_DWDATA/;
+   DATA I_VORDER(19,1)	/N_NDWDATA/;
+	"Location --> index"
+   DATA I_VORDER(N_SYMBOL,2)	/1/;
+   DATA I_VORDER(N_XDATA,2)	/2/;
+   DATA I_VORDER(N_DXDATA,2)	/3/;
+   DATA I_VORDER(N_YDATA,2)	/4/;
+   DATA I_VORDER(N_DYDATA,2)	/5/;
+   DATA I_VORDER(N_ZDATA,2)	/6/;
+   DATA I_VORDER(N_DZDATA,2)	/7/;
+   DATA I_VORDER(N_NDXDATA,2)	/8/;
+   DATA I_VORDER(N_NDYDATA,2)	/9/;
+   DATA I_VORDER(N_NDZDATA,2)	/10/;
+   DATA I_VORDER(N_UDATA,2)	/11/;
+   DATA I_VORDER(N_DUDATA,2)	/12/;
+   DATA I_VORDER(N_NDUDATA,2)	/13/;
+   DATA I_VORDER(N_VDATA,2)	/14/;
+   DATA I_VORDER(N_DVDATA,2)	/15/;
+   DATA I_VORDER(N_NDVDATA,2)	/16/;
+   DATA I_VORDER(N_WDATA,2)	/17/;
+   DATA I_VORDER(N_DWDATA,2)	/18/;
+   DATA I_VORDER(N_NDWDATA,2)	/19/;
+	"Order of data"
+	"Default variables are SYMBOL,X,DX,Y,DY"
+   INTEGER    REMAIN_VAR ;
+   PARAMETER (REMAIN_VAR=$MAXVAR-5) ;
+   DATA NINCR/5/;			"Dimension of data arrays"
+   DATA IVARBL(1)         /N_SYMBOL/;	"Order of variables in storage"
+   DATA IVARBL(2)         /N_XDATA /;
+   DATA IVARBL(3)         /N_DXDATA/;
+   DATA IVARBL(4)         /N_YDATA /;
+   DATA IVARBL(5)         /N_DYDATA/;
+
+   DATA IVPTR(N_SYMBOL) 	/1/;   "Relative pointer to variable"
+   DATA IVPTR(N_XDATA)		/2/;
+   DATA IVPTR(N_DXDATA)		/3/;
+   DATA IVPTR(N_YDATA)		/4/;
+   DATA IVPTR(N_DYDATA)		/5/;
+   DATA IVPTR(N_ZDATA)		/0/;
+   DATA IVPTR(N_DZDATA)		/0/;
+   DATA IVPTR(N_NDXDATA)	/0/;
+   DATA IVPTR(N_NDYDATA)	/0/;
+   DATA IVPTR(N_NDZDATA)	/0/;
+   DATA IVPTR(N_UDATA)		/0/;
+   DATA IVPTR(N_DUDATA)		/0/;
+   DATA IVPTR(N_NDUDATA)	/0/;
+   DATA IVPTR(N_VDATA)		/0/;
+   DATA IVPTR(N_DVDATA)		/0/;
+   DATA IVPTR(N_NDVDATA)	/0/;
+   DATA IVPTR(N_WDATA)		/0/;
+   DATA IVPTR(N_DWDATA)		/0/;
+   DATA IVPTR(N_NDWDATA)	/0/;
+
+   DATA NFIELD /5/;			"Number of fields defined on input card"
+   DATA IFIELD(N_XDATA )        /1/;
+   DATA IFIELD(N_YDATA )        /2/;
+   DATA IFIELD(N_DXDATA)        /3/;
+   DATA IFIELD(N_DYDATA)        /4/;
+   DATA IFIELD(N_SYMBOL)        /5/;   "Order of fields"
+
+   DATA IMONTH/1/,IDAY/1/,IYEAR/0/;
+
+   DATA FACTXY /$MAXVAR*1.0/;		"Input scale factors"
+   DATA TITSIZ /$TITLESIZ/;		"Default title size"
+   DATA TITLIN /1.2,2.0,2*1.2/;		"Number of lines/title left,bottom,..."
+   DATA TITFAC /3*1.0,1.5/;		"Scale factor for titles"
+   DATA TITMAR/4*0.025/;		"Title margin"
+   DATA TITINX /2./;			"Title height"
+   DATA XYZLIM/6*0./;			"Initial limits"
+   DATA LETSET /2/;			"Font"
+   DATA INPFMT/'(512A1)'/;		"Input format for TOKRED"
+   DATA INPFIL/$INPUTFILE/;		"Input fortran unit"
+   DATA ERRFIL/$TERMINAL OUT/;		"Output fortran units"
+   DATA IPATRN/1/;			"Current pattern"
+   DATA NPATRN/$PATN*0/			"Number of segments in pattern"
+   PATRN(1,1) /1.0E10/;			"Default pattern"
+   DATA PATSZ/$TIKSIZ/;			"Pattern size"
+   DATA LENCRD/$MAXSTR/;		"Length of input cards"
+   DATA LINTEX/4/;			"Line texture"
+   DATA LINWID/2/;			"Intensity/width for lines"
+   DATA LINCOL/1/;			"Start with white"
+   DATA MAX_SUBST/1000/;		"Maximum number of substitutions"
+   DATA MAXLNS,LINES/0,0/;		"For print statements"
+   DATA MXECHO /20/;			"Max number of lines to echo in t2rdpt"
+   DATA NOSYMB/0./,SYMBOL/0./;		"Plot symbol will invoke default"
+   DATA SYDIR/0.,-1.,0./;		"Orientation of 3-d symbols"
+   DATA GRDIR/3*0.0/;			"Orientation of 3-d grid symbols"
+   DATA BARSIZ /3*$TIKSIZ/;		"Length of ends of error bars"
+   DATA BARBRK /3*0/;			"Break error bar at symbol"
+   DATA TIKSIZ /3*$TIKSIZ/;		"Length of axis ticks"
+   DATA TIKFAC /3.0/;			"Ratio of long to short ticks"
+   DATA NXYZ1/3*0/,NXYZ2/3*0/;		"Current number of ticks"
+   DATA NXYZDEF1/6,0,0,7*6/,		"Default number of ticks/scale"
+	NXYZDEF2/-5,0,0,2*-5,-6,4*-5/;
+   DATA SCLPRM(1,1)/10./,SCLPRM(1,2)/10./,SCLPRM(1,3)/10./;	"BASES"
+   DATA XYPART/4*1.0/;			"Window parts"
+   DATA WINLIM/0,0,13.,10./;		"Window limits"
+	"WINLIM(I,J) I=1,2 for X,Y J=1,2 for Offset,Size"
+	"WINABS is absolute window limits, WINREL is same as XYPART"
+   DATA WINREL(1,1,1),WINREL(2,1,1),WINREL(1,2,1),WINREL(2,2,1)/4*1.0/;
+   DATA IWINLEV/1/;			"Window level"
+   DATA LBLCHR/3*6/;			"Max chars in numeric labels"
+   DATA FRELBL/4*1./;			"Label offset from axes"
+   DATA LBLSIZ/$TITLESIZ/;		"Size of axis labels"
+   DATA SYMSIZ/$TITLESIZ/,SMSZDF/$TITLESIZ/;	"Size of plot symbols"
+   DATA FMARKER/24*$LARGE REAL/;	"Hist markers"
+   DATA H2STAT/12*0.0/;			"Hist stats"
+   DATA LSCREV/3*F/;			"Reverse scale"
+   DATA FILL_ANGLE/-.7071,.7071,0.,1./;	"45 degree cross hatch"
+   DATA FILL_WIDTH/2*$TIKSIZ,2*0/;	"0.2 inches apart"
+$UNIX;
+   DATA IFILE_CASE/1/;			"File case convention"
+$ELSE;
+   DATA IFILE_CASE/0/;			"File case convention"
+$END;
+   DATA FLAGS/
+	"01" T,F,F,F,F,F,F,F,F,F,
+	"11" F,F,F,F,F,F,F,F,T,T,
+	"21" T,T,F,F,T,F,F,F,F,F,
+	"31" F,T,T,T,T,T,T,F,F,T,
+	"41" T,T,T,T,T,T,T,T,T,T,
+	"51" T,T,F,F,F,F,F,F,F,F,
+	"61" F,F,F,F,F,F,F,F,F,F,
+	"71" F,F,F,F,F,F,F,F,F,F,
+	"81" F,F,F,F,F,F,F,F,F,F,
+	"91" F,T,F,T,F,F,T,T,F,T,
+	"101" F,F,F,F,T,F,F,F,F,F,
+	"111" F,F,F,F,F,F,F,F,F,F,
+	"121" F,F,F,F,F,F,F,F,F,F,
+	"131" F,F,F,F,F,F,F,F,F,F,
+	"141" F,F,F,F,F,F,F,F,F,F,
+	"151" F,F,F,F,F,F,F,F,F,F,
+	"161" F,F,F,F,F,F,F,F,F,F,
+	"171" F,F,F,F,F,F,F,F,F,F,
+	"181" F,F,F,F,F,F,F,F,F,F,
+	"191" F,F,F,F,F,F,F,F,F,F/;
+   DATA LHANDL/.true./;			"Handler and trap flags"
+   DATA PXNAME /' '/;			"Default picture alias is none"
+   DATA MARGIN/4*0.0/;			"Default margin size"
+   DATA WORLD /13.,10.,10./;		"3-D world sizes"
+   DATA REDUCE /0.,4*1./;		"Default scaling"
+$ENGLISH;				"Use English units ???"
+   DATA PSCR/13.,10./;			"Screen size in inches"
+   DATA SCREEN/13.,10./;		"Default screen size in inches"
+$ELSE;
+   DATA PSCR/30.,25./;			"Default screen size in cm."
+   DATA SCREEN/30.,25./;		"Default screen size in cm."
+$END;
+   DATA GRDTYP/0/;			"Grid is off at start"
+   DATA GRDTEX/0/;			"Outline Texture and color"
+   DATA GRDSYM/12367./;			"Default sym"
+   DATA GRDSIZ/$TITLESIZ/;		"Grid size"
+   DATA SHADOWTYP/0/;			"Shadow is off at start"
+   DATA SHADOWTEX/0/;			"Outline Texture and color"
+   DATA OUTTEX/256/;			"Outline texture"
+   DATA ITXSEC/64/;			"Secondary texture"
+"		w=1, r=2, g=3, b=4, y=5, m=6, c=7 *512
+		solid=1,daash=2,dot=3,dash=4,dotdash=5 *64
+		Width=n*8
+	THe followin defaults are used:
+		solid,daash,dot,dash,dotdash,solid,solid
+		blue,cyan,green,yellow,red,magenta,white
+"
+   REAL SYM0,SYM1,SYM2,SYM3,SYM4,SYM5,SYM6,SYM7,SYM8,SYM9;
+   PARAMETER (SYM0=ICHAR('O')+256*ICHAR('0'));
+   PARAMETER (SYM1=ICHAR('O')+256*ICHAR('1'));
+   PARAMETER (SYM2=ICHAR('O')+256*ICHAR('2'));
+   PARAMETER (SYM3=ICHAR('O')+256*ICHAR('3'));
+   PARAMETER (SYM4=ICHAR('O')+256*ICHAR('4'));
+   PARAMETER (SYM5=ICHAR('O')+256*ICHAR('5'));
+   PARAMETER (SYM6=ICHAR('O')+256*ICHAR('6'));
+   PARAMETER (SYM7=ICHAR('O')+256*ICHAR('7'));
+   PARAMETER (SYM8=ICHAR('O')+256*ICHAR('8'));
+   PARAMETER (SYM9=ICHAR('O')+256*ICHAR('9'));
+
+   INTEGER    M1_CYCLE , M2_CYCLE    ;
+   PARAMETER (M1_CYCLE=MAX_CYCLE-7 ) ;
+   PARAMETER (M2_CYCLE=MAX_CYCLE-10) ;
+
+   DATA IDTX_CYCLE/2112,3776,1664,3008,1280,3328,768 ,M1_CYCLE*768/;
+   DATA ITX_CYCLE /2112,3776,1664,3008,1280,3328,768 ,M1_CYCLE*768/;
+   DATA DSYM_CYCLE/SYM0,SYM1,SYM2,SYM3,SYM4,SYM5,SYM6,SYM7,SYM8,SYM9,
+	M2_CYCLE*SYM9/;
+   DATA SYM_CYCLE /SYM0,SYM1,SYM2,SYM3,SYM4,SYM5,SYM6,SYM7,SYM8,SYM9,
+	M2_CYCLE*SYM9/;
+   DATA ND_CYCLE/5/;
+   DATA N_CYCLE/5/;
+   DATA IAXTEX/256/;			"Axes texture"
+   DATA TITEX/256/;			"Title color,intesity"
+   DATA LABTEX/256/;			"Label color,intensity"
+   DATA TICTEX/0/;			"Tick color, intesity,texture"
+   DATA ORAXES/0.,0.,0./;		"3-D axes origin"
+   DATA EYEDIR/0.,0.,0./;		"3-d eye direction"
+   DATA VUECEN/0.,0.,0./;		"3-d center of vue"
+   DATA VERTCL/0.,0.,0./;		"3-d Vertical axes"
+   DATA TTHETA/30./,TPHI/60./;		"3-d THETA and PHI"
+   DATA EYEDIS/35./,EYESEP /0./,SCRD/-18./;
+   DATA TITX/0.1/,  TITY/11.7/,  TITZ/0.0/;
+   DATA TITX1/0.1/, TITY1/11.7/;
+   DATA $TITSIZE,$TITANGLE,$TITSPACE,$TITINDEX,$TITLINES
+      /$TITLESIZ,0.,0.,2.,0./,
+      ITCNTR/0/,ITITDT/0,0,0/;
+   DATA LTDATA/.false./;		"Not data frame for title"
+   DATA RADRMN/0./,RADANG/0.0174532925/,RADAMN/0./;
+   DATA CIRSIZ/6*1./;			"Circle size"
+   DATA ASIZE/$TITLESIZ/,AFLARE/0.5/;	"Arrow parameters"
+   DATA IDIMNS/2/,NDIMNS/0,0,2/,NDDIMNS/0/;
+   DATA IPROP,IHTEX,IBLINK /3*0/;	"Proportional spacing,hard texture"
+   DATA IERASE/0/;			"Erases lines etc."
+   DATA C_FILE/' '/;			"File name"
+   DATA C_NAME/' '/;			"DATA set name"
+   DATA C_SELECT/' '/;			"DATA name to select"
+" ------------------------------------------------------"
+%E  - Default definitions
+"
+These definitons are set only by the keyword PERMANENT
+They serve as the default values.
+"
+   DATA IFLDDF(N_XDATA )         /1/;
+   DATA IFLDDF(N_YDATA )         /2/;
+   DATA IFLDDF(N_DXDATA)         /3/;
+   DATA IFLDDF(N_DYDATA)         /4/;
+   DATA IFLDDF(N_SYMBOL)         /5/;   "Default Order of fields"
+
+   DATA DGRDTYP/0/;			"GRID is off to start"
+   DATA DGRDTEX/0/;			"Outline Texture and color"
+   DATA DGRDSYM/12367./;		"Default sym"
+   DATA DGRDSIZ/$TITLESIZ/;		"Grid size"
+   DATA DSHADOWTYP/0/;			"Shadow is off to start"
+   DATA DSHADOWTEX/0/;			"Outline Texture and color"
+   DATA DOUTTEX/256/;			"Outline texture"
+   DATA IDTXSEC/64/;			"Default Secondary texture"
+   DATA IDAXTEX/256/;			"Axes texture"
+   DATA DTITEX/256/;			"Title color, intensity"
+   DATA DLABTEX/256/;			"Label color,intensity"
+   DATA DTICTEX/0/;			"Tick color, intesity,texture"
+   DATA DSYMBOL/0./;			"Default symbol"
+   DATA DSYDIR/0.,-1.,0./;		"Orientation of 3-d symbols"
+   DATA DGRDIR/3*0.0/;			"Orientation of 3-d grid symbols"
+   DATA DRADANG/0.0174532925/;		"Default angles units=degrees"
+   DATA DTIKFAC/3.0/;			"Ratio of Long to short ticks"
+   DATA DTIKSIZ/3*$TIKSIZ/,  DBARSIZ/3*$TIKSIZ/,
+	DEYESEP/0./,     DEYEDIS/35./,     DSCRD/-18./,
+	DVERTCL/3*0./,   DEYEDIR/3*0./,    DVUECEN/3*-77777./,
+	DORAXES/3*0./,   DTTHETA/30./,     DTPHI/60./;
+   DATA DBARBRK /3*0/;			"Break error bar at symbol"
+$ENGLISH;
+   DATA DCIRSIZ/6*1.0/,  DTITSIZ/$TITLESIZ/,      DLBLSIZ/$TITLESIZ/;
+$ELSE;
+   DATA DCIRSIZ/6*2.5/,  DTITSIZ/$TITLESIZ/,      DLBLSIZ/$TITLESIZ/;
+$END;
+   DATA DAXANG/3*720.0/
+	DFACTXY /$MAXVAR*1./
+	DNONLN/3*-1/,DNXYZ1/3*0/,DNXYZ2/3*0/
+	;
+   DATA DSCLPRM(1,1)/10./,DSCLPRM(1,2)/10./,DSCLPRM(1,3)/10./;	"Bases"
+   DATA DLBLCHR/3*6/;			"Max chars in numeric labels"
+   DATA DFRELBL/4*1./;
+   DATA DTITLIN/1.2,2.0,2*1.2/;		"Number of lines/title"
+   DATA DTITFAC /3*1.0,1.5/;		"Scale factor for titles"
+   DATA DTITMAR/4*0.025/;		"Title margin"
+   DATA DTITINX/2./;			"Title height"
+   DATA LINTXF/4/;			"Line texture"
+   DATA LINWDF/2/;			"Intensity/width for lines"
+   DATA LINCLF/1/;			"Start with white"
+   DATA DNPATRN/$PATN*0/		"Default no pattern"
+   DPATRN(1,1) /1./;
+   DATA DPATSZ/$TIKSIZ/;
+   DATA DASIZE/$TITLESIZ/,DAFLARE/0.5/;	"Arrow parameters"
+   DATA DSCREV/3*F/;			"Reverse scale"
+   DATA DFLAGS/
+	"01" T,F,F,F,F,F,F,F,F,F,
+	"11" F,F,F,F,F,F,F,F,T,T,
+	"21" T,T,F,F,T,F,F,F,F,F,
+	"31" F,T,T,T,T,T,T,F,F,T,
+	"41" T,T,T,T,T,T,T,T,T,T,
+	"51" T,T,F,F,F,F,F,F,F,F,
+	"61" F,F,F,F,F,F,F,F,F,F,
+	"71" F,F,F,F,F,F,F,F,F,F,
+	"81" F,F,F,F,F,F,F,F,F,F,
+	"91" F,T,F,T,F,F,T,T,F,T,
+	"101" F,F,F,F,T,F,F,F,F,F,
+	"111" F,F,F,F,F,F,F,F,F,F,
+	"121" F,F,F,F,F,F,F,F,F,F,
+	"131" F,F,F,F,F,F,F,F,F,F,
+	"141" F,F,F,F,F,F,F,F,F,F,
+	"151" F,F,F,F,F,F,F,F,F,F,
+	"161" F,F,F,F,F,F,F,F,F,F,
+	"171" F,F,F,F,F,F,F,F,F,F,
+	"181" F,F,F,F,F,F,F,F,F,F,
+	"191" F,F,F,F,F,F,F,F,F,F/;
+END;
+%E  SUBROUTINE TDREST - Reset all permanent values
+SUBROUTINE TDREST;
+   IMPLICIT NONE;
+   $SPECIFICATION;
+   $SPECIFYD;
+   $BOOLEAN T,F;
+   $MAINSPEC;
+   PARAMETER (T=.TRUE.);
+   PARAMETER (F=.FALSE.);
+   INTEGER I,J;
+   INTEGER IFL($MAXVAR);
+   
+   INTEGER    REMAIN_VAR            ;
+   PARAMETER (REMAIN_VAR=$MAXVAR-5) ;
+
+   INTEGER ITTX_CYCLE(7)/2112,3776,1664,3008,1280,3328,768/;
+   DATA IFL(N_XDATA )         /1/;
+   DATA IFL(N_YDATA )         /2/;
+   DATA IFL(N_DXDATA)         /3/;
+   DATA IFL(N_DYDATA)         /4/;
+   DATA IFL(N_SYMBOL)         /5/;   	"Default Order of fields"
+   $BOOLEAN RFLAGS(200);
+   DATA RFLAGS/
+	"01" T,F,F,F,F,F,F,F,F,F,
+	"11" F,F,F,F,F,F,F,F,T,T,
+	"21" T,T,F,F,T,F,F,F,F,F,
+	"31" F,T,T,T,T,T,T,F,F,T,
+	"41" T,T,T,T,T,T,T,T,T,T,
+	"51" T,T,F,F,F,F,F,F,F,F,
+	"61" F,F,F,F,F,F,F,F,F,F,
+	"71" F,F,F,F,F,F,F,F,F,F,
+	"81" F,F,F,F,F,F,F,F,F,F,
+	"91" F,T,F,T,F,F,T,T,F,T,
+	"101" F,F,F,F,T,F,F,F,F,F,
+	"111" F,F,F,F,F,F,F,F,F,F,
+	"121" F,F,F,F,F,F,F,F,F,F,
+	"131" F,F,F,F,F,F,F,F,F,F,
+	"141" F,F,F,F,F,F,F,F,F,F,
+	"151" F,F,F,F,F,F,F,F,F,F,
+	"161" F,F,F,F,F,F,F,F,F,F,
+	"171" F,F,F,F,F,F,F,F,F,F,
+	"181" F,F,F,F,F,F,F,F,F,F,
+	"191" F,F,F,F,F,F,F,F,F,F/;
+   <I=1,200; DFLAGS(I)=RFLAGS(I); >
+   <I=62,70; FLAGS(I)=DFLAGS(I); >	"Reset scale limits"
+   <I=1,$MAXVAR; IFLDDF(I)=IFL(I); >
+    N_CYCLE=5;
+    <I=1,MAX_CYCLE;
+        ITX_CYCLE(I)=ITTX_CYCLE(MIN(I,7));
+	SYM_CYCLE(I)=ICHAR('O')+256*(ICHAR('0')+MIN(9,I-1));
+    >
+   DGRDTYP=0;				"GRID is off to start"
+   DGRDTEX=0;				"Outline Texture and color"
+   DGRDSYM=12367.;			"Default sym"
+   DGRDSIZ=$TITLESIZ;			"Grid size"
+   DSHADOWTYP=0;			"Shadow is off to start"
+   DSHADOWTEX=0;			"Outline Texture and color"
+   DOUTTEX=256;				"Outline texture"
+   IDTXSEC=64;				"Default Secondary texture"
+   IDAXTEX=256;				"Axes texture"
+   DTITEX=256;				"Title color, intensity"
+   DLABTEX=256;				"Label color,intensity"
+   DTICTEX=0;				"Tick color, intesity,texture"
+   DSYMBOL=0.;				"Default symbol"
+   DRADANG=0.0174532925;		"Default angles units=degrees"
+   DTIKFAC=3.0;				"Ratio of Long to shor ticks"
+   DEYESEP=0.;
+   DEYEDIS=35.;
+   DSCRD=-18.;
+   <I=1,3;
+	DGRDIR(I)=0;
+	DSYDIR(I)=0;
+	DSCREV(I)=.false.;
+	DTIKSIZ(I)=$TIKSIZ;
+	DBARBRK(I)=0;
+	DBARSIZ(I)=$TIKSIZ;
+	DVERTCL(I)=0.;
+	DEYEDIR(I)=0.;
+	DVUECEN(I)=-77777.;
+	DORAXES(I)=0.;
+	DAXANG(I)=720.0;
+	DNONLN(I)=-1;
+	DNXYZ1(I)=0;
+	DNXYZ2(I)=0;
+	DLBLCHR(I)=6;			"Max chars in numeric labels"
+   >
+   DSYDIR(2)=-1;
+   DTTHETA=30.;
+   DTPHI=60.;
+
+   <J=1,2; <I=1,3; DCIRSIZ(J,I)=1.0; > >
+   DTITSIZ=$TITLESIZ;
+   DLBLSIZ=$TITLESIZ;
+
+   <I=1,$MAXVAR; DFACTXY(I)=1.; >
+   DSCLPRM(1,1)=10.;
+   DSCLPRM(1,2)=10.;
+   DSCLPRM(1,3)=10.;			"Bases"
+   <I=1,4; DFRELBL(I)=1.; >
+   DTITLIN(1)=1.2;
+   DTITLIN(2)=$TITLESIZ;
+   DTITLIN(3)=1.2;			"Number of lines/title"
+   DTITLIN(4)=1.2;			"Number of lines/title"
+   DTITFAC(1)=1.0;
+   DTITFAC(2)=1.0;
+   DTITFAC(3)=1.0;
+   DTITFAC(4)=1.5;			"Scale factor for titles"
+   <I=1,4; DTITMAR(I)=0.025; >		"Title margin"
+   DTITINX=2.;				"Title height"
+   LINTXF=4;				"Line texture"
+   LINWDF=2;				"Intensity/width for lines"
+   LINCLF=1;				"Start with white"
+   <J=1,$PATN;				"Default no pattern"
+	NPATRN(J)=0;
+	DNPATRN(J)=0;
+   >
+   DPATSZ=$TIKSIZ;			"Default Pattern size"
+   DASIZE=$TITLESIZ;			"Default arrow size"
+   DAFLARE=0.5;				"Default Arrow flare"
+END;
+%E  SUBROUTINE T2CRMF - Convert floating point -> text
+SUBROUTINE T2CRMF(XVALUE,W,D,TEXT,IFIRST,ILAST);
+"
+	Loads one floating point xvalue into text string
+
+	INPUT:
+		XVALUE - Value to convert
+		D positive or zero for FW.D format
+		D negative for EW.D format
+		W positive for normal FORTRAN format
+		W negative for left-shifted text
+	OUTPUT:
+		TEXT	the character string.
+			Returns all stars if value is too large for field
+		IFIRST	Position of first non-blank
+		ILAST	Position of last non-blank, non-zero
+"
+   INTEGER W,D; REAL XVALUE;
+   CHARACTER*(*) TEXT;
+   DOUBLE PRECISION DFIVE,DTENTH,DTENM5,DPOWER,DPART,TENPWR(6);
+   DATA DFIVE/5.0D0/,DTENTH/0.1D0/,DTENM5/1.D-5/;
+   DATA TENPWR(1)/1.D0/,TENPWR(2)/1.D1/,TENPWR(3)/1.D2/
+       ,TENPWR(4)/1.D3/,TENPWR(5)/1.D4/,TENPWR(6)/1.D5/;
+   CHARACTER*1 DIGIT(10);
+   DATA DIGIT/'0','1','2','3','4','5','6','7','8','9'/;
+
+   ICOL=0;				"COUNT POSITION IN TEXT"
+   %'$INSERT(#)'='ICOL=ICOL+1; TEXT(ICOL:ICOL)=#1;'
+   PART=ABS(XVALUE); DPART=PART;
+   IABSD = IABS(D); IABSW = IABS(W);
+   IF (IABSW .gt. LEN(TEXT)) GOTO :STARS:;
+"
+	FIGURE LOG AND DPART SO XVALUE=DPART*10**LOG
+	IF EXPONENTIAL FORMAT (D<0) DPART MAY NOT BE <1.
+	IF FLOATING FORMAT, LOG MAY NOT BE <0
+	IN EITHER CASE, DPART MAY NOT BE >= 10, AND LOG
+	TAKES UP THE REST.
+"
+      LOG=0;
+      IF (PART.NE.0.) THEN;
+	 IF (D.GE.0 .AND. PART.LT.10.) THEN; CONTINUE;
+	 ELSEIF (D.LT.0 .AND. PART.LT.10. .AND. PART.GE.1.) THEN; CONTINUE;
+	 ELSE;
+	    AL1=ALOG10(PART); LOG=AL1;
+	    AL2=LOG; IF (AL2.GT.AL1) LOG=LOG-1;
+			"MULTIPLY DPART BY 10.**-LOG"
+	       IOVER5=LOG/5; I=5*IOVER5-LOG;
+	       IF (I.LT.0) THEN; I=I+5; IOVER5=IOVER5+1; ENDIF;
+	       DPART=DPART*TENPWR(I+1);
+	       IF (IOVER5.NE.0) THEN;
+		  IF (IOVER5.LT.0) THEN; IOVER5=-IOVER5;
+		     <I=1,IOVER5; DPART=DPART*TENPWR(6);>
+		  ELSE;
+		     <I=1,IOVER5; DPART=DPART*DTENM5;>
+		  ENDIF;
+	       ENDIF;
+	 ENDIF;
+		"ADD IN ROUNDING"
+	    I=IABSD+1; IF (D.GE.0) I=I+LOG;	"PLACE FOR ROUNDING"
+			"FIGURE DPOWER=5*10**-I"
+	       IOVER5=I/5; I=5*IOVER5-I;
+	       IF (I.LT.0) THEN; I=I+5; IOVER5=IOVER5+1; ENDIF;
+	       DPOWER=DFIVE*TENPWR(I+1);
+	       <I=1,IOVER5;DPOWER=DPOWER*DTENM5;>
+	    DPART=DPART+DPOWER;
+		"ADJUST IN CASE ROUNDING CHANGED THINGS"
+	    IF (DPART.GE.TENPWR(2)) THEN;
+	       LOG=LOG+1; DPART=DPART*DTENTH;;
+	    ENDIF;
+      ENDIF;
+	"WHERE DO I PLACE IT IN THE FIELD?"
+      IWHOLE=2; IF (D.GE.0 .AND. LOG.GT.0) IWHOLE=LOG+2;
+      LEAD=IABSW-IWHOLE-IABSD;
+      IF (D.LT.0) LEAD=LEAD-4;			"Exponent"
+      IF (XVALUE.LT.0.) LEAD=LEAD-1;		"Minus sign"
+      IF (W.lt.0) LEAD=0;			"Left justify ?"
+						"Leading blanks"
+      IF (LEAD.LT.0) GO TO :STARS:;
+      IFIRST=LEAD+1;
+      IF (LEAD.GT.0) THEN; TEXT(1:LEAD)=' '; ICOL=LEAD; ENDIF;
+						"MINUS SIGN?"
+      IF (XVALUE.LT.0.) THEN; $INSERT('-'); ENDIF;
+						"AND THE NUMBER"
+      N=IWHOLE+IABSD;
+      <I=1,N;
+	 IF (I.EQ.IWHOLE) THEN;
+	    ILAST=ICOL; $INSERT('.');
+	 ELSE;
+	    J=DPART; $INSERT(DIGIT(J+1));
+	    DPOWER=J;
+	    DPART=(DPART-DPOWER)*TENPWR(2);
+	    IF (J.NE.0) ILAST=ICOL;
+	 ENDIF;
+      >
+   IF (D.LT.0 .AND. XVALUE.NE.0.) THEN;		"PUT IN EXPONENT"
+      $INSERT('E');
+      IF (LOG.LT.0) THEN; $INSERT('-'); ENDIF;
+      LOG = IABS(LOG);
+      J=LOG/10; IF(J.gt.0) THEN; $INSERT(DIGIT(J+1)); ENDIF;
+      J=MOD(LOG,10); $INSERT(DIGIT(J+1));
+      ILAST=ICOL;
+   ENDIF;
+						"Fill trailing blanks"
+      IF (ICOL.lt.IABSW) TEXT(ICOL+1:IABSW)=' ';
+   RETURN;
+:STARS:
+   IFIRST=1; ILAST=MIN(6,LEN(TEXT));
+   TEXT='*******************';
+END;
+%E  SUBROUTINE T2ERR - Output messages
+<TOKEN USING INFOIN,CARDIN>;
+SUBROUTINE T2ERR($INFO,$CARD,MESSAG,IFLAG);
+   IMPLICIT NONE;
+   INTEGER $INFO(10),IFLAG,JFLAG;
+   CHARACTER*(*) $CARD,MESSAG;
+"
+   INPUT:
+    $INFO= Token information
+    CARDIN= String containing command
+    MESSAG= General error message (May be null)
+    IFLAG = 1 -- PRINT only passed error message
+	  = 2 -- Print cardin, no error message
+	  = 3 -- General error message (No card print)
+	  = 4 -- Print pointer at column in error
+	  = 5 -- Error from TOKEN.  Print according to INTERP
+	  = 6 -- Print cardin if it hasnt been printed already.
+		 (and no error message)
+"
+
+   $SPECIFICATION;
+   $SPECIFYP;
+   $EQUIVALENCE;
+   $DATA;
+   $BOOLEAN INTRAC,LERR;
+   INTEGER IPASS,I,IMIN,IMAX,J,JMIN,JMAX,JSIZ,MAXCR;
+   INTEGER LENGTH,FILE,MESMAX,IFIL;
+   INTEGER IEROUT(3),T2BTRIM;
+
+   JFLAG=ABS(IFLAG);
+   LERR=.false.;
+   LENGTH=MIN(LEN($CARD),$INFO(1));
+   MAXCR=1; <I=1,LENGTH; IF($CARD(I:I).ne.' ') MAXCR=I;>
+   LENGTH=MAXCR;
+   IPASS=0;
+   IF (OUTFIL.gt.0) THEN;
+      IPASS=IPASS+1; IEROUT(IPASS)=OUTFIL;
+   ENDIF;
+   MESMAX=1;
+   IF (JFLAG.le.5) THEN;				"Error message ?"
+      IF (JFLAG.eq.5.and.INTERP.eq.7) RETURN;		"Already given ?"
+      IF (ERRFIL.ne.OUTFIL .and. ERRFIL.gt.0) THEN;
+	 IPASS=IPASS+1; IEROUT(IPASS)=ERRFIL;
+      ENDIF;
+      IF (ERRFIL.ne.$ERR FILE.and.INTRAC(I) ) THEN;
+	 IPASS=IPASS+1; IEROUT(IPASS)=$ERR FILE;
+      ENDIF;
+      MESMAX=T2BTRIM(MESSAG);
+      IF (MESMAX.gt.1) THEN;
+	 IF (IFLAG.lt.0) CALL T2SQEZ(MESSAG,MESMAX);
+	 IF (INDEX(MESSAG,'*** ERROR').gt.0) LERR=.true.;
+      ENDIF;
+   ENDIF;
+   <IFIL=1,IPASS;
+      FILE=IEROUT(IFIL);
+      IF (FILE.eq.$ERR FILE) $WARN=.true.;
+      IF (MESSAG(1:MESMAX).ne.' ') THEN;
+	 WRITE(FILE,*,ERR=:ENDPASS:)' ',MESSAG(1:MESMAX);
+	 IF(FILE.le.NINMAX) NINP(FILE)=NINP(FILE)+1;
+      ENDIF;
+      IF(JFLAG.eq.5) THEN;
+	 GO TO (:END:,:KEY:,:NUM:,:NUM:,:STRING:,:IDENT:,
+	       :GARBAGE:,:AMBIG KEY:,:GARBAGE:),INTERP;
+	    :KEY: CONTINUE;		"I CANT IMAGINE THIS HAPPENING"
+		  WRITE(FILE,*,ERR=:ENDPASS:)' *** ERROR *** ???';
+		  GOTO :NO FIELD:;
+	    :AMBIG KEY:
+		  IMIN=$INFO(5);
+		  IMAX=MAX(IMIN,$INFO(3));
+		  WRITE(FILE,*,ERR=:ENDPASS:) ' *** WARNING *** ',
+		       $CARD(IMIN:IMAX),' Matches ',
+		       STRNG(1:NSTRNG),' First used.';
+		  GO TO :NO FIELD:;
+	    :END:
+		  WRITE(FILE,*,ERR=:ENDPASS:)
+		     ' *** ERROR *** More information expected on this line.';
+		  LERR=.true.;
+		  GO TO :NO FIELD:;
+	    :IDENT: CONTINUE;
+	    :STRING: CONTINUE;
+	    :NUM: CONTINUE;
+	    :GARBAGE:
+		  WRITE(FILE,*,ERR=:ENDPASS:)
+		     ' *** ERROR *** Unrecognized input';
+		  LERR=.true.;
+	    :NO FIELD:
+		  IF(FILE.le.NINMAX) NINP(FILE)=NINP(FILE)+1;
+      ENDIF;
+      GO TO (:NO:,:YES:,:NO:,:ERR:,:ERR:,:MAYBE:),JFLAG;
+      :MAYBE:				"CALL IS FOR NORMAL CARD LIST"
+	 IF ($INFO(10).NE.0) GO TO :NO:;	"TEST PRINT BIT"
+      :YES:
+	 $INFO(10)=1;			"Turn on the print bit"
+	 WRITE (FILE,*,ERR=:ENDPASS:) $INFO(7),' ',$CARD(1:MAXCR);
+	 IF (FILE.le.NINMAX) NINP(FILE)=NINP(FILE)+1;
+	 IF (JFLAG.le.5) GOTO :TRACE:;
+	 GO TO :NO:;
+      :ERR:
+					"If print the STRNG"
+	 IF (NSTRNG.GT.0) THEN;
+	    WRITE(FILE,*,ERR=:ENDPASS:)' * "'//STRNG(1:NSTRNG)//'"';
+	    IF(FILE.le.NINMAX) NINP(FILE)=NINP(FILE)+1;
+	 ENDIF;
+	 <IMIN=1,MAXCR,77;  IMAX=MIN(IMIN+76,MAXCR);
+					"PUT IN A POINTER"
+	    JMIN=$INFO(5); JMAX=MIN(LENGTH,$INFO(3));
+	    IF( JMIN .gt. IMAX .or. JMAX.lt.IMIN) THEN;
+	       JSIZ=0;
+	    ELSE;
+	       JMIN=MIN(MAX(JMIN,IMIN),IMAX);
+	       JMAX=MIN(MAX(JMAX,IMIN),IMAX);
+	       JSIZ=JMAX-JMIN+1;
+	       JMIN=JMIN-IMIN+1;
+	    ENDIF;
+	    WRITE (FILE,*,ERR=:ENDPASS:) ' * ',$CARD(IMIN:IMAX);
+	    IF(FILE.le.NINMAX) NINP(FILE)=NINP(FILE)+1;
+	    IF(JSIZ.gt.0) THEN;
+	       WRITE(FILE,*,ERR=:ENDPASS:)
+		  ' *',(' ',J=1,JMIN),('-',J=1,JSIZ);
+	       IF(FILE.le.NINMAX) NINP(FILE)=NINP(FILE)+1;
+	    ENDIF;
+	 >
+:TRACE:
+      CALL T2TRCE(FILE);			"Trace input files"
+      :NO:
+:ENDPASS:
+   >
+   IF(JFLAG.le.5) THEN;
+      IF ($TRACE.and. LERR) CALL TRACE;		"Generate traceback ?"
+      IF (FLAGS(26)) CALL T2PAUS;
+   ENDIF;
+   $ERROR=$ERROR.or.LERR;
+END;
+%E  SUBROUTINE TRACE - Generate traceback
+SUBROUTINE TRACE;
+   IMPLICIT NONE;
+$VAX;
+      CALL LIB$SIGNAL(%val(0));			"Generate traceback"
+$END;
+END;
+%E  SUBROUTINE T2STOP - Stop and output an error message
+   SUBROUTINE T2STOP(STR);
+   CHARACTER*(*) STR;
+   $SPECIFICATION;
+   CHARACTER*128 STRX;
+   NSTR = LEN(STR) ;
+   STRX = '*** FATAL *** '//STR;
+   ERROR STRING;STRX(:NSTR+14);
+   ERROR STRING;'*** Contact your system manager ***';
+   CALL TRACE;
+   PAUSE;
+   STOP;
+END;
+%E  SUBROUTINE T2REST - Reset the variables to defaults
+SUBROUTINE T2REST;
+   IMPLICIT NONE;
+"Finishes one plot and starts the next restore parameters"
+   INTEGER I,J,K;
+   REAL DUM;
+   $SPECIFICATION;
+   $SPECIFYNONE;
+   $SPECIFYD;
+   $EQUIVALENCE;
+   $DATA;
+   IBLINK=0; CALL TXXOPT(10,IBLINK,DUM,I);
+   IERASE=0; CALL TXXOPT(11,IERASE,DUM,I);
+   <I= 2,13;FLAGS(I)=DFLAGS(I);>
+   <I=19,22;FLAGS(I)=DFLAGS(I);>
+   FLAGS(27)=DFLAGS(27);
+   <I=32,52;FLAGS(I)=DFLAGS(I);>
+   <I=71,81;FLAGS(I)=DFLAGS(I);>
+   <I=84,92;FLAGS(I)=DFLAGS(I);>
+   FLAGS(94)=DFLAGS(94);
+   <I=120,200; FLAGS(I)=DFLAGS(I); >		"All rest of flags"
+   <I=1,3; <J=1,10; SCLPRM(J,I)=DSCLPRM(J,I); > >
+   <I=1,3;
+	LSCREV(I)=DSCREV(I);
+	TIKSIZ(I)=DTIKSIZ(I);
+	BARBRK(I)=DBARBRK(I);
+	BARSIZ(I)=DBARSIZ(I);
+	LBLCHR(I)=DLBLCHR(I);
+	NONLIN(I)=DNONLN(I);
+	NXYZ1(I)=DNXYZ1(I);
+	NXYZ2(I)=DNXYZ2(I);
+	AXANG(I)=DAXANG(I);
+   >
+   TIKFAC=DTIKFAC;
+   IF(.not.FLAGS(61)) THEN;			"Reset three ?"
+      FLAGS(82)=DFLAGS(82);
+      FLAGS(55)=DFLAGS(55);
+      NDIMNS(1)=NDDIMNS;			"Set Three to default"
+      EYESEP=DEYESEP; EYEDIS=DEYEDIS; SCRD=DSCRD;
+      <I=1,3; VERTCL(I)=DVERTCL(I);
+	    EYEDIR(I)=DEYEDIR(I);
+	    VUECEN(I)=DVUECEN(I);
+	    ORAXES(I)=DORAXES(I);
+	    GRDIR(I) =DGRDIR(I);
+	    SYDIR(I) =DSYDIR(I);
+      >
+      TTHETA=DTTHETA; TPHI=DTPHI;
+   ENDIF;
+   FLAGS(61)=.FALSE.;
+   $3D=(IDIMNS.eq.3.or.NDIMNS(1).eq.3) .and. NDIMNS(1).ne.2;
+   MESH2D=0; SYMBOL=DSYMBOL; SYMSIZ=SMSZDF;
+   NFIELD=0;					"Count the number of fields"
+   <I=1,$MAXVAR; IFIELD(I)=IFLDDF(I);
+      NFIELD=MAX(NFIELD,IFLDDF(I));
+      FACTXY(I)=DFACTXY(I);>
+   <I=1,MAX_CYCLE;
+	ITX_CYCLE(I)=IDTX_CYCLE(I);
+	SYM_CYCLE(I)=DSYM_CYCLE(I);
+   >
+   RADANG=DRADANG;				"Default angle units"
+   GRDTYP=DGRDTYP;				"TURN OFF GRID"
+   GRDTEX=DGRDTEX;				"Texture and color"
+   GRDSYM=DGRDSYM;				"Grid symbol"
+   GRDSIZ=DGRDSIZ;				"Grid size"
+   SHADOWTYP=DSHADOWTYP;			"Default Shadow"
+   SHADOWTEX=DSHADOWTEX;			"Texture and color"
+   OUTTEX=DOUTTEX;				"Outline texture"
+   ITXPRI=IDTXPRI;				"Primary   color,inten, texture"
+   ITXSEC=IDTXSEC;				"Secondary color,inten, texture"
+   IAXTEX=IDAXTEX;				"Axes texture"
+   TITEX=DTITEX;				"Title color, intensity"
+   LABTEX=DLABTEX;				"Label color, intensity"
+   TICTEX=DTICTEX;				"Label color, inten, texture"
+   ASIZE=DASIZE;
+   AFLARE=DAFLARE;				"Arrow parameters"
+						"Default title parameters"
+   TITX = SCREEN(1)*0.1;			"Position"
+   TITY = SCREEN(2) * 0.9;
+   TITZ=0;
+   TITX1=TITX;
+   TITY1=TITY;
+	"TITZ1=TITZ;"
+   ITCNTR=0;					"Title centering"
+   LTDATA=.false.;				"Not data frame for title"
+   $TITSIZE=DTITSIZ;
+   $TITANGLE=0;
+   $TITSPACE=0;
+   $TITINDEX=DTITINX;
+   $TITLINES=0;
+   <I=1,3; ITITDT(I)=0; >			"Title data flags"
+   <I=1,4; FRELBL(I)=DFRELBL(I);
+	   TITLIN(I)=DTITLIN(I); TITFAC(I)=DTITFAC(I);
+	   TITMAR(I)=DTITMAR(I);
+   >
+   IWINLEV=1;
+   <I=1,2; WINLIM(I,1)=0; WINLIM(I,2)=SCREEN(I); >
+   <I=1,2;  <J=1,2;
+      XYPART(J,I)=1.;
+      WINREL(J,I,1)=1;
+      WINABS(J,I,1)=WINLIM(J,I);
+   >  >
+   TITINX=DTITINX;
+   TITSIZ=DTITSIZ; LBLSIZ=DLBLSIZ;
+   LINWID = LINWDF;				"Width"
+   LINTEX = LINTXF;				"Texture"
+   LINCOL = LINCLF;				"Color"
+   PATSZ = DPATSZ;				"Pattern size"
+   IPATRN= 1;
+   <I=1,2; <J=1,3; NXYLIM(J,I)=0; > >
+   EXYZLIM(1,1)=HNONE;
+   <I=1,3; <J=1,2; CIRSIZ(J,I)=DCIRSIZ(J,I);>>
+   <I=1,12; XFRM12(I)=0;			"No ref frames"
+	    XFRM13(I)=0; XFRM14(I)=0; XFRM23(I)=0; XFRM24(I)=0; >
+   <I=1,6;  XFRM34(I)=0;>
+END;
+%E  SUBROUTINE T2PNTR - Reset data storage
+SUBROUTINE T2PNTR;
+   IMPLICIT NONE;
+   $SPECIFICATION;
+   $POINT ARRAYS($NPOINTS);
+   IBLKTP=1;
+ENTRY T2CLRS;
+   IF (.NOT.FLAGS(28).and.(NPOINT.gt.NDSETS.or.NMESH1.ne.0)) THEN;
+      ERROR STRING; ('*** WARNING *** Unplotted data deleted');
+   ENDIF;
+   NPOINT=0; NMESH0=1; NMESH1=0; NMESH2=0; NDSETS=0;
+   CALL T2SETS(0);
+END;
+%E  SUBROUTINE T2SETS - Setup data storage
+SUBROUTINE T2SETS(IVAR);
+"
+	Routine to modify storage pointers.
+	This modifies what data is in storage
+	IVAR is the new storage.
+	IVAR(1) is the number of locations/point
+	IVAR(2....) are the variables to keep in the locations
+	1=symbol, 2=x, 3=dx, 4=y ...
+"
+   IMPLICIT NONE;
+   INTEGER IVAR(*);
+   INTEGER I,J,K,L,INEW($MAXCOR),New,IMIN,IMAX,ISTEP,IPOINT,ISET;
+   $SPECIFICATION;
+   $POINT ARRAYS($NPOINTS);
+   $SPECIFY NONE;
+   $MAINSPEC;
+   $BOOLEAN LRESET;
+   REAL XYZ($MAXCOR);
+   DATDAT(1,1)=HNONE;
+   MESH2D=0;
+   MESH1=0; MESH2=0; MESH3=0;
+   NMESH0=1; NMESH1=0; NMESH2=0;
+   IF (NDSETS.eq.0) $INEXTPTR=LISTPT;	"Fix up if no data sets"
+   DATBUF(1)=HNONE;			"Null data point"
+   LRESET=.false.;			"To check if reset necessary"
+   NEW=MIN(IVAR(1),$MAXCOR);
+   IPOINT=0;				"Total number of points to modify"
+   IF (NEW.ne.0) THEN;			"New storage required ???"
+      <I=1,NEW; INEW(I)=IVAR(I+1); >	"New storage"
+      IF (NEW .eq. NINCR) THEN;		"Same length ??"
+	 <I=1,NINCR; IF (INEW(I).ne.IVARBL(I)) LRESET=.true.; >
+					"Different variables ?"
+      ELSE;
+	 LRESET=.true.;
+      ENDIF;
+   ENDIF;
+   IF (LRESET) THEN;			"New storage different from old?"
+      <ISET=1,NDSETS;
+	 CALL T2GDSET(ISET,1,$LARGE INTEGER
+		,1,$LARGE INTEGER,ISETD,HNONE,'*');
+	 IF (IBLKTP.eq.1) IPOINT=IPOINT+NP;	"Get number of points"
+      >
+      IF (IPOINT.gt.0) THEN;			"Some data to change ?"
+	 IPOINT=IPOINT*(NEW-NINCR);		"Memory change"
+	 IF (IPOINT.gt.0) THEN;			"Get storage if necessary"
+	    CALL T2_VIRT(IPOINT);
+	 ENDIF;
+	 IF (LISTPT+IPOINT.gt.NPTMAX) THEN;
+	       ERROR STRING;
+		  '*** ERROR *** Too much data to modify storage';
+	       RETURN;
+	 ENDIF;
+	 L=0;
+	 <I=1,NINCR; L=IBSET(L,IVARBL(I)); >	"Old locations"
+	 <I=1,NEW;   L=IBCLR(L,INEW(I)); >	"New locations"
+	IF (L.ne.0)		"Old locations lost ??"
+	       ERROR STRING;
+		  '*** WARNING *** Some data coordinates will be lost';
+	<I=1,8; XYZ(I)=0; >			"Zero extra coordinates"
+	<ISET=1,NDSETS;				"Now do modification"
+	    CALL T2GDSET(ISET,1,$LARGE INTEGER
+			,1,$LARGE INTEGER,ISETD,HNONE,'*');
+	    IF (IBLKTP.EQ.1) THEN;
+		IPOINT=(NEW-NINCR)*(NP);	"Data words to add"
+		NP=NP-1;
+	       IF (IPOINT.gt.0) THEN;		"Expand data ??"
+		  <I=$INEXTPTR-1,IENDAT+1,-1;	"Move other sets up"
+		     DATBUF(I+IPOINT)=DATBUF(I);
+		  >
+		  IMIN=NP; IMAX=0; ISTEP=-1;	"Repack data from end"
+	       ELSE;
+		  IMIN=0; IMAX=NP; ISTEP=1;	"Repack from front"
+	       ENDIF;
+	       <I=IMIN,IMAX,ISTEP;
+		  K=IM+I*NINCR;			"Get old data"
+		  <J=1,NINCR; XYZ(IVARBL(J))=DATBUF(K); K=K+1; >
+		  K=IM+I*NEW;			"Repack to new"
+		  <J=1,NEW; DATBUF(K)=XYZ(INEW(J)); K=K+1; >
+	       >
+	       IF (IPOINT.lt.0) THEN;		"Move rest"
+		  <I=IENDAT+1,$INEXTPTR-1;	"Move other sets down"
+		     DATBUF(I+IPOINT)=DATBUF(I);
+		  >
+	       ENDIF;
+	       $INEXTPTR=$INEXTPTR+IPOINT;	"New end of data"
+	       IENDAT=IENDAT+IPOINT;		"New end of set"
+	       DATBUF(IBGDAT+2)=DATBUF(IBGDAT+2)+IPOINT;"New set length"
+	    ENDIF;
+	 >
+      ENDIF;
+      NINCR=NEW;
+      NDIMNS(3)=0;
+      <I=1,$MAXVAR; IVPTR(i)=0; >
+      <I=1,NINCR;
+	IVARBL(I)=INEW(I);
+	IF (IVARBL(I) .le. N_NDZDATA)
+	   NDIMNS(3)=MAX(NDIMNS(3),(IVARBL(I)-N_XDATA)/NCSIZE+1); >
+      <I=1,NINCR; IVPTR(IVARBL(I))=I; >
+"
+	Now reset variable pointers
+"
+   ENDIF;
+"
+	Now setup pointers for first data set
+"
+   CALL T2GDSET(NDSETS,1,$LARGE INTEGER
+		,1,$LARGE INTEGER,ISETD,HNONE,'*');
+   $IBASEPTR=LISTPT;
+   IF(.not.FLAGS(75)) THEN;			"Data frame not set?"
+      $3D=(IDIMNS.eq.3.or.NDIMNS(1).eq.3) .and. NDIMNS(1).ne.2;
+   ENDIF;
+   FLAGS(28)=.false.;
+END;
+%E  SUBROUTINE T2TRCE - Generate file traceback
+SUBROUTINE T2TRCE(IFILE);
+   IMPLICIT NONE;
+   $SPECIFICATION;
+   INTEGER I,J,JMAX,IFILE,T2BTRIM;
+   IF(IFILE.le.0) RETURN;
+      <I=INPFIL,10,-1;				"Parse input files"
+	 INQUIRE(UNIT=I,NAME=OUTSTR);
+	 J=0; IF(I.le.NINMAX) J=NINP(I);
+	 JMAX=T2BTRIM(OUTSTR);
+$VAX;
+	 CALL T2_CONCEAL_PASSWORD(outstr,JMAX);
+$END;
+	 WRITE(IFILE,*,ERR=:ENDPASS:)' * Line=',J,
+	     ' File=','"'//OUTSTR(:JMAX)//'"';
+	 IF (IFILE.le.NINMAX) NINP(IFILE)=NINP(IFILE)+1;
+      >
+:ENDPASS:
+END;
+%E  SUBROUTINE T2_CONCEAL_PASSWORD(FILE,N_FILE);
+SUBROUTINE T2_CONCEAL_PASSWORD(FILE,N_FILE);
+"
+
+	Kill passwords and other sensative info in file string
+
+"
+   IMPLICIT NONE;
+   CHARACTER*(*) FILE;
+   INTEGER IMIN,IMAX,I,N_FILE,T2BTRIM;
+   IF (N_FILE .le. 0 .or. N_FILE .gt. LEN(FILE)) N_FILE=T2BTRIM(FILE);
+$VAX;
+   IMIN=INDEX(FILE(:N_FILE),'"');	"Beginning of control string"
+   IF (IMIN .le. 0) RETURN;		"No ?"
+   I=INDEX(FILE(IMIN:N_FILE),' ');	"beginning of password"
+   IF (I .le. 0) RETURN;		"No ?"
+   IMIN=IMIN+I;				"Point to it"
+   IMAX=INDEX(FILE(:N_FILE),'"::');	"End of password ?"
+   IF (IMAX .le. IMIN) RETURN;		"No ?"
+   FILE(IMIN:)='X'//FILE(IMAX:);	"Kill real password"
+   N_FILE=MIN(LEN(FILE),N_FILE-(IMAX-IMIN)+1);
+   N_FILE=MAX(1,N_FILE);
+$END;
+END;

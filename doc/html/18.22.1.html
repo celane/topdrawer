@@ -1,0 +1,22 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 18.22.1</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>18.22.1  Example</H4></B> 
+
+     REAL X(2),DX(2)
+     DATA DX/0.1,1.0/
+     DATA X/0.,10./
+     CALL TDLIMS('X',2,X)
+This will set the plot to range from 0 to 10 along the X axis.
+     CALL TDLIMS('XMIN',1,0.0)
+     CALL TDLIMS('XMAX',1,10.0)
+This will set the plot to range from 0 to 10 along the X axis
+     CALL TDLIMS('X',2,X,DX)
+Sets the plot to range from -0.1 to 11.0
+
+
+</PRE>
+</BODY>

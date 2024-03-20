@@ -1,0 +1,37 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.70</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.70  SWAP</H4></B> 
+
+SWAP {X|[N]DX|Y|[N]DY|Z|[N]DZ|U|[N]DU|V|[N]DV|W|[N]DW} [WITH] {X|[N]DX|Y|
+          [N]DY|Z|[N]DZ|U|[N]DU|V|[N]DV|W|[N]DW}
+     [<U>PO</U>INTS=[<U>FR</U>OM] n1 [<U>TO</U>] [n2]]
+     [<U>SET</U>S=[<U>FR</U>OM] n1 [<U>TO</U>] [n2]]
+     [<U>SEL</U>ECT="name"]
+     [<U>ER</U>ROR[=<U>ON</U>|<U>OF</U>F]]
+This command swaps the data for 2 variables.
+
+If  ERROR  is specified then the corresponding errors are swapped with the
+data.
+(Default:ERROR=ON for REVISION&gt;4.99)
+
+This  is  useful if the data is in the wrong location for the type of plot
+you wish to make.  An example of this is  making  3-d  plots  from  binned
+data.   You  have  read  in  data,  X,Y,DY  and  you have binned it into a
+frequency distribution using the  BIN  command.   Now  the  result  is  in
+X,Y,DX,DY.   You  wish  to  make  a 3-d histogram, but the data must be in
+X,Z,DX,DZ.  To fix the problem:
+     TD:<U>SWAP</U> <U>Z</U> <U>WITH</U> <U>Y</U>
+     TD:<U>SWAP</U> <U>DZ</U> <U>WITH</U> <U>DY</U>
+Now you can set the Y value and perform the histogram.
+     TD:<U>Y=10.0</U>
+     TD:<U>SET</U> <U>THREE</U> <U>ON</U>
+     TD:<U>HISTOGRAM</U>
+You may copy data using the X,Y,Z,DX,...  commands.
+
+
+</PRE>
+</BODY>

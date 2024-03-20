@@ -1,0 +1,22 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.58.2.3</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.58.2.3  GRID</H4></B>   - If  specified  without  the option AXES then a GRID is
+plotted.  The grid must be ON to be plotted.  See SET GRID.   If  AXES  is
+specified, then both are plotted if the GRID is ON.  Grid lines or symbols
+are plotted only for long ticks.
+
+                                  example
+     TD:<U>SET</U> <U>GRID</U> <U>ON</U>
+     TD:<U>PLOT</U> <U>AXES</U> <U>Y</U> <U>0</U> <U>X</U> <U>2,4,6,8</U> <U>ticks</U> <U>1,3,5,7,9</U>
+The  grid is plotted at ticks 2,4,6,8 on the X and 0 on the Y.  An axes is
+also plotted with labels at X=2,4,6,8 Y=0, and short ticks at X=1,3,5,7,9.
+     TD:<U>PLOT</U> <U>GRID</U> <U>Y</U> <U>0</U> <U>X</U> <U>2,4,6,8</U>
+Only a grid is plotted.
+
+
+</PRE>
+</BODY>

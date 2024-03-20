@@ -1,0 +1,35 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.1</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.1  Introduction</H4></B> 
+
+The  set  commands  are  used  to  set options.  Most set commands set the
+option for the duration of the  current  plot.   When  a  NEW  command  is
+issued,  the  options  revert  to  the  default.  You may make the current
+option the default by using the  option  PERMANENT.   If  no  options  are
+specified  for  the  set command, the options are set back to the original
+default value.
+
+For  example  you wish to do a series of plots with the same limits on the
+X,Y scales.  Normally TOPDRAWER sets the limits automatically according to
+your data, so you use the command:
+     TD:<U>SET</U> <U>LIMITS</U> <U>X</U> <U>FROM</U> <U>0</U> <U>TO</U> <U>10</U> <U>Y</U> <U>FROM</U> <U>0.5</U> <U>to</U> <U>1.5</U> <U>PERMANENT</U>
+which  sets the limits permanently.  When you have done the plots you wish
+to revert to the original default:
+     TD:<U>SET</U> <U>LIMITS</U>
+Now  the  limits  are reset to automatic limits for the current plot only.
+The next plot will have the PERMANENT limits.  To  have  automatic  limits
+for all subsequent plots you must:
+     TD:<U>SET</U> <U>LIMITS;SET</U> <U>LIMITS</U> <U>PERMANENT</U>
+
+After  using  a  set  command you may "see" what you have done with a SHOW
+command.  For each set command there is a SHOW  command  which  shows  the
+current options.  For example you may see the limits you have modified by:
+     TD:<U>SHOW</U> <U>LIMITS</U>
+
+
+</PRE>
+</BODY>

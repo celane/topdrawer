@@ -1,0 +1,17 @@
+#
+# Imakefile for ugs.a
+#
+
+#include "Imakefile.def"
+
+#define PassCDebugFlags
+
+SUBDIRS = src src/drivers src/dummies $(BITLIB) test
+
+/* Rules */
+
+MakeSubdirs($(SUBDIRS))
+
+MakefileSubdirs($(SUBDIRS))
+
+CleanSubdirs($(SUBDIRS))

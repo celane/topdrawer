@@ -1,0 +1,40 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.65</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.65  WINDOWS</H4></B> 
+
+There are 3 ways to set windows, absolute, numbered, or relative.
+
+                             Absolute windows
+<U>SE</U>T <U>WIN</U>DOW|<U>AR</U>EA [<U>CU</U>RSOR] {<U>X</U>|<U>Y</U>}[<U>FR</U>OM] n1 [<U>TO</U>] n2] [<U>AT</U> n1 [<U>SI</U>ZE] n2]
+          [<U>LE</U>VEL=n]
+          or...
+<U>SE</U>T <U>WIN</U>DOW|<U>AR</U>EA [<U>FR</U>OM] nx,ny [<U>TO</U>] nx,ny] [<U>AT</U> nx,ny [<U>SI</U>ZE] nx,ny]
+Sets the X,Y axes to run between the specified limits in inches.
+
+<A NAME="188">                                 Numbered </A>
+     SET WINDOW [{<U>FI</U>RST|<U>LA</U>ST|<U>NE</U>XT|<U>PR</U>EVIOUS|n1 [<U>OF</U> n2]}] [<U>LE</U>VEL=n|<U>IN</U>SIDE|
+          <U>OU</U>TSIDE]
+Divides  the  entire  screen  into  n2 windows of equal size, and sets the
+current window to number n1.  The  windows  are  as  close  to  square  as
+possible.
+
+                                 Relative
+     SET WINDOW [{<U>X</U>|<U>Y</U>} n1 [<U>OF</U> n2]] [<U>LE</U>VEL=n]
+Divides  one  axis of the screen into n2 windows of equal size and selects
+one of them.
+
+
+                                  <U>WARNING</U>
+
+     If  this  command  is  issued in between 2 plots overlaying each
+     other, they will not have the same scales.
+
+
+
+
+</PRE>
+</BODY>

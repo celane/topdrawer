@@ -1,0 +1,41 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.31.1</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.31.1  Options</H4></B>  - 
+     1.  APPEND - The hist is appended as a new data set
+     2.  AREA="xxx/yyy/zzz" - Selects the histogram area.
+     3.  CHECK - Turns on or off duplicate checking.
+     4.  CONFIRM - You are asked before the histogram is set.
+     5.  ENTRIES - Selects only histograms which have entries (data).
+     6.  ERRORS - Sets the errors (DY).
+     7.  EXACT  -  Histogram  names are treated as exact strings, and they
+         are not searched in a case independent manner.  This must precede
+         the option NAME="...".
+     8.  SECTION=sectionname  -  Sets up a global section to RESTORE hists
+         from.  SEE:TOPDRAWER LINK
+     9.  FILE - Specifies a direct access file to get histograms from.
+    10.  HISTOGRAM - Selects only histogram (non mesh) data.
+    11.  IDENT - The histogram number to set.
+    12.  LOG - Informs you when it gets the data.
+    13.  MESH - Chooses only MESH data.
+    14.  NAME - Selects hist by name.
+    15.  NUMBER - Then number of hists to fetch from the file.
+    16.  NTUPLES - Selects only NTUPLES.
+    17.  OVERFLOWS - Includes the overflows in the data set.
+
+<A NAME="148">    18.  CURRENT|NEXT|PREVIOUS|FIRST|LAST - Selects the hist to get. </A>
+    19.  TITLE - Plots the histogram name as a title.
+    20.  TREE - Searches through the entire directory tree.
+    21.  WILD - Allows wild searches of areas in SHOW, MONITOR, SET, SAVE,
+         RESTORE HISTOGRAM.  If WILD=ON then the star "*" and percent  "%"
+         signs are reserved for wild searches.
+         (Default:WILD=ON)
+    22.  WRAP  - Continues or terminates the search at the end of the list
+         of histograms.
+
+
+</PRE>
+</BODY>

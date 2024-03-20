@@ -1,0 +1,30 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.58.1</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.58.1  Example</H4></B>  - 
+     TD:<U>SET</U> <U>TEXTURE</U> <U>DAASH</U>
+This generates a "hardware" texture or long dashes.
+     TD:<U>SET</U> <U>TEXTURE</U> <U>DOT</U> <U>DOT</U> <U>DASH</U>
+          or...
+     TD:<U>SET</U> <U>PATTERN</U> <U>DOT</U> <U>DOT</U> <U>DASH;</U>  <U>SET</U> <U>TEXTURE</U> <U>PATTERN</U>
+This  is  a  dot-dot-dash  texture,  which  is  also set to be the current
+pattern.
+     TD:<U>SET</U> <U>TEXTURE</U> <U>DOT</U> <U>FUNNY</U> <U>DASH</U>
+          or...
+     TD:<U>SET</U> <U>PATTERN</U> <U>DOT</U> <U>RANDOM</U> <U>DASH;</U>  <U>SET</U> <U>TEXTURE</U> <U>PATTERN</U>
+This is a uniformly spaced dot 0.1" followed by a random length dash.
+     TD:<U>SET</U> <U>TEXTURE</U> <U>PATTERN</U> <U>DASH;</U>  <U>JOIN</U>
+          or...
+     TD:<U>SET</U> <U>PATTERN</U> <U>DASH;</U>  <U>SET</U> <U>TEXTURE</U> <U>PATTERN;</U>  <U>JOIN</U>
+Sets  the  texture  to  be  a  patterned  dash.   This will produce device
+independent pictures, but they will be slower than:
+     TD:<U>SET</U> <U>TEXTURE</U> <U>DASH;</U>  <U>JOIN</U>
+          or...
+     TD:<U>JOIN</U> <U>DASH</U>
+
+
+</PRE>
+</BODY>

@@ -1,0 +1,23 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.49.11</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.49.11  REVERSE</H4></B>    - If  this is specified before any data is plotter
+it makes the scale go from large to small rather than small to large.  For
+example  the limits on the x scale are 0.0 and 1.1.  The left hand side of
+the X axis would be 0.0 and the right would be  1.0.   REVERSE  makes  the
+left hand side 1.0 and the right hand side 0.0.
+
+If this is specified for 3-d plots after the data is plotted, it moves the
+origin  of  the axes to the other side of the specified axis.  For example
+the following will plot axes along the sides of a 3-d cube.
+     TD:<U>plot</U> <U>axes</U>
+     TD:<U>set</U> <U>scale</U> <U>x</U> <U>reverse</U> <U>y</U> <U>reverse;plot</U> <U>axes</U>
+     TD:<U>set</U> <U>scale</U> <U>x</U> <U>reverse=off</U> <U>y</U> <U>reverse</U> <U>z</U> <U>reverse;plot</U> <U>axes</U>
+     TD:<U>set</U> <U>scale</U> <U>x</U> <U>reverse=on</U> <U>y</U> <U>reverse=off;plot</U> <U>axes</U>
+
+
+</PRE>
+</BODY>

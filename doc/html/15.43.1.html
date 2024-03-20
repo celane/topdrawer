@@ -1,0 +1,35 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.43.1</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.43.1  Options</H4></B> 
+
+     1.  LEVEL - Selects the number of subintervals from 2 to 10.
+         (Default:LEVEL=2)
+
+<A NAME="89">     2.  SPLINE|GENERAL - Selects the type of fit to use in interpolation. </A>
+         (Default:GENERAL)
+     3.  CLOSED  forces the interpolation to consider the data as a closed
+         curve.  CLOSED=OFF will fil an unclosed curve even when the first
+         and last points are identical.
+         (Default:data determines closure)
+     4.  POINTS - Selects the data points to use by number.
+     5.  SETS - Selects the range of data sets to interpolate.
+     6.  SELECT="name" - Selects the data sets by name
+     7.  LIMITED  -  Selects  the points to use by a range of values.  The
+         actual data  selected  will  include  all  data  that  meets  the
+         selection.   Some  data  outside  of the range may be included to
+         avoid breaking up a data set into multiple pieces.
+     8.  APPEND  -  Appends  the  new  data  sets.  Otherwise the new data
+         replaces the old set.
+         (Default:APPEND=OFF)
+     9.  NAME - Specifies the name for the new data set.
+         (Default:"Spline %"
+    10.  LOG - Summarizes the operations done.
+         (Default:LOG=OFF)
+
+
+</PRE>
+</BODY>

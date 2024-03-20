@@ -1,0 +1,35 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.58.23</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.58.23  3-d</H4></B> 
+
+Mesh  data  produces a scatter plot if THREE is off and the dependent axis
+is Z.  If the dependent axis is Y or X then a series of slices are plotted
+of mesh data.  The scatter plot is truncated with zero dots for data equal
+to ZMIN, and the maximum number of dots  at  ZMAX.   The  options  SYMBOL,
+DOTS,  COUNTS,  NORANDOM, and VARIABLE are used to control the look of the
+scatter plot.  In addition by setting the Z limits and using  the  LIMITED
+option  you  can  control which data is plotted.  If the dependent axis is
+not correct for the desired type of plot use the SWAP  command  to  change
+them.
+
+                                  Example
+     TD:<U>PLOT</U> <U>SYMBOL=1O</U> <U>SIZE=10</U> <U>NORANDOM</U> <U>VARIABLE</U>
+Plots  the  selected  symbol  in  varying  sizes.   It is 1.0" at ZMAX and
+nothing is plotted at ZMIN.
+     TD:<U>SET</U> <U>LIM</U> <U>ZMAX=4;</U>  <U>PLOT</U> <U>BLUE</U> <U>LIMITED</U>
+          or...
+     TD:<U>PLOT</U> <U>BLUE</U> <U>LIMITED</U> <U>TO</U> <U>Z=4</U>
+     TD:<U>SET</U> <U>LIM</U> <U>ZMIN=4;</U>  <U>PLOT</U> <U>RED</U> <U>LIMITED</U>
+          or...
+     TD:<U>PLOT</U> <U>RED</U> <U>LIMITED</U> <U>FROM</U> <U>Z=4.0001</U>
+Points Z=4 and lower are plotted in BLUE.  Points above 4 are RED.
+
+The default for PLOT is THREE off.
+
+
+</PRE>
+</BODY>

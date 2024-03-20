@@ -1,0 +1,29 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual Chapter 4</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>Chapter 4  PHILOSOPHY</H4></B>
+<A NAME="5"> </A>
+TOPDRAWER  is  designed to plot and manipulate data.  It assumes that data
+consists of X vs Y with errors DX, DY.  It may be X,Y  vs  Z  with  errors
+DX,DY,DZ.   You  may  also specify NDX,NDY or NDZ the negative part of the
+error bars separately from DX,DY or DZ.  The data may be  a  histogram  in
+which  case  DX  would  be  the  bin width, or it may be a set of discrete
+points with unrelated errors.  You may plot the data accordingly.
+
+There  is  also an auxiliary set of coordinates, that may be used for data
+manipulation, but not plotting.  They  are  U,DU,NDU,V,DV,NDV,W,DW,NDW  To
+plot   the  data  in  these  coordinates  they  must  be  moved  to  X,Y,Z
+coordinates.  This is easily done with the SWAP command.
+
+The basic plotting operations are:
+     1.  PLOT plots the data with optional error bars.
+     2.  JOIN joins the data points with line segments.
+     3.  HISTOGRAM plot the data as a histogram.
+     4.  BAR plots the data as a bar chart (similar to a histogram)
+
+
+</PRE>
+</BODY>

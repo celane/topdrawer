@@ -1,0 +1,22 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 18.22</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>18.22  TDLIMS</H4></B> 
+
+Sets limit for data set.
+     CALL TDLIMS(OPTIONS,Npts,values[,errors])
+
+     1.  OPTIONS:   'XMIN',  'XMAX',  'X',  'YMIN',  'YMAX',  'Y', 'ZMIN',
+         'ZMAX', 'Z'
+         This  specifies what limits are to be set.  For example if 'X' is
+         specified, both XMIN and XMAX are set.
+     2.  Npts - The number of data points.
+     3.  Values(NPTS) - The array of data to use in setting the limits.
+     4.  Errors(NPTS) - The corresponding error array
+
+
+</PRE>
+</BODY>

@@ -1,0 +1,28 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.11.7</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.11.7  LIMITED</H4></B> 
+
+Specifies  which  data are to be binned.  If limits are not specified, the
+default is the current plot limits.  See:Command SET LIMITS.
+     1.  X - Specifies X limit
+     2.  Y - Specifies Y limit
+     3.  Z - Specifies the Z limit
+     4.  CURSOR  - Brings up the cursor.  You move it to the X,Y value you
+         wish then press the space bar to enter both X,Y or X to  enter  X
+         or Y to enter Y.
+     5.  RECURSOR - The cursor enters both limits.
+
+                                  Example
+     TD:<U>BIN</U> <U>LIMITED</U> <U>FROM</U> <U>X=1</U> <U>to</U> <U>X=5</U>
+Sets limits on the range of X data to bin.
+     TD:<U>BIN</U> <U>LIMITED</U> <U>FROM</U> <U>1,5.5</U> <U>TO</U> <U>5,50.8</U>
+Sets  limits  on  the range of X,Y to bin.  This does not set the range of
+the final data sets.
+
+
+</PRE>
+</BODY>

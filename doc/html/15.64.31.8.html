@@ -1,0 +1,22 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.31.8</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.31.8  FILE</H4></B>   - FILE=filename  -  Selects the filename to restore the
+histograms from.  If IDENT is specified then  the  selected  histogram  is
+fetched  from  the  file.   If  the  filename is NONE then no file name is
+selected.  If the filename is blank (FILE='') then the last opened file is
+used, or if none has been opened.
+     HBOOK.BIN - For HBOOK4 direct access files.
+
+                                  example
+     TD:<U>SET</U> <U>HIST</U> <U>FILE=MY_HISTS.BIN</U>
+Gets the histograms from file MY_HISTS.BIN.
+     TD:<U>SET</U> <U>HIST</U> <U>FILE="MY_HISTS.BIN;1"</U>
+Gets histograms from the first version of the file.
+
+
+</PRE>
+</BODY>

@@ -1,0 +1,258 @@
+%N
+%U+ TDMACROS.MOR
+%L
+%E  SUBROUTINE T2_SMOOTH --- Parses a smooth command
+<TOKEN USING INFOIN,CARDIN>
+<SET>;	"Set the mortran buffer pointer for subsequent <RESET>"
+%';SUBROUTINE'=';<RESET> <SET>;"SUBROUTINE"';
+SUBROUTINE T2_SMOOTH($INFO,$CARD);
+   IMPLICIT NONE;
+   INTEGER $INFO(10);
+   CHARACTER *(*) $CARD;
+   $SPECIFICATION;
+   $SELECTSPEC;
+   $SPECIFYNONE;
+   $POINT ARRAYS($NPOINTS);
+   $MAINSPEC;
+   CHARACTER CXYZ*3; DATA CXYZ/'XYZ'/;
+   $BOOLEAN LSPLINE,LAVER,LFLAT,LHIS,LERR,LNERROR;
+   $BOOLEAN LTEST;
+   INTEGER LEVEL,LIST,I,J,K,L,M,N,IARRAY,IPOINT,NLIM;
+   INTEGER LMIN,LMAX;
+   INTEGER ISET,JSET;
+   REAL X0,DX,T;
+   DOUBLE PRECISION DSUM,ESUM,ENSUM;
+   LAVER=.true.;
+   LERR=REVLEV .ge. 5.0;		"Calculate errors"
+   LFLAT=.false.;
+   N_NAME=8;   C_NAME='Smooth %';
+   LEVEL=3; LIST=0;
+   IARRAY=2;		"2=SMOOTH Y-ARRAY.   1=SMOOTH X-ARRAY"
+   LLOG=$MODE LOG;
+   <TOKEN KEY LOOP>  <  "ON INPUT FIELDS"
+      AVERAGE:Y      <LAVER=LTOKEN; >
+      APPEND:Y       <LAPPEN=LTOKEN; >
+      ERROR:Y        <LERR=LTOKEN; >
+      FLAT:Y         <LFLAT=LTOKEN; >
+      CHECK:Y        <LCHECK=LTOKEN; >
+      X:1,THETA:1,Y:2,RADIUS:2,Z:3,PHI:3
+         <IARRAY=INTEG;> "X,Y GIVES 1,0"
+      LEVEL:::3      <LEVEL=INTEG;>		"LEVEL N"
+      LINES,ROWS     <CALL T2ROWS($INFO,$CARD,N3,N4); >
+      MONITOR:Y      <LMONITOR=LTOKEN; >
+      NAME:S         <N_NAME=MAX(1,NSTRNG); C_NAME=STRNG(:N_NAME); >
+      POINTS,COLUMNS <CALL T2PNTS($INFO,$CARD,N1,N2);>
+      SETS           <CALL T2NSET($INFO,$CARD,NS1,NS2); >
+      SELECT:S       <C_SELECT=STRNG; N_SELECT=MAX(1,NSTRNG); >
+      LIMITED        <CALL T2XYZC($INFO,$CARD,TLIM,2,NLIM);>  "Get limits"
+      LIST:::1000    <LIST=INTEG;>		"LIST (NUMBER)"
+      LOG:Y          <LLOG=LTOKEN; >
+   >
+   IF ($ERROR) RETURN;			"no errors"
+		"VALUES NOW SET. DO THE SMOOTHING"
+   LEVEL=MAX(1,LEVEL);			"Adjust level"
+   IPOINT=0;
+   <ISET=NS1,NS2;			"Do for all selected data sets"
+      IF ($TRAP) RETURN;		"User killed ?"
+      JSET=ISET;
+      CALL T2GDSET(JSET,N1,N2,N3,N4,ISETD,TLIM,C_SELECT(:N_SELECT));
+      IF (NP .lt. N1) <NEXT>;		"Skip this one ?"
+      I=1;
+      IF (IBTYPE.eq.2) I=IARRAY;
+      IF (LCHECK) THEN;			"Check data for histogram ?"
+	CALL T2FHIS(ISET,I,N1,N2,N3,N4,LHIS,J,X0,DX);
+	IF (.not. LHIS) THEN;
+		ERROR$MESSAGE '*** ERROR *** Data not histogram, Set=',ISET;
+		RETURN;
+	ENDIF;
+      ENDIF;
+      IF (LMONITOR .and. IBTYPE .eq. 1) THEN;
+	CALL TXVOID;
+	IF (IPOINT .gt. 0) CALL T2WAIT('Smooth:',LTEST);
+	CALL TXNEXT;
+	CALL T2REST;		"Reset flags"
+	NXYLIM(1,1)=N1; NXYLIM(1,2)=N2;	"Setup limited"
+	NXYLIM(2,1)=N3; NXYLIM(2,2)=N4;
+	NXYLIM(3,1)=ISET; NXYLIM(3,2)=ISET;
+	<I=1,2; <J=1,3; EXYZLIM(J,I)=TLIM(J,I); > >
+	CALL T2HIST(DATBUF(I1),DATBUF(I2),DATBUF(I3),
+		DATBUF(I4),DATBUF(I5),DATBUF(I6),
+		0,0,NP-N1+1,NINCR0,
+		HNONE,HNONE,HNONE);
+	CALL T2_PLOT_TITLE(ISET,.false.);
+	CALL TXVOID;		"Flush all plot info"
+      ENDIF;
+      IPOINT=0;
+      IF (LAPPEN) THEN;			"Append new data set ?"
+	JSET=0;
+	CALL T2SCOP($INFO,$CARD
+		,ISET,1,$LARGE INTEGER,1,$LARGE INTEGER
+		,JSET,1,$LARGE INTEGER,1,$LARGE INTEGER
+		,C_NAME(:N_NAME));
+		"Create a new data set+copy data into it"
+         IF ($ERROR) RETURN;
+	CALL T2GDSET(JSET,N1,N2,N3,N4,ISETD,TLIM,'*');	"Get parameter of set"
+      ENDIF;
+      NP=NP-N1+1;				"Number of points"
+      NL=NL-N3+1;				"Number of rows"
+      IF (IBTYPE.eq.2) THEN;			"Mesh array?"
+	NINCR1=NINCR1*NINCR0;
+	IF (IARRAY.eq.MESH1) THEN;		"Smooth X ?"
+	ELSEIF (IARRAY.eq.MESH2) THEN;		"Smooth Y ?"
+		I=NL; NL=NP; NP=I;
+		I=NINCR0; NINCR0=NINCR1; NINCR1=I;	"Switch coord"
+	ELSE;
+		ERROR OUT;
+		('*** ERROR *** Illegal axis for MESH data');
+		RETURN;
+	ENDIF;
+      ELSE;
+	I3=ISETD(NXDATA+NCSIZE*(IARRAY-1));		"Select data index"
+	I6=ISETD(NXDATA+NCSIZE*(IARRAY-1)+1);	"Error index"
+	NINCR0=NINCR1;
+      ENDIF;
+      LNERROR = DATBUF(I6+1).ne.HNONE;
+      IF (DATBUF(I6).eq.HNONE .or. .not. LERR) I6=0;	"No err. data or OFF"
+      IF (DATBUF(I3).eq.HNONE) THEN;		"Data coord not exist?"
+	ERROR OUT;('*** ERROR *** Coordinate does not exist');
+	RETURN;
+      ELSEIF (NP.gt.1.and.NL.ge.1) THEN;
+	IPOINT=NL*NP;
+	IF (LFLAT) THEN;			"Flat smooth ?"
+            <I=1,NL;
+               M=I3; N=I6;
+               <J=1,NP,LEVEL;  K=MIN(LEVEL,NP-J+1);	"For each sequence"
+                  DSUM=0; ESUM=0; ENSUM=0;
+                  <L=1,K;
+                     DSUM=DSUM+DATBUF(M);	"Add up all points"
+                     M=M+NINCR0;
+                     IF (I6.ne.0) THEN;		"If errors"
+			IF (LNERROR)
+                        ENSUM=ENSUM+DATBUF(N+1)**2;	"Add squares of err"
+                        ESUM=ESUM+DATBUF(N)**2;	"Add squares of err"
+                        N=N+NINCR0;
+                     ENDIF;
+                  >
+                  M=M-K*NINCR0;			"Adjust pointers"
+                  IF (I6.ne.0) N=N-K*NINCR0;
+                  IF (LAVER) THEN;		"Average ?"
+                     DSUM=DSUM/K;		"Divide by # points"
+		     IF (LNERROR)
+                     ENSUM=SQRT(ENSUM)/K;
+                     ESUM=SQRT(ESUM)/K;
+                  ENDIF;
+                  <L=1,K;
+                     DATBUF(M)=DSUM;		"Put data back"
+                     M=M+NINCR0;
+                     IF (I6.ne.0) THEN;		"If errors"
+			IF (LNERROR)
+                        DATBUF(N+1)=ENSUM;	"Put error back"
+                        DATBUF(N)=ESUM;		"Put error back"
+                        N=N+NINCR0;
+                     ENDIF;
+                  >
+               >
+               I3=I3+NINCR2;			"Next row"
+               IF (I6.ne.0) I6=I6+NINCR2;	"If error next row"
+            >
+         ELSE;
+	    LEVEL=MIN(LEVEL,5);
+	    <I=1,NL;
+		IF (I6.ne.0) THEN;		"Smooth Errors ?"
+		    K=I6;
+		    <J=1,NP;
+		        IF (LNERROR)
+			DATBUF(K+1)=DATBUF(K+1)**2;	"error squared"
+			DATBUF(K)=DATBUF(K)**2;	"error squared"
+			K=K+NINCR0; >
+		     IF (LNERROR)
+		     CALL T2_SMOOTH_DO(DATBUF(I6+1),NP,LEVEL,NINCR0);
+		     CALL T2_SMOOTH_DO(DATBUF(I6),NP,LEVEL,NINCR0);
+						"Smooth error"
+		    K=I6;
+		    <J=1,NP;
+			IF (LNERROR)
+			DATBUF(K+1)=SQRT(ABS(DATBUF(K+1)));
+			DATBUF(K)=SQRT(ABS(DATBUF(K)));
+			K=K+NINCR0;>
+		    I6=I6+NINCR1;
+		ENDIF;
+		CALL T2_SMOOTH_DO(DATBUF(I3),NP,LEVEL,NINCR0);
+						"Smooth the data"
+		I3=I3+NINCR1;
+	    >
+	ENDIF;
+      ENDIF;
+      IF (LMONITOR .and. IBTYPE .eq. 1) THEN;
+	CALL T2JOIN(DATBUF(I1),DATBUF(I2),DATBUF(I3),
+		ITXSEC,1,NP-N1+1,NINCR0);
+	CALL TXVOID;
+      ENDIF;
+      IF (IPOINT .ne. 0) DATDAT(1,1)=HNONE;		"Data modified"
+      IF (LLOG.or.IPOINT.eq.0) WRITE($TERMINAL OUT,*)
+	'  Smoothed ',IPOINT,' points ',CXYZ(IARRAY:IARRAY),' width=',
+	LEVEL,' Set=',JSET;
+   >
+END;
+%E  SUBROUTINE T2_SMOOTH_DO  --- Smoothing routine
+SUBROUTINE T2_SMOOTH_DO(ARRAY,N,INLEVL,INCRMT);
+"
+	The smoothing is overlayed. Each overlay
+	has 5 sections--low1,low2,middle,high1,high2.
+	low1 and high2 are not properly smoothed, due to end effects.
+	so they are thrown away, except for the first low1 and the
+	last high2, and the sections redone.  So after smoothing,
+	low1 is replaced by the high1 from the previous smooth,
+	the new low1, plus low2 and middle are put into array. HIGH1
+	is saved, to be put into array after the next smooth, and
+	high2 is ignored.
+	working arrays:	start  words       use
+			1       NB    smoothed array
+			IE      NB    scratch for smctrl
+			IF      NB    scratch for smctrl
+			IG      NB    Input for smctrl
+"
+   IMPLICIT NONE;
+   INTEGER N,INLEVL,INCRMT;
+   REAL ARRAY(INCRMT,N);
+   $SPECIFYNONE;
+   $SPECIFICATION;
+   INTEGER LEVEL,FIRST,LAST,OVERLP, IMOVE, IE, IF, IG, NB, IPNT;
+   INTEGER I,J, MOVE, NP;
+   $EQUIVALENCE;
+   $DATA;
+
+   IF (N.LE.1) RETURN;
+   IF (INLEVL.eq.0) THEN;
+	LEVEL = N-25;
+   ENDIF;
+   LEVEL = MIN(MAX(INLEVL,1),5);	"Set LEVEL"
+   OVERLP = 4*LEVEL;
+   NB = ($BUFSIZ)/4;			"For working arrays"
+	IE = 1+NB;
+	IF = IE+NB;			"--> SCRATCH ARRAYS"
+	IG = IF+NB;			"Input array"
+"
+	first and last point to part of array being smoothed
+	IPNT points to array word to be loaded from smoothed array
+"
+
+      FIRST = 1;
+      IPNT = 1;
+      IMOVE = 0;
+      <FIRST=1,N,NB-2*OVERLP;
+	LAST = MIN0(FIRST+NB-1,N);
+	NP = LAST-FIRST+1;
+	MOVE = NP-IMOVE;
+	IF (LAST .lt. N) MOVE = MOVE - OVERLP;
+	J=IG;				"TEMP POINTER"
+	<I=FIRST,LAST;			"Get data"
+		BUFFER(J)=ARRAY(1,I); J=J+1; >
+	CALL SMCTRL(BUFFER(1),BUFFER(IG),NP,LEVEL,BUFFER(IE),BUFFER(IF));
+	<I=1,MOVE;			"Save result"
+		IMOVE=IMOVE+1;
+		ARRAY(1,IPNT)=BUFFER(IMOVE);
+		IPNT=IPNT+1;>
+	IMOVE = OVERLP;
+      >					"END OF LOOP" <UNTIL> (LAST.EQ.N);
+END;

@@ -1,0 +1,247 @@
+%N
+%U+ TDMACROS.MOR
+%L
+<TOKEN USING INFOIN,CARDIN>;
+%';SUBROUTINE'=';<RESET> <SET> ;"SUBROUTINE"'
+<SET>;                      "Ready for reset"
+%E  SUBROUTINE T2_FILL - Routine fill a data set using another set
+SUBROUTINE T2_FILL($INFO,$CARD);
+"
+	Fills the channels of a data set using another data set
+	OPTIONS:
+		POINTS/COLUMNS, SETS, APPEND, LOG, LIMITED, LEVEL, SELECT
+		NAME
+
+"
+    IMPLICIT NONE;
+    INTEGER $INFO(10);
+    CHARACTER*(*) $CARD;
+    CHARACTER*1 CXYZ(3) /'X','Y','Z'/;
+    $SPECIFICATION;
+    $POINT ARRAYS($NPOINTS);
+    $SELECTSPEC;
+    $SPECIFYNONE;
+    $MAINSPEC;
+    $BOOLEAN ZEXIST, LTEST;
+    INTEGER JFILL;
+    INTEGER I,J,K,L,M,N;
+    INTEGER NLIM,ISET,JSET,J1,J2,J3,J4;
+    INTEGER JPOINTS,JSETS;
+    INTEGER IBY,LEVEL,NLEVEL,ILEVEL, IADD;
+    REAL	ADD;
+    INTEGER ISETC(NSETD);
+    INTEGER    ISTEP    ;
+    PARAMETER (ISTEP=2) ;
+    INTEGER IXP, IDXP, IYP, IDYP, IZP, IDZP, IXP1, IYP1, IZP1, ISZ;
+    REAL XP, DXP, YP, DYP, XP1, XP2, YP1, YP2, ZP1, ZP2,
+	T, T1, T2, T3, YMIN, YMAX;
+    JPOINTS=0; JSETS=0;				"Counts the results"
+    N_NAME=6;   C_NAME='Fill %';
+    IBY=0;
+    LEVEL=0;
+    IADD=1;
+    ADD=1.0;
+    <TOKEN KEY LOOP> <
+       ADD           < IADD=1; ADD=1.0;
+	<TOKEN> <
+	   KEY:: <
+		Z < IADD=2; >
+           >
+	   NUMBER:: < IADD=1; ADD=FLOTNG; >
+        >
+       >
+       APPEND:Y      <LAPPEN=LTOKEN;>
+       LEVEL:0:9999:0  <LEVEL=INTEG; >
+       LIMITED       <CALL T2XYZC($INFO,$CARD,TLIM,2,NLIM); >
+       LINES,ROWS    <CALL T2ROWS($INFO,$CARD,N3,N4);>
+       LOG:Y         <LLOG=LTOKEN;>
+       MONITOR:Y     <LMONITOR=LTOKEN; >
+       NAME:S        <N_NAME=MAX(1,NSTRNG); C_NAME=STRNG(:N_NAME); >
+       POINTS,COLUMNS  <CALL T2PNTS($INFO,$CARD,N1,N2);>
+       SETS          <CALL T2NSET($INFO,$CARD,NS1,NS2);>
+       BY:D          <
+		IBY=INTEG;
+		CALL T2GDSET(IBY,1,$LARGE INTEGER
+			,1,$LARGE INTEGER,ISETC,HNONE,'*');
+		IF (ISETC(NBTYPE) .ne. 1) THEN;
+		    ERROR OUT;'*** ERROR *** Data set is mesh';
+		    RETURN;
+		ENDIF;
+       >
+       SELECT:S      <C_SELECT=STRNG; N_SELECT=MAX(1,NSTRNG); >
+    >
+    IF ($TRAP) RETURN;
+    IF (IBY .eq. 0) THEN;
+	ERROR OUT;'*** ERROR *** No FILL BY specified';
+    ELSEIF ( IADD .eq. 2 .and. ISETC(NDZDATA) .eq. 1) THEN;
+	ERROR OUT;'*** ERROR *** No Z coordinate if BY data set';
+    ENDIF;
+    IF ($ERROR) RETURN;				"Fatal errors in syntax ?"
+    YMIN= $LARGE REAL;		"Set up to find min,max"
+    YMAX=-$LARGE REAL;
+    <J=0,ISETC(NPDATA)-1;
+	YP=DATBUF(ISETC(NINDAT+1)*J+ISETC(NCSIZE*(MESH2-1)+NXDATA));
+	YMIN=MIN(YMIN,YP);		
+	YMAX=MAX(YMAX,YP);		
+    >
+    <ISET=NS1,NS2;
+	CALL T2GDSET(ISET,N1,N2,N3,N4,ISETD,TLIM,C_SELECT(:N_SELECT));
+	IF (MESH3 .ne. 3) THEN;
+	    ERROR$MESSAGE '*** ERROR *** Mesh dependent variable must be Z',
+		' Set=',ISET;
+	    RETURN;
+	ENDIF;
+	IF (NP .lt. N1) <NEXT>;
+	IF (ISET .eq. IBY) <NEXT>;		"Do not self fill!!!"
+	IF (ISETD(NZDATA) .eq. 1) <NEXT>;	"No Z to fill ?"
+	IF (LAPPEN) THEN;
+	   J1=1; J2=$LARGE INTEGER;
+	   J3=1; J4=$LARGE INTEGER;
+	   CALL T2SCOP($INFO,$CARD,ISET,N1,N2,N3,N4
+				,JSET,J1,J2,J3,J4,C_NAME(:N_NAME));
+	   CALL T2GDSET(ISET,J1,J2,J3,J4,ISETD,HNONE,'*');
+	ELSE;
+	   JSET=ISET; J1=N1; J2=N2; J3=N3; J4=N4;
+	ENDIF;
+	IF (IBTYPE .eq. 2) THEN;		"Mesh data ???"
+	    NINCR1=NINCR1*NINCR0;
+	    NINCR2=0;
+	ELSE;
+	    NINCR1=NINCR0;
+	    NINCR2=NINCR0;
+	    NL=NP-J1+J3;
+	    NP=J1;
+	ENDIF;
+	DYP=0; DXP=0;
+	NLEVEL=1;
+        IF (ISETD(NDYDATA) .ne. 1) NLEVEL=MAX(1,LEVEL);
+	IF (LEVEL .eq. 0) ISETD(NDXDATA)=1;
+	<I=0,NL-J3;
+	  IF ($TRAP) GOTO :RET:;
+	  YP=DATBUF(ISETD(NYDATA));			"Get Y"
+	  IF (NLEVEL .gt. 1) THEN;
+		DYP=ABS(DATBUF(ISETD(NYDATA)+1));
+		YP=YP-DYP;
+		DYP=2*DYP/(NLEVEL);
+		YP=YP+DYP/2;
+	  ENDIF;
+	  <ILEVEL=1,MAX(1,NLEVEL);
+	    ISZ=0;				"Number of boudaries"
+	    IF (YP .ge. YMIN .and. YP .le. YMAX) THEN;
+	      IXP1=ISETC(NCSIZE*(MESH1-1)+NXDATA);	"Location of X coord"
+	      IYP1=ISETC(NCSIZE*(MESH2-1)+NXDATA);	"Location of Y coord"
+	      XP1=DATBUF(ISETC(NINDAT)*(ISETC(NPDATA)-1)+IXP1);
+	      YP1=DATBUF(ISETC(NINDAT)*(ISETC(NPDATA)-1)+IYP1);
+	      IF (IADD .eq. 2) THEN;
+		IZP1=ISETC(NCSIZE*(MESH3-1)+NXDATA);	"Location of X coord"
+		YP1=DATBUF(ISETC(NINDAT)*(ISETC(NPDATA)-1)+IZP1);
+	      ENDIF;
+	      <J=0,ISETC(NPDATA)-1;
+		XP2=DATBUF(IXP1);		"Get values"
+		YP2=DATBUF(IYP1);
+		IF (IADD .eq. 2) ZP2=DATBUF(IZP1);
+		IF(	YP .GE. MIN(YP1,YP2) .AND.
+			YP .LT. MAX(YP1,YP2)) THEN;
+		    T=XP1+(XP2-XP1)*(YP-YP1)/(YP2-YP1);	"Y boundaries"
+		    ISZ=ISZ+1;			"Number of boundaries found"
+		    BUFFER(ISZ)=T;		"X boundary"
+		    IF (IADD .eq. 2) THEN;
+			ADD=DATBUF(IZP1);
+		    ENDIF;
+		    ISZ=ISZ+1;			"Number of boundaries found"
+		    BUFFER(ISZ)=ADD;
+		    IF(ISZ .GT. $BUFSIZ-ISTEP) <EXIT>; "Done"
+		ENDIF;
+		IXP1=IXP1+ISETC(NINDAT);
+		IYP1=IYP1+ISETC(NINDAT);
+		IZP1=IYP1+ISETC(NINDAT);
+		XP1=XP2;				" New first point"
+		YP1=YP2;
+		ZP1=ZP2;
+	      >
+	      ISZ=ISZ-ISTEP+1;
+	      IF (ISZ .gt. ISTEP) THEN;			"Got at least 2 bound"
+	       <J=1,ISZ,ISTEP;			"Sort the crossings"
+		<K=J,ISZ,ISTEP;
+		    IF (BUFFER(K) .lt. BUFFER(J)) THEN;	"Swap em ?"
+			<L=0,ISTEP-1;
+			    T=BUFFER(K+L); BUFFER(K+L)=BUFFER(J+L);
+			    BUFFER(J+L)=T;
+			>
+		    ENDIF;
+		>
+	       >
+	       IXP=ISETD(NXDATA);
+	       IZP=ISETD(NZDATA);
+	       JFILL=0;
+	       <J=0,NP-J1;
+		IF ($TRAP) GOTO :RET:;
+		XP=DATBUF(IXP);				"Next X value"
+		IF (ISETD(NDXDATA) .ne. 1) THEN;	"Get DX ?"
+		    DXP=ABS(DATBUF(IXP+1));
+		ENDIF;
+			"Check if X is inside boudaries"
+		IF (XP+DXP .ge. BUFFER(1) .and. XP-DXP .le. BUFFER(ISZ)) THEN;
+		  <K=1,ISZ,2*ISTEP;			"Check all boundaries"
+		    IF (XP+DXP .lt. BUFFER(K)) <NEXT>;		"Below ?"
+		    IF (XP-DXP .gt. BUFFER(K+ISTEP)) <NEXT>;	"Above ?"
+			IF (BUFFER(K) .eq. BUFFER(K+ISTEP)) <NEXT>; "Same ?"
+			JFILL=1;
+			IF (DXP .eq. 0) THEN;			"No width ?"
+			    T=	BUFFER(K+1) + (BUFFER(K+ISTEP+1)-BUFFER(K+1))
+				*(XP-BUFFER(K))/(BUFFER(K+ISTEP)-BUFFER(K));
+			    DATBUF(IZP)=DATBUF(IZP)+T/NLEVEL;
+			    <EXIT>
+			ELSE;
+			    T2=MIN(BUFFER(K+ISTEP),XP+DXP);	"Upper"
+			    T1=MAX(BUFFER(K),XP-DXP); 		"Lower"
+			    T3=( T2 - T1 )/DXP;			"Fraction"
+			    T =T3*
+			    (BUFFER(K+1) + (BUFFER(K+ISTEP+1)-BUFFER(K+1))
+				*((T2+T1)/2-BUFFER(K))
+				    /(BUFFER(K+ISTEP)-BUFFER(K)));
+			    DATBUF(IZP)=DATBUF(IZP)+T/NLEVEL;
+			ENDIF;
+		   >
+		 ENDIF;
+		 JPOINTS=JPOINTS+JFILL;				"Number filled"
+		 IXP=IXP+NINCR0;				"Get Next X"
+		 IZP=IZP+NINCR0;				"Get Next Z"
+	       >
+	      ENDIF;
+	    ENDIF;
+	    YP=YP+DYP;
+	  >
+	  ISETD(NXDATA)=ISETD(NXDATA)+NINCR2;		"Get Next Y"
+	  ISETD(NYDATA)=ISETD(NYDATA)+NINCR1;		"Get Next Y"
+	  ISETD(NZDATA)=ISETD(NZDATA)+NINCR1;		"Get Next Z"
+	>
+	IF (LMONITOR) THEN;
+	    CALL TXVOID;
+	    IF (JSETS .gt. 1) CALL T2WAIT('Fill:',LTEST);
+	    CALL TXNEXT;
+	    CALL T2REST;		"Reset flags"
+	    NXYLIM(3,1)=NDSETS; NXYLIM(3,2)=NDSETS;
+	    <I=1,2; <J=1,3; EXYZLIM(J,I)=TLIM(J,I); > >
+	    CALL T2GDSET(JSET,J1,J2,J3,J4,ISETD,TLIM,'*');
+		NXYLIM(1,1)=J1; NXYLIM(1,2)=J2;
+		NXYLIM(2,1)=J3; NXYLIM(2,2)=J4;
+		NXYLIM(3,1)=JSET; NXYLIM(3,2)=JSET;
+		<I=1,2; <J=1,3; EXYZLIM(J,I)=TLIM(J,I); > >
+	    IF (IBTYPE .eq. 1) THEN;
+		CALL T2JOIN(DATBUF(I1),DATBUF(I2),DATBUF(I3),
+			0,1,NP-N1+1,NINCR0);
+	    ELSE;
+		CALL T23JIN(DATBUF(IM),NINCR0,NINCR1,NINCR2,0,0,
+			J1,NP-J1+1,J3,NL-J3+1);
+	    ENDIF;
+	    CALL T2_PLOT_TITLE(JSET,.false.);
+	    CALL TXVOID;		"Flush all plot info"
+	ENDIF;
+	JSETS=JSETS+1;
+    >
+:RET:
+    IF ($TRAP .OR. LLOG .or. JPOINTS .le. 0)
+	WRITE($TERMINAL OUT,*) '  FILL ',JPOINTS,' points ',
+	JSETS,' Sets by ',IBY;
+END;

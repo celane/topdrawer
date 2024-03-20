@@ -1,0 +1,24 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.18.32</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.18.32  Example</H4></B>   - To  get  plots  on  your  terminal  a VT-100 with
+retrographics.
+     TD:<U>SET</U> <U>DEVICE</U> <U>TEKTRONIX</U> <U>"RVT100"</U>
+
+To get plots on another terminal (TTAn:) a VT-100 with retrographics.
+     TD:<U>SET</U> <U>DEVICE</U> <U>TEKTRONIX</U> <U>"RVT100"</U> <U>FILE=TTAn:</U>
+
+To get output on a Postscript printer:
+     TD:<U>SET</U> <U>DEVICE</U> <U>POSTSCR</U>
+The  actual output will be a file called filename.PS which must be printed
+on a Postscript printer.
+
+To get direct output to a spooled printer:
+     TD:<U>SET</U> <U>DEVICE</U> <U>POSTSCR</U> <U>FILE=LPA0:DUMMY.PS</U>
+
+
+</PRE>
+</BODY>

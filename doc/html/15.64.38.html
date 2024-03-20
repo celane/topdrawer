@@ -1,0 +1,31 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.38</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.38  NAME</H4></B> 
+
+<U>SE</U>T <U>NA</U>ME "New data set name" [<U>CO</U>NFIRM[=<U>ON</U>|<U>OF</U>F]] [<U>SET</U>S=[<U>FR</U>OM] n1 [<U>TO</U>] [n2]]
+          [<U>SEL</U>ECT="old name"]
+
+Sets a new name for all the selected data sets.  If no sets are specified,
+then all data set names are modified.  If the name ends in  "%"  then  the
+old name is appended to the new name.
+
+Options
+     1.  CONFIRM  -  If  selected  Topdrawer will prompt you for each data
+         set.  You repy YES, NO, ALL, or  QUIT.   ALL  will  do  the  rest
+         without any more prompts, while QUIT skips all the rest.
+<A NAME="161">     2.  SETS - Selects a range of data sets to rename. </A>
+     3.  SELECT  -  Selects  the  data  sets by name.  WIld characters are
+         permitted "*" or "%" See:SET EXACT.
+                                  Example
+     TD:SET NAME "My data" SET=5
+Data set number 5 has the new name "My data"
+     TD:SET NAME "My %" SELECT="Your*"
+All data sets beginning with the name "Your" are renamed to "My Your..."
+
+
+</PRE>
+</BODY>

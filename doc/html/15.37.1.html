@@ -1,0 +1,54 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.37.1</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.37.1  Options</H4></B>     
+
+     1.  AGAIN - Redo the last fit.
+     2.  Y|Z selects which coordinate is to be fit.
+                                    Type of fit
+     3.  POLYNOMIAL,LEGENDRE,SINE,COSINE,EXPONENTIAL,GAUSSIAN,INVERSE - Is
+         the function
+     4.  SCALE - Does fit to LOG(X) or LOG(Y) if the scale is set to LOG.
+     5.  ORDER|TERMS=n - The max number of terms used in the fit.
+     6.  OFFSET=n - An offset for the X value to set the center of the fit
+     7.  COEFFICIENTS - Selects constant coefficients.
+     8.  ECOEFFICIENTS|ERRORS - Selects constant coefficient errors.
+         A.  CONSTRAIN selects whether coefficient is constrained.
+         B.  INDEX selects the coefficient number.
+     9.  INCLUDE|EXCLUDE - Selects coef.  to fit or exclude from the fit.
+                                 Curve generation
+    10.  CURVE - Produces a data set containing the fitted curve.
+         A.  APPEND appends the new curve to the data sets.
+         B.  NAME selects the new data set name.
+         C.  [X|Y] from n1 to n2 by n3 selects the range and bin width for
+             the curve.
+                                  Data selection
+    11.  LIMITED - Selects data by range of X,Y,Z
+    12.  NAME - Selects the name of the appended data set
+    13.  POINTS - Selects the range of points to use in the fit
+    14.  SETS - Selects the data sets to use in the fit
+    15.  MESH - Selects mesh data (normally regular data is used)
+                                 Nonlinear options
+    16.  MINUIT - Does nonlinear fits using interactive MINUIT.
+    17.  NONLINEAR   -   Selects   nonlinear   or   linear  fitting.   For
+         NONLINEAR=on Uses linear fitting techniques if on.  If  off  uses
+         MINUIT.
+         A.  REPEAT selects the maximum number of tries.
+         B.  PRINTELEVEL select the amount of log output.
+         C.  GRADIENT  selects  whether the calculated derivitives are use
+             in the fitting.
+         D.  TOLERENCE selects the tolerence for good fit
+         E.  ECHISQ selects the error in chisq for finding errors in coef.
+             (Default:1.0)
+    18.  Output options
+    19.  LOG  - Enables/Disable the terminal listing of the results of the
+         fit.
+    20.  FULL - Enables output of error matrix as part of LOG.
+    21.  MONITOR - Plots the original data and the fit.
+
+
+</PRE>
+</BODY>

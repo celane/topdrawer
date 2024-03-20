@@ -1,0 +1,24 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.60.1.1</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.60.1.1  Examples</H4></B>  - 
+     TD:<U>SET</U> <U>ORDER</U> <U>X</U> <U>Y</U> <U>SYMBOL</U> <U>DX</U> <U>DY</U>
+     TD:<U>0</U> <U>2</U>
+     TD:<U>1</U> <U>4</U> <U>1o</U> <U>0.5</U> <U>0.1</U>
+     TD:<U>2</U> <U>8</U>
+Produces a data set with The following data:
+          X=0 Y=2 DX=0.0 DY=0.0 Symbol=""
+          X=1 Y=4 DX=0.5 DY=0.1 Symbol="1O"
+          X=2 Y=8 DX=0.5 DY=0.1 Symbol="1O"
+
+     TD:<U>SET</U> <U>ORDER</U> <U>SYMBOL</U> <U>X</U> <U>Y</U>
+     TD:<U>READ</U> <U>POINTS</U> <U>1O</U> <U>1,1;</U>
+     TD:<U>2O</U> <U>2.5,3.8</U>
+     TD:<U>(blank</U> <U>line</U> <U>to</U> <U>terminate)</U>
+
+
+</PRE>
+</BODY>

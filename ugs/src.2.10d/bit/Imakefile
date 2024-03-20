@@ -1,0 +1,21 @@
+#
+# Imakefile for ugs/src/bit
+#
+
+LIB      = ../../ugs.a
+
+#include "../../Imakefile.def"
+
+OBJ    = \
+iand.o   \
+ior.o    \
+ishft.o  \
+ibclr.o  \
+ibset.o  \
+btest.o
+
+AllTarget($(LIB))
+
+$(LIB): $(OBJ)
+	$(AR) $(ARFLAGS) $(LIB) $(OBJ)
+	$(RANCMD)

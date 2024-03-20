@@ -1,0 +1,50 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.18.7.1</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.18.7.1  Options</H4></B>  - 
+                                  Options
+     1.  WSTYPE=nnn  -  Selects  the  DEC  GKS  workstation  If you do not
+         specify a WSTYPE then the logical GKS$WSTYPE is  used  to  define
+         the work station.  Normally you specify the workstation name.
+     2.  ERRLUN  -  Selects  an  output  logical  unit  for  GKS  messages
+         (Default:6)
+     3.  OUTLUN  -  Selects  an  output  logical  unit for GKS files.  You
+         normally do not specify this.
+     4.  WIDTH=n.n - Window width in cm (Default:25.4 (10 inches))
+     5.  HEIGHT=n.n - Window height in cm (Default:20.32 (8 inches))
+     6.  XSCREEN=n.n  -  X  Location  of lower left corner of window in cm
+         (Default:0)
+     7.  YSCREEN=n.n  -  Y  Location  of lower left corner of window in cm
+         (Default:0)
+     8.  XSIZE - Actual physical X size of screen if known (Default:  size
+         reported by GKS or 10 inches for metafile).  Normally you do  not
+         need to set this.
+
+<A NAME="131">     9.  YSIZE - Actual physical Y size of screen if known (Default:  size </A>
+         reported by GKS or 8 inches for metafile).  If XSIZE  is  picked,
+         but  Y  is not then the YSIZE is assumed to scale as the selected
+         XSIZE
+    10.  REVERSE - Sets background to black with white foreground.
+    11.  color=rrggbb  - Specifies the mixture of red,green,blue to mix to
+         obtain the desired color.  Each value may vary from 0 to 99.  The
+         default colors are:
+         A.  BLACK=008900
+         B.  WHITE=999999
+         C.  RED=992020
+         D.  GREEN=009900
+         E.  BLUE=202099
+         F.  YELLOW=998000
+         G.  MAGENTA=992099
+         H.  CYAN=008000
+    12.  DDNAME=filename - Specifies the output file name.
+    13.  PENLIST=n1n2n3n4n5  -  maps  penwidths to .01 cm.  from 01 to 99.
+         (Default:PENLIST=0103050709) 01 is the minimum pen width.
+If  both  OUTLUN and DDNAME are unspecified then logical GKS$CONID is used
+to specify the output device.
+
+
+</PRE>
+</BODY>

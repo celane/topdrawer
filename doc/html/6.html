@@ -1,0 +1,24 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual Chapter 6</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>Chapter 6  DEVICES</H4></B>
+<A NAME="8"> </A>
+The device may be specified on the command line.  Otherwise  TD  sets  the
+output  device  according  to  the  logical name PLOT_TERM or if it is not
+defined PLOT_DEVICE.  If neither is defined the device is assumed to be  a
+Talaris printer.
+
+Normally  PLOT_TERM  is  automatically  set  when  you  log in.  It is not
+defined for a batch job.  This means that TD uses your  terminal  when  in
+interactive  mode,  and  the  Talaris  while in a batch stream.  The login
+procedure defines PLOT_TERM by asking  the  terminal  for  its  ANSWERBACK
+message.  This message must be set properly inside the terminal.  You need
+to know how to SET-UP the ANSWERBACK message.
+For more information see:COMMANDS SET DEVICE
+
+
+</PRE>
+</BODY>

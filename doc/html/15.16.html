@@ -1,0 +1,24 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.16</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.16  CONVOLUTE</H4></B> 
+
+<U>CONV</U>OLUTE <U>B</U>Y={nset|"name"} [<U>AP</U>PEND[=<U>ON</U>|<U>OF</U>F]] [<U>NAM</U>E="name"] [<U>CH</U>ECK[=<U>ON</U>|
+          <U>OF</U>F]] [<U>ER</U>ROR[=<U>ON</U>|<U>OF</U>F]] [<U>IN</U>VERT[=<U>ON</U>|<U>OF</U>F]] [<U>LO</U>G[=<U>ON</U>|<U>OF</U>F]]
+          [<U>MO</U>NITOR[=<U>ON</U>|<U>OF</U>F]] [<U>NO</U>RMALIZE[=<U>ON</U>|<U>OF</U>F]]
+          [<U>SET</U>S=[<U>FR</U>OM] n1 [<U>TO</U>] [n2]] [<U>SEL</U>ECT="name"]
+Convolutes nset with the specified data sets.
+
+The specified data sets and nset must be histograms with the same spacing
+between points.  If nset is a mesh, then the data sets must also be mesh
+data.  You may convolute a mesh by a normal data set.
+
+NOTE:  The inverse convolution of 2 mesh data sets may not be correct.
+This problem may be fixed in the next version.
+
+
+</PRE>
+</BODY>

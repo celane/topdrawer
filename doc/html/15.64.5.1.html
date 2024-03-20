@@ -1,0 +1,47 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.5.1</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.5.1  Options</H4></B>  - 
+     1.  INHIBIT|ENABLE   -   inhibits   or  enables  the  automatic  axes
+         generation for the current plot or window.  You  may  still  draw
+         the outline and axes with the PLOT OUTLINE, PLOT AXES commands.
+         (Default:ENABLE)
+     2.  ALL - enables axes for top, bottom, right and left.
+
+<A NAME="123">     3.  TOP - enables an axis for the TOP of plot </A>
+     4.  BOTTOM - selects the axis for the bottom of the plot.
+     5.  RIGHT - selects the axis for the right hand side
+     6.  LEFT - selects the axis for the left hand side.
+     7.  X,Y,Z - selects the axis to plot.  For 2 dimensional plot X turns
+         on both top and bottom, Y turns on both right and left.
+     8.  ON - allows drawing all three
+     9.  OFF  -  prevents drawing outline, label and ticks.  If an axis is
+         off then no space is allocated for either ticks or labels.
+    10.  THREE  - If on it then axes are plotted by default when 3-d plots
+         are made.
+         (Default:OFF)
+    11.  FRONT  -  If on then 3-d axes are plotted in the front, for PHI&gt;0
+         and in the back for PHI&lt;0.  This prevents them  from  interfering
+         with the plot.
+         (Default:OFF)
+    12.  BOTH  -  If  on  then  3-d axes are plotted both in the front and
+         back.
+         (Default:OFF)
+    13.  INTENSITY  -  Sets  line  intensity  or  width (0-5).  0 gets the
+         intensity from the SET INTENSITY command.
+    14.  WHITE...  - Sets the line color.
+    15.  SOLID...  - Sets the line texture.
+         (Default:SOLID) See:Command SET TEXTURE.
+    16.  PERMANENT  -  Makes  the  current settings permanent from plot to
+         plot.
+This  acts  on  the  current plot only a new SET AXES is required for each
+plot or the options need to  be  made  permanent.   The  command  must  be
+followed by either a HIST, JOIN, BARGRAPH or PLOT command to be effective.
+(Default:ALL ON)
+
+
+</PRE>
+</BODY>

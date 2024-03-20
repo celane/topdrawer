@@ -1,0 +1,173 @@
+<HEAD>
+<TITLE>Topdrawer "CASE" quick reference</TITLE>
+</HEAD>
+
+<BODY BGCOLOR="#ffffff">
+
+<h2><A NAME="TOC">Summary</A></h2>
+<pre>
+ There  are  several  fonts  available  in  the unified graphics.  They are:
+ EXTENDED and DUPLEX.
+
+ The EXTENDED and DUPLEX support many sets of characters.  The DUPLEX set is
+ slow compared to the  extended  set,  but  it  looks  almost  like  printed
+ characters  if  you  use a high resolution device.  The alternate character
+ sets are determined by a character pair.  The  first  character  determines
+ the actual character printer, the second one determines the case.
+
+          Case      Character set
+          blank     <a href="#roman">Roman</a> (default)
+          L         <a href="#roman">Roman</a> lower case
+          F+G       <a href="#greek">Greek</a>
+          B+C       <a href="#cyrillic">Cyrillic</a>
+          O         <a href="#symbol">Plotting symbols</a>
+          P	    <a href="#symbol">Punctuation symbols</a>
+          M         <a href="#symbol">Math symbols</a>
+          T         <a href="#symbol">Theoretic symbols</a>
+	  S	    <a href="#symbol">Typographic symbols</a>
+          W         <a href="#symbol">Arrows</a>
+          A         <a href="#symbol">Astronomical symbols</a>
+          K         <a href="#symbol">Physics symbols</a>
+          D         <a href="#misc">Drawing symbols (underscore)</a>
+          U+V	    <a href="#misc">Movement control</a>
+          X         <a href="#misc">super/subscript</a>
+          Y         <a href="#misc">char size control</a>
+          Z	    <a href="#misc">position save/restore</a>
+The following are only available if you SET FONT DUPLEX:
+          3	    <a href="#bold-roman">bold roman</a>
+	  1	    <a href="#san-serif">san-serif</a>
+	  2	    <a href="#bold-san-serif">bold san serif</a>
+	  I	    <a href="#italic">italic</a>
+	  4	    <a href="#bold-italic">bold italic</a>
+	  J	    <a href="#script">script</a>
+</pre>
+<P>
+<h2><a name="roman">Roman</a></h2>
+<pre>
+Case character:
+ blank = upper case, L= Lower case
+
+ This  is the normal ASCII character set.  It is not necessary to use L to
+ shift to lowercase if your computer accepts lowercase characters.
+</pre>
+
+<h2><a name="greek">Greek</a></h2>
+<pre>
+ Case character:
+ F = upper case, G= Lower case
+   A Alpha     B Beta      G Gamma     D Delta
+   E Epsilon   Z Zeta      H Eta       Q Theta
+   I Iota      K Kappa     L Lambda    M Mu
+   N Nu        X Xi        O Omicron   P Pi
+   R Rho       S Sigma     T Tau       U Upsilon
+   F Phi       C Chi       Y Psi       W Omega
+</pre>
+<img src="greek.gif">
+
+<h2><a name="cyrillic">Cyrillic</a></h2>
+<pre>
+ Case character:
+ B=Upper case, C=Lower case
+   A Ah        B Beh       V Veh       G Geh
+   D Deh       E Yeh       X Zheh      Z Zeh
+   I Ee        1 Ee	   S Kratkoy
+   K Kah       L El        M Em        N En
+   O Oh        P Peh       R Err       S Ess
+   T Teh       U Ooh       F Ef        H Kha
+   C Tseh      2 Cheh      3 Shah      4 Shchan
+   Q Tvyordy Znak
+   Y Yery      5 Myakhki Znak
+   6 Eh Oborotnoye
+   W Yoo       J Yah
+</pre>
+<img src="cyrillic.gif">
+
+
+<h2><a name="misc">Miscellaneous</a></h2>
+<table>
+<tr><td>Case:<td>D<td>U<TD>V<td>X<td>Y<td>Z
+<tr><td><td>draw<td>move<td>move<td>super/sub<td>size<td>save pos
+<tr><td>U<td>underscore
+<tr><td>O (oh)<td>overscore
+<tr><td>0 (zero)<td><td>1 space back<td><td>enter subscript<td>incr half<td>save1
+<tr><td>1<td><td>half space<td>half up<td>leave subscript<td>decr half<td>restore1
+<tr><td>2<td><td>half space back<td>half down<td>enter superscript<td><td>save2
+<tr><td>3<td><td>third space<td>third up<td>leave superscript<td><td>restore2
+<tr><td>4<td><td>third space back<td>third down<td><td><td>save3
+<tr><td>5<td><td>sixth space<td>sixth up<td><td><td>restore3
+<tr><td>6<td><td>sixth space back<td>sixth down<td><td><td>save4
+<tr><td>7<td><td><td><td><td><td>restore4
+</table>
+
+<H2>
+<A NAME="symbol">
+Symbol fonts:
+</A>
+</H2>
+<IMG SRC="symbol.gif">
+<P><A HREF="#TOC">back to top</A>
+
+<HR><P>
+<H2>
+<A NAME="italic">
+Italics, (case I, duplex font only)
+</A>
+</H2>
+<IMG SRC="italic.gif">
+<P><A HREF="#TOC">back to top</A>
+<HR><P>
+<H2>
+<A NAME="script">
+script font (case J, duplex font only)
+</A>
+</H2>
+<IMG SRC="script.gif">
+<P><A HREF="#TOC">back to top</A>
+<HR><P>
+<H2>
+<A NAME="sans-serif">
+San-Serif (case 1, duplex font only)
+</A>
+</H2>
+<IMG SRC="sans-serif.gif">
+<P><A HREF="#TOC">back to top</A>
+<HR><P>
+<H2>
+<A NAME="bold-san-serif">
+Bold san-serif (case 2, duplex font only)
+</A>
+</H2>
+<IMG SRC="gothic.gif">
+<P><A HREF="#TOC">back to top</A>
+<HR><P>
+<H2>
+<A NAME="bold-roman">
+Bold roman (case 3, duplex font only)
+</A>
+</H2>
+<IMG SRC="bold-roman.gif">
+<P><A HREF="#TOC">back to top</A>
+<HR><P>
+<H2>
+<A NAME="bold-italic">
+Bold italic (case 4, duplex font only)
+</A>
+</H2>
+<IMG SRC="bold-italic.gif">
+<P><A HREF="#TOC">back to top</A>
+<HR><P>
+<H2>
+<A NAME="example">
+Example
+</A>
+</H2>
+
+<PRE>
+      TITLE "273Li(0p11R2,n)273Be at E0p1 = 400 MeV"
+      CASE  "X X   ZIZVAV I X X      IXIX          "
+      <IMG SRC="li7pn.gif">
+</PRE>
+<P>
+<A HREF="#TOC">back to top</A>
+<HR>
+</BODY>

@@ -1,0 +1,576 @@
+HP-UX に関しては、私の手元に実行環境が無い為、動作確認できずにいました
+が、東北大の高橋さんが HP-UX 9.07 に移植されたそうです。その時のメモを
+送って貰いましたので、同じく HP をお使いの方は参考にしてください (その
+後のやり取りで一箇所修正を加えています)。
+
+---------
+岡村 弘之                        okamura@phys.s.u-tokyo.ac.jp
+東京大学理学部物理               okamura@timshel.riken.go.jp
+
+
+============================== 引用開始 ==============================
+
+岡村さん
+	高橋＠東北大です。
+TopDrawerの件、ありがとうございました。
+お蔭様でHPに無事インストールできました。
+本質的な問題点はありませんでした。
+
+今後の参考に変更点を書いたメモをお送りします。
+
+HPUXのVersionは HPUX9.07です。また、３２ビットなので
+HPUX10 ６４ビットになったらまた問題が起こるかも知れませんが
+現在問題なく動いています。
+
+        +-------------------------------------------------------+
+        + TAKAHASHI Toshiyuki                                   +
+        +       takahasi@lambda.phys.tohoku.ac.jp               +
+        +                                                       +
+        + Experimental Nuclear Physics, Department of Physics,  +
+	+ Faculity of Science, Tohoku Univ.                     +
+        +                                                       +
+        + TEL 022-217-6453 or 6451      FAX 022-217-6455        +
+        +-------------------------------------------------------+
+
+
+
+======================================================================
+TOPDRAWERのHPUXへのインストールメモ
+			1997/02/17 	T. Takahashi    Tohoku Univ.
+
+ソース
+  ftp://iris.riken.go.jp/pub/topdrawer/topdrawer.tar.gz
+  ftp://iris.riken.go.jp/pub/ugs/ugs.tar.gz
+
+ugsのHPへのインストールの変更点
+*********************************
+*	ugs/Imakefile.def	*	
+*********************************
+
+/*
+ *  Local Configuration File
+ */
+
+/* #define LinuxAoutArchitecture */
+/* #define LinuxElfArchitecture */
+/* #define SunArchitecture */
+/* #define DigitalArchitecture */
+#define HPArchitecture 
+
+/*-------------- Do not change the followings ---------------*/
+
+ARCH    =
+
+#if defined(LinuxAoutArchitecture) || defined(LinuxElfArchitecture)
+#if defined(LinuxAoutArchitecture)
+ARCH    = __LINUX_AOUT
+#else
+ARCH    = __LINUX_ELF
+#endif
+FC      = fort77
+FFLAGS  = -O2 -Nq300 -\!bs
+GFLAGS  = -O2 -fno-backslash
+CFLAGS  = -O2
+AR      = ar
+ARFLAGS = rvs
+RANCMD  =
+BITLIB  = src/bit
+#endif
+
+#if defined(SunArchitecture)
+ARCH    = __SUNOS
+FFLAGS  = -O3 -Nl100 -Nq300 -w -libmil -xl
+CFLAGS  = -O2
+AR      = ar
+ARFLAGS = rv
+RANCMD  = $(RANLIB) $(LIB)
+#endif
+
+#if defined(DigitalArchitecture)
+ARCH    = __OSF1
+FFLAGS  = -O1 -assume backslash
+CFLAGS  = -O2
+AR      = ar
+ARFLAGS = rv
+RANCMD  =
+#endif
+
+#if defined(HPArchitecture)
+ARCH    = __HPUX
+FC	= fort77
+CC	= gcc
+FFLAGS  = +ppu -O +e
+CFLAGS  = -O
+AR      = ar
+ARFLAGS = rv
+RANCMD  =
+#endif
+
+XINCLUDE = -I/usr/local/X11R6/include
+
+/*--------------------- General Rules ------------------------*/
+
+.F.o:;\
+        $(FC) $(FFLAGS) -c -D$(ARCH) $*.F  ;\
+        $(AR) $(ARFLAGS) $(LIB)      $*.o  ;\
+        $(RANCMD)
+
+
+.f.o:;\
+        $(FC) $(FFLAGS) -c           $*.f  ;\
+        $(AR) $(ARFLAGS) $(LIB)      $*.o  ;\
+        $(RANCMD)
+
+.c.o:;\
+        $(CC) $(CFLAGS) -c -D$(ARCH) $(XINCLUDE) $*.c  ;\
+        $(AR) $(ARFLAGS) $(LIB)      $*.o  ;\
+        $(RANCMD)
+
+.SUFFIXES: .o .c .f .F 
+
+------ 変更点 ------------
+FCをfort77を使う。（ -L(directry) -l(libname) を使えるように )
+CCはgccを使う。 （ ccでは ANSI対応にする時にinclude fileの処理が大変）
+FFLAGS
+ +ppu	ルーチン名に _をつける。
+ +e  	local variablesをsaveする。（？）
+makeが .F を知らないので .SUFFIXESにあらわに書いておく。
+src/driver/xwindowc.cでXの include file を呼ぶので
+XINCLUDEでありかを教えておく。
+
+
+*********************************
+*	ugs/test/Imakefile	*
+*********************************
+
+#
+# Imakefile for ugs/test
+#
+
+LIB      = ../ugs.a
+
+#include "../Imakefile.def"
+
+TARGET   = tryxw tryps trytek
+
+all: $(TARGET)
+
+tryxw: tryxw.o $(LIB)
+	$(FC) -o tryxw tryxw.o $(LIB) $(LDPRELIB) $(XTOOLLIB) $(XLIB)
+
+tryps: tryps.o $(LIB)
+	$(FC) -o tryps tryps.o $(LIB) $(LDPRELIB) $(XTOOLLIB) $(XLIB)
+
+trytek: trytek.o $(LIB)
+	$(FC) -o trytek trytek.o $(LIB) $(LDPRELIB) $(XTOOLLIB) $(XLIB)
+
+clean::
+	$(RM) $(TARGET)
+
+tryxw.o: tryxw.f
+	$(FC) $(FFLAGS) -c  tryxw.f
+
+tryps.o: tryps.f
+	$(FC) $(FFLAGS) -c  tryps.f
+
+trytek.o: tryxw.f
+	$(FC) $(FFLAGS) -c  trytek.f
+
+------ 変更点 --------
+fort77は、ライブラリーをリンクする時、ソースから直接リンクできないので
+オブジェクトを一旦つくってリンクする。
+
+*****************************************************
+
+この２つのファイルを使えば、あとは自動的にugs.aと
+test/下のプログラムができる。
+
+topdrawerのHPへのインストールの変更点
+*********************************
+*	topdrawer/Imakefile.def	*
+*********************************
+
+/*
+ *  Local Configuration File
+ */
+
+/* #define LinuxAoutArchitecture */
+/* #define LinuxElfArchitecture */
+/* #define SunArchitecture */
+/* #define DigitalArchitecture */
+#define HpArchitecture
+
+UGS = /usr/local/lib/ugs/ugs.a
+
+
+/*-------------- Do not change the followings ---------------*/
+
+#if ( defined(LinuxAoutArchitecture) ||  defined(LinuxElfArchitecture) )
+ARCH    = __LINUX
+FFLAGS  = -O2
+CFLAGS  = -O2
+AR      = ar
+ARFLAGS = rvs
+RANCMD  =
+#endif
+
+#if defined(SunArchitecture)
+ARCH    = __SUNOS
+FFLAGS  = -O3 -Nl100 -w -libmil
+CFLAGS  = -O2
+AR      = ar
+ARFLAGS = rv
+RANCMD  = $(RANLIB) $(LIB)
+#endif
+
+#if defined(DigitalArchitecture)
+ARCH    = __OSF1
+FFLAGS  = -O1
+CFLAGS  = -O2
+AR      = ar
+ARFLAGS = rv
+RANCMD  =
+#endif
+
+#if defined(HPArchitecture)
+ARCH    = __HPUX
+CC	= gcc
+FC	= fort77
+FFLAGS  = -O +B +ppu +e +U77
+CFLAGS  = -O 
+AR      = ar
+ARFLAGS = rv
+RANCMD  =
+#endif
+
+/*--------------------- General Rules ------------------------*/
+
+.f.o:;\
+        $(FC) $(FFLAGS)  -c      $*.f  ;\
+        $(AR) $(ARFLAGS) $(LIB)  $*.o  ;\
+        $(RANCMD)
+
+.c.o:;\
+        $(CC) $(CFLAGS)  -c      $*.c  ;\
+        $(AR) $(ARFLAGS) $(LIB)  $*.o  ;\
+        $(RANCMD)
+
+-------- 変更点 --------------
++B option                                <= 岡村加筆
+backslash 制御を有効にするため必要。     <= 岡村加筆
++U77 option
+GETARG, GETENV, FDATE等のルーチンを使うのに必要。
+
+*************************
+*	Imakefile	*
+*************************
+#
+# Imakefile for topdrawer
+#
+
+#include "Imakefile.def"
+
+#define PassCDebugFlags
+
+SUBDIRS = src misc
+
+PROGRAM = td
+
+OTHERLIB = -lU77 -lm 
+
+/* Rules */
+
+MakeSubdirs($(SUBDIRS))
+
+AllTarget($(PROGRAM))
+
+$(PROGRAM)::
+	$(FC) -o $(PROGRAM) src/td.o td.a misc.a \
+	$(UGS) $(LDPRELIB) $(XTOOLLIB) $(XLIB) $(OTHERLIB)
+
+MakefileSubdirs($(SUBDIRS))
+
+CleanSubdirs($(SUBDIRS))
+
+-------- 変更点 -------------
+リンクのライブラリ libU77.a, libm.aを追加
+libm.aは erf, erfcを使用するのに必要。
+ 
+*****************************************
+*	topdrawer/misc/Imakefile.def	*
+*****************************************
+#
+# Imakefile for topdrawer/misc
+#
+
+LIB      = ../misc.a
+
+#include "../Imakefile.def"
+
+GEN_OBJ  = freq.o gamma.o intrac.o sigwait.o minuit.o noarg.o length.o clock.o erf.o 
+
+
+#if ( defined(LinuxAoutArchitecture) || defined(LinuxElfArchitecture) )
+SYS_OBJ  = exit.o time.o fdate.o
+#endif
+
+AllTarget($(LIB))
+
+$(LIB):: $(GEN_OBJ) $(SYS_OBJ)
+	ls -lF $(LIB)
+
+*********************************
+*	topdrawer/misc/erf.c	*
+*********************************
+#include <math.h>
+
+float erf_(float x)
+{
+  double xd;
+  float y;
+  xd=x;
+  y=erf(xd);
+  return y;
+}
+
+
+float erfc_(float x)
+{
+  double xd;
+  float y;
+  xd=x;
+  y=erfc(xd);
+  return y;
+}
+********************************
+
+ERF, ERFCを使うため、C routineとのinterface erf.c
+を作成し、追加した。
+
+あとは、topdrawer/srcの変更
+diff -c new orig の出力をつけます。
+
+コンパイルで「初期化されていない」とワーニングがでた変数
+を（+eをつけているから大丈夫だと思うが）SAVE宣言したのと
+
+XOR intrinsicを使うには、面倒なので
+変わりに、IXORにした。(t2tabl.f)
+両者の違いは良くわからない。（同じだと思う）
+
+diff -c topdrawerhp/src//help.f topdrawer/src//help.f
+diff -c topdrawerhp/src//help.f topdrawer/src//help.f
+topdrawerhp/src//t2cntr.f topdrawer/src//t2cntr.f
+*** topdrawerhp/src//t2cntr.f	Mon Feb 17 13:43:02 1997
+--- topdrawer/src//t2cntr.f	Fri Aug 16 14:08:31 1996
+***************
+*** 1485,1494 ****
+        INTEGER BBIT,LBIT,LPEN
+        SAVE XSAV,YSAV
+        REAL XSAV,YSAV,TEMP
+- C ************************
+- C     by T. TAKAHASHI
+-       SAVE LBIT
+- C ************************
+        IF( LTRAP ) RETURN
+        IF (LSAVE) THEN
+        CALL T2_CNT_SAVE(XYZ1,BBIT,C_NAME(:ABS(N_NAME)))
+--- 1485,1490 ----
+diff -c topdrawerhp/src//t2cntr.f topdrawer/src//t2cntr.f
+topdrawerhp/src//t2main.f topdrawer/src//t2main.f
+*** topdrawerhp/src//t2main.f	Mon Feb 17 13:36:53 1997
+--- topdrawer/src//t2main.f	Fri Aug 16 12:50:24 1996
+***************
+*** 3299,3308 ****
+        DATA BLANK /' '/  ,ESCAPE/'@'/  ,PLUS/'+'/  ,MINUS/'-'/  ,A
+       *MPRSN/'&'/  ,ZERO/'0'/
+        DATA LDATA/.false./
+- C ****************************
+- C     by T. TAKAHASHI
+-       SAVE HSPACE,IAX1,SPACE
+- C ****************************
+        ERRSAV=FLAGS(23)
+        FLAGS(23)=.FALSE.
+        IF (FLAGS(127)) CALL TXXMT
+--- 3299,3304 ----
+***************
+*** 4917,4926 ****
+        COMMON /TOKENC/ INTERP, INTEG, FLOTNG, KEYORD, NSTRNG, MAXSTR, ST
+       *RNG, NSTJOU, LSTJOU, STJOU, LTOKEN, NTOKEN
+        LOGICAL INTRAC
+- C ***********************
+- C     by T. TAKAHASHI
+-       SAVE JOUCNT
+- C ***********************
+        IF (JOUFIL.gt.0 .and. INTRAC(I) .and. INPFIL.eq.9 .and. NSTJOU.gt.
+       *0) THEN
+        NSTJOU=MIN(NSTJOU,LEN(STJOU))
+--- 4913,4918 ----
+***************
+*** 5040,5049 ****
+       *RNG, NSTJOU, LSTJOU, STJOU, LTOKEN, NTOKEN
+        LOGICAL LTEST,LTEST1
+        INTEGER I,IFUNNY,ITXTUR,IMAX
+- C ******************************
+- C     by T. TAKAHASHI
+- C     SAVE LTEST,LTEST1
+- C ******************************
+        IF (ITXTUR.le.0 ) THEN
+        IF (INTEG.eq.8) INTEG=0
+        ITXTUR=INTEG
+--- 5032,5037 ----
+diff -c topdrawerhp/src//t2main.f topdrawer/src//t2main.f
+topdrawerhp/src//t2mesh.f topdrawer/src//t2mesh.f
+*** topdrawerhp/src//t2mesh.f	Mon Feb 17 13:41:12 1997
+--- topdrawer/src//t2mesh.f	Fri Feb  2 02:45:08 1996
+***************
+*** 3093,3102 ****
+        REAL DEPTH,T,T1,T2,T3
+        LOGICAL LDEP
+        DATA ISTP/1/
+- C *************************
+- C     by T. TAKAHSHI
+-       SAVE LDEP,ISAVE
+- C *************************
+        IF (NDIM0 .eq.2) THEN
+        T3=ARRAY(1,NDIM1,1)-ARRAY(1,2,1)
+        IF (I.le.1) THEN
+--- 3093,3098 ----
+***************
+*** 3154,3163 ****
+        REAL DEPTH,T,T1,T2,T3
+        LOGICAL LDEP
+        DATA ISTP/1/
+- C **********************
+- C     by T. TAKAHASHI
+-       SAVE LDEP,ISAVE
+- C **********************
+        IF (NDIM0 .eq.2) THEN
+        T3=ARRAY(1,1,NDIM2)-ARRAY(1,1,2)
+        IF (I.le.1) THEN
+--- 3150,3155 ----
+***************
+*** 3236,3245 ****
+        REAL PNTV3(2,NPSTOR)
+        LOGICAL VPNT(2,NPSTOR),LSAVE,LPLOT
+        INTEGER I,J,K,IPP,NMAX, IVBACK, IVPLOT, IVSAVE
+- C ***************************
+- C     by T. TAKAHASHI
+-       SAVE OLDX,OLDY
+- C ***************************
+        IFLAG=IAND(INFLAG,7)
+        IF (IFLAG .eq. 2) THEN
+        CALL TXLINX(XYIN,N,LINTEX)
+--- 3228,3233 ----
+diff -c topdrawerhp/src//t2mesh.f topdrawer/src//t2mesh.f
+topdrawerhp/src//t2tabl.f topdrawer/src//t2tabl.f
+*** topdrawerhp/src//t2tabl.f	Mon Feb 17 14:12:20 1997
+--- topdrawer/src//t2tabl.f	Fri Sep 15 23:48:44 1995
+***************
+*** 140,147 ****
+        LLIM=TLIM(1,1) .ne. HNONE
+        WIDTH=LBLSIZ/10.
+        X0=1.0E35
+! C      LEDGE = XOR ( LTOP, LSCREV(IDEP) )
+!       LEDGE = IXOR ( LTOP, LSCREV(IDEP) )
+        DO 10021 NPASS=MINPAS,1
+        SCHSIZ=SYSIZ*REDUCE(2)/10
+        IF (LOFFSET) THEN
+--- 140,146 ----
+        LLIM=TLIM(1,1) .ne. HNONE
+        WIDTH=LBLSIZ/10.
+        X0=1.0E35
+!       LEDGE = XOR ( LTOP, LSCREV(IDEP) )
+        DO 10021 NPASS=MINPAS,1
+        SCHSIZ=SYSIZ*REDUCE(2)/10
+        IF (LOFFSET) THEN
+***************
+*** 322,331 ****
+        CHARACTER*10 CXYZ(3)
+        DATA TEXT,CASE/' ',' '/
+        DATA CXYZ/'X,CEN,DATA','Y,CEN,DATA','Z,CEN,DATA'/
+- C *************************
+- C     by T. TAKAHASHI
+-       SAVE LLOG,HNONE
+- C *************************
+        IF (NDIM1.lt.2.or.NDIM2.lt.2) THEN
+        CALL T2ERR(0,' ',('*** ERROR *** Bad array in T23TBL'),3)
+        RETURN
+--- 321,326 ----
+diff -c topdrawerhp/src//t2tabl.f topdrawer/src//t2tabl.f
+topdrawerhp/src//token.f topdrawer/src//token.f
+*** topdrawerhp/src//token.f	Mon Feb 17 13:46:14 1997
+--- topdrawer/src//token.f	Mon Dec  9 20:42:14 1996
+***************
+*** 280,289 ****
+       *10, 1.E11,1.E12,1.E13,1.E14,1.E15,1.E16,1.E17,1.E18,1.E19,1.E20, 1
+       *.E21,1.E22,1.E23,1.E24,1.E25,1.E26,1.E27,1.E28,1.E29,1.E30/
+        DATA HNONE /-666.666/
+- C ***********************
+- C     by T. TAKAHASHI
+-       SAVE ISTRNG
+- C ***********************
+        KEYORD=0
+        IF (INFOIN(9).lt.0) THEN
+        INFOIN(9)=0
+--- 280,285 ----
+diff -c topdrawerhp/src//token.f topdrawer/src//token.f
+topdrawerhp/src//txxug77.f topdrawer/src//txxug77.f
+*** topdrawerhp/src//txxug77.f	Mon Feb 17 14:00:47 1997
+--- topdrawer/src//txxug77.f	Sat Jan  4 19:12:40 1997
+***************
+*** 1403,1412 ****
+        COMMON/TXCOM/PLIM,ZSCRN, XLLINE,YLLINE,XTLINE,YTLINE,XFRMFC, IPA
+       *T,NPAT,PAT,PATTOT, NPTS,IDDEVC,CCSCIS,LMOVE,IROTAX,DISPL,IROTAF,P
+       *ATCUM,PATMOD, RESOL
+- C *************************
+- C     by T. TAKAHASHI
+-       SAVE IHIT
+- C *************************
+        IF (X .lt. CCSCIS(1) .or. X .gt. CCSCIS(2)) RETURN
+        IF (Y .lt. CCSCIS(3) .or. Y .gt. CCSCIS(4)) RETURN
+        IF (IHIT.LT.4) THEN
+--- 1403,1408 ----
+***************
+*** 2418,2427 ****
+        DATA QTEX/'DOTTED,','DASHED,','DOTDASH,','SOLID,'  ,'SOLID,','SOLI
+       *D,','DAASHED,'/
+        DATA QFONT /'SIMPLEX','SIMPLEX','DUPLEX '/
+- C *************************
+- C     by T. TAKAHASHI
+-       SAVE DFTBLD
+- C *************************
+        IF (LTRAP) RETURN
+        IERR=0
+  10780 GOTO (10790,10800,10810,10820,10830,10840,10850,10860,10870,10880,
+--- 2414,2419 ----
+
+おまけ
+
+HELP fileのありかをソースに埋め込みました。
+
+diff -c topdrawerhp/src/help_.c topdrawer/src/help_.c
+*** topdrawerhp/src/help_.c     Mon Feb 17 20:15:37 1997
+--- topdrawer/src/help_.c       Fri Sep 15 23:48:49 1995
+***************
+*** 741,747 ****
+
+  /* ----------------------------------------------------------------- */
+
+! #define HELPFILE "/usr/local/lib/td/doc/topdrawer4.0.gih"
+
+  void
+  help_(topic, topic_len)
+--- 741,747 ----
+
+  /* ----------------------------------------------------------------- */
+
+! #define HELPFILE "topdrawer.gih"
+
+  void
+  help_(topic, topic_len)
+
+
+
+
+
+

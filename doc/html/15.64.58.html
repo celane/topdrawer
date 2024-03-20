@@ -1,0 +1,40 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.58</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.58  TEXTURE</H4></B> 
+
+<U>SE</U>T <U>TE</U>XTURE|<U>STR</U>UCTURE [<U>SO</U>LID|<U>DO</U>TS|<U>DA</U>SHES|<U>DAA</U>SHES|<U>DOTD</U>ASH|<U>PA</U>TTERNED|<U>FU</U>NNY|
+          <U>SP</U>ACE]
+     [<U>PE</U>RMANENT]
+This sets the default texture of a line drawn by a BOX,  CIRCLE,  ELLIPSE,
+DIAMOND,  PLOT,  BAR,  JOIN,  or  HIST command.  To set the Texture of the
+axes, ticks, or outline See:Command SET AXIS, SET OUTLINE, or  SET  TICKS.
+You may also specify the texture with any command that draws.  For example
+you may JOIN DOTS or JOIN PATTERN and so on.
+
+     1.  SOLID - Solid line
+     2.  DOTS - Dotted line
+     3.  DASHES - Short dashed line
+     4.  DAASHES - Long dashed line (3x)
+     5.  DOTDASH - Dot-dash line
+     6.  SPACE - Adds an extra space between dots/dashes
+     7.  PATTERNED - Line determined by SET PATTERN.
+     8.  FUNNY  -  is  a  dot  at  the ends of each line segment.  This is
+         generally only useful for joined and smoothed curves.
+     9.  PERMANENT - Sets the current texture to be the permanent default.
+
+(Default:SOLID)
+
+If  no  options  are  specified  it  is  set to SOLID.  When a new plot is
+started the texture is set to the permanent default.
+
+If you specify more than 1 texture option, or use the option PATTERN, then
+a patterned texture is assumed and the pattern is generated.   When  FUNNY
+precedes any other texture specifier then it is generated randomly.
+
+
+</PRE>
+</BODY>

@@ -1,0 +1,24 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.65.3.1</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.65.3.1  Example</H4></B>  - 
+     TD:<U>SET</U> <U>WINDOW</U> <U>Y</U> <U>1.2</U> <U>OF</U> <U>2.5</U>
+Divides  y  into 2.5 windows and sets the current window to 1.2.  Assuming
+the y size is the default 10 inches, the total window runs from 0.8 inches
+to  4.8  inches.   Since the window is positive, the actual window area is
+reduced  to  make  room  for  labels.   The  actual  plot  area  would  be
+approximately 1.6 inches to 4.3 inches.
+     TD:<U>SET</U> <U>WINDOW</U> <U>Y</U> <U>1.2</U> <U>OF</U> <U>-2.5</U>
+Divides  y  in  the  same  fashion as above, except that the actual window
+occupies the entire specified area from y=0.8 inches to y=4.8 inches.   If
+a second window is then specified:
+     TD:<U>SET</U> <U>WINDOW</U> <U>Y=2.2</U>
+it  is adjacent to the first one, with the top axes of the first window in
+the same location as the bottom axes of the second window.
+
+
+</PRE>
+</BODY>

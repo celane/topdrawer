@@ -1,0 +1,268 @@
+%N
+%U+ TDMACROS.MOR
+%';SUBROUTINE'=';<RESET> <SET> ;"SUBROUTINE"'
+<SET>;                      "Ready for reset"
+%L
+%E  SUBROUTINE T2TABL - 2-d table generation
+SUBROUTINE T2TABL(XVALS,YVALS,ZVALS,NP,INCRMT,ITXTUR,SIZE,TLIM,
+      XERRS,YERRS,ZERRS,OFFSET,IOPT);
+   INTEGER INCRMT,NP,ITXTUR,IOFFSET;
+   REAL XVALS(INCRMT,*),YVALS(INCRMT,*),ZVALS(INCRMT,*),
+	XERRS(INCRMT,*),YERRS(INCRMT,*),ZERRS(INCRMT,*),
+	TLIM(3,2),SIZE,OFFSET,TOFF;
+   INTEGER I,J,K;
+   REAL XYZV(3),XY(2),XY2(2,2),WIDTH;
+   $SPECIFICATION;
+   $SPECIFYNONE;
+   $EQUIVALENCE;
+   $DATA;
+   CHARACTER*20 TEXT,CASE;
+
+   $BOOLEAN LEXIST(3),T2SCIS,LCYCLE,LTOP,LEDGE,LABSOLUTE,LDATA,LOFFSET,
+       LVALUE,LLIM,LOKAY;
+
+   LCYCLE=IAND(ITXTUR,4) .ne. 0;         "Vary textures ?"
+   CALL T2AXES;
+   IF (.not.FLAGS(75)) RETURN;
+   FLAGS(28) = .TRUE.;  "POINTS HAVE BEEN TREATED"
+   CALL T2CWTS(JTYPE,ITXSAV);
+   CALL TXSDEF;
+   CALL TXSCIS(2);    "SCISSORED AT WINDOW"
+      "Get options"
+   LOFFSET=OFFSET .ne. HNONE;         "Offset requested"
+   LTOP = IAND(IOPT,1) .ne. 0;        "Location at Top or bottom of plot ?"
+   LVALUE=IAND(IOPT,8) .ne. 0;
+   LDATA= LOFFSET .and. IAND(IOPT,2) .ne. 0;        "With respect to data ?"
+   LABSOLUTE= LOFFSET .and. IAND(IOPT,4) .ne. 0;    "Absolute offset"
+   IF ( LVALUE ) LTOP= .not. LTOP;
+      "Calc symbol size in this scaling frame"
+   IF (SIZE.ne.0 ) THEN; MINPAS=1; SYSIZ=SIZE; 
+                   ELSE; MINPAS=0; SYSIZ=SYMSIZ; ENDIF;
+      "Set up symbols"
+   LEXIST(1)=XVALS(1,1).NE.HNONE;
+   LEXIST(2)=YVALS(1,1).NE.HNONE;
+   LEXIST(3)=ZVALS(1,1).NE.HNONE;
+   IDEP=1;
+   <I=1,3; XYZV(I)=0; IF(LEXIST(I)) IDEP=I;>
+   LLIM=TLIM(1,1) .ne. HNONE;
+   WIDTH=LBLSIZ/10.;
+   X0=$LARGE REAL;
+   LEDGE = LTOP .XOR. LSCREV(IDEP) ;     "Reverse the top/bottom location ?"
+   <NPASS=MINPAS,1;
+      SCHSIZ=SYSIZ*REDUCE(2)/10;        "Symbol size in abs units"
+      IF (LOFFSET) THEN;         "Calculate absolute offset"
+         TOFF=OFFSET;
+      ELSE;
+         TOFF=3*ABS(TIKFAC*TIKSIZ(1))+ABS(SCHSIZ);;
+      ENDIF;
+      IF (LTOP) TOFF=-(TOFF);
+      <N=1,NP;                          "Put in the points"
+         IF ($TRAP) goto :RET:;
+         IF (LEXIST(1)) XYZV(1)=XVALS(1,N); "Fill in data if it exists"
+         IF (LEXIST(2)) XYZV(2)=YVALS(1,N);
+         IF (LEXIST(3)) XYZV(3)=ZVALS(1,N);
+         LOKAY=.TRUE.;
+         IF (LLIM) THEN;                 "If limits applied"
+            <I=1,IDEP;
+               IF (LOKAY .and. LEXIST(I)) LOKAY=
+                  XYZV(I).GE.TLIM(I,1) .and.XYZV(I) .LE.TLIM(I,2);
+            >
+         ELSE;
+            <I=1,IDEP; IF (ABS(XYZV(1)).ge.$LARGE REAL) LOKAY=.false.;>
+         ENDIF;
+         IF (.not.LOKAY) <NEXT>;         "Data not ok ?"
+         VAL=XYZV(IDEP);                 "Dependent value"
+
+            "project into device system"
+         
+         IF (.not. LVALUE ) THEN;     "Normal TOP/BOTTOM ?"
+            IF (LEDGE) THEN; XYZV(IDEP)=XYZLIM(IDEP,2); "Get edge of window"
+                       ELSE; XYZV(IDEP)=XYZLIM(IDEP,1); ENDIF;
+         ENDIF;
+         IF (LDATA) THEN;
+            XYZV(IDEP)=XYZV(IDEP)+TOFF;
+            IF (LABSOLUTE) XYZV(IDEP)=TOFF;
+         ENDIF;
+         CALL T2XFRM(3,1,XYZV,NONLIN,XFRM13,2,XY);  "Text system"
+
+         IF (.not. LDATA) THEN;
+            XY(2)=XY(2)+TOFF;         "Add on offset from edge"
+            IF (LABSOLUTE) XY(2)=TOFF;
+         ENDIF;
+         CALL T2XFRM(2,1,XY,LINEAR,XFRM34,2,XY2);
+         IF (T2SCIS(XY2)) THEN;
+            IF (NPASS.gt.0) THEN;                   "Second pass ?"
+               CALL T2TLAB(9,VAL,BASE,8,1,          "Convert number"
+                  TEXT,NTEXT,CASE,NCASE,IFIRST);
+                                                    "Calculate 'Y'"
+               IF (.not. LTOP) THEN;
+                  XY(2)=XY(2)+
+                     ABS(TXXCSZ(TEXT(1:NTEXT),CASE(1:NTEXT),SCHSIZ));
+               ENDIF;
+
+               CALL T2XFRM(2,1,XY,LINEAR,XFRM34,2,XY2);
+
+               CALL TXTEXT(XY2(1,1),XY2(2,1),           "Write number"
+                  SYSIZ,-90.,
+                  TEXT(1:NTEXT),
+                  CASE(1:NTEXT));
+            ELSE;                                  "First pass ?"
+               IF (ABS(X0).lt.$LARGE REAL .and. XY(1).ne.X0)
+                  WIDTH=MIN(WIDTH,ABS(XY(1)-X0));  "Find min width"
+               X0=XY(1);
+            ENDIF;
+         ENDIF;
+      >
+      IF (SIZE.eq.0) THEN;              "End first pass calc symbol size"
+         WIDTH=MAX(WIDTH,0.02);         "Max width"
+         SYSIZ=SIGN(7*WIDTH,LBLSIZ);    "Symbol size"
+      ENDIF;
+   >      "End of loop over all points "
+:RET:
+   CALL TXSCIS(1); "RESET SCALING TO FULL SCREEN"
+   CALL T2CWTS(ITXSAV,IDUM);
+   CALL T2TCKS(0); "EVEN IF NP=0"
+END;
+%E  SUBROUTINE T23TBL - 3-d table generation
+SUBROUTINE T23TBL(ARRAY,NDIM0,NDIM1,NDIM2,N1,N2,N3,N4,SIZE,ITXTUR,TLIM);
+   INTEGER NDIM0,NDIM1,NDIM2;
+   REAL ARRAY(NDIM0,NDIM1,NDIM2+1),SIZE,TLIM(3,2);
+   REAL XYZ(3),XY(2),XYZ2(3,2),XY2(2,2),ENCHAR;
+   $BOOLEAN LTEST,LOVER,T2SCIS,LCYCLE,LLOG,LLIMIT;
+   "$MESHCOM;"
+   $SPECIFICATION;
+   $EQUIVALENCE;
+   $DATA;
+   REAL ANGSAV(3);
+   CHARACTER*30 TEXT,CASE;
+   DATA TEXT,CASE/' ',' '/;
+   CHARACTER*10 CXYZ(3);
+   DATA CXYZ/'X,CEN,DATA','Y,CEN,DATA','Z,CEN,DATA'/;
+               "SET UP THE COORDINATE SYSTEMS"
+   IF (NDIM1.lt.2.or.NDIM2.lt.2) THEN;
+      ERROR STRING;('*** ERROR *** Bad array in T23TBL');
+      RETURN;
+   ENDIF;
+   <I=1,3;
+      ANGSAV(I)=AXANG(I);
+      J=MESH1;
+      IF (I.eq.MESH1) J=MESH2;
+      IF (J .eq. I+1) THEN; AXANG(I)=0;
+                      ELSE; AXANG(I)=90.; ENDIF;
+   >
+   IF (.NOT.FLAGS(75)) $3D=NDIMNS(1).eq.3;
+   CALL T23LIM(ARRAY,NDIM0,NDIM1,NDIM2);
+   CALL T2AXES;                         "Draw axes"
+   MINAX=1;
+   IF (.not.FLAGS(75)) RETURN;
+   FLAGS(28) = .TRUE.;                  "Points have been treated"
+   XMIN=T2MSHX(ARRAY,NDIM0,NDIM1,NDIM2,0);
+   XMAX=T2MSHX(ARRAY,NDIM0,NDIM1,NDIM2,NDIM1);
+   YMIN=T2MSHY(ARRAY,NDIM0,NDIM1,NDIM2,0);
+   YMAX=T2MSHY(ARRAY,NDIM0,NDIM1,NDIM2,NDIM2);
+   WIDTH=(XMAX-XMIN)/(NDIM1-1);        "Average width, depth"
+   DEPTH=(YMAX-YMIN)/(NDIM2-1);
+   <I=1,3; <J=1,2; XYZ2(I,J)=(XYZLIM(I,1)+XYZLIM(I,2))/2; > >
+   XYZ2(MESH1,1)=XYZ2(MESH1,1)+WIDTH;
+   XYZ2(MESH2,1)=XYZ2(MESH2,1)+DEPTH;
+   CALL T2XFRM(3,2,XYZ2,LINEAR,XFRM13,2,XY2);
+   CALL TXSCIS(2);                     "Scissored at window"
+   CALL T2CWTS(IAXTEX,ITXSAV);
+   CALL T2CWTS(LABTEX,IDUM);           "set color width texture"
+   CALL T2CWTS(ITXTUR,IDUM);
+   CALL TXSDEF;
+   "LLIMIT=IAND(ITXTUR,4).eq.0;"
+   LCYCLE=IAND(ITXTUR,4) .ne. 0;         "Vary textures ?"
+   IF (LCYCLE) THEN;
+      ZMIN=XYZLIM(MESH3,1);
+      ZMAX=XYZLIM(MESH3,2);
+      IF (LLOG.and.ZMIN.ne.0.and.ZMAX.ne.0) THEN;
+         ZMAX=ALOG10(ABS(ZMAX));
+         ZMIN=ALOG10(ABS(ZMIN));
+      ENDIF;
+      ZDIFF=ZMAX-ZMIN;                  "Max height"
+      IF (ZDIFF.eq.0) ZDIFF=1.0;        "Set to 1 if 0"
+   ENDIF;
+   LLIMIT=TLIM(1,1) .ne. HNONE;        "Limit by the Z lims ?"
+   ENCHAR=1;
+   BASE=SCLPRM(1,MESH3);
+
+      "If size is specified do numbers in 1 pass,
+       If not do t2 passes, first to find number size, then plot numbers"
+
+   IF (SIZE.ne.0) THEN; MINPAS=1; ELSE; MINPAS=0; ENDIF;
+   SCHSIZ=SIGN(1.0,LBLSIZ);
+   MAJMIN=2; MAJMAX=NDIM1; 
+   MINMIN=2; MINMAX=NDIM2;
+   IF(N1.gt.0) MAJMIN=MIN(NDIM1,N1+1);
+   IF(N2.gt.0) MAJMAX=MIN(NDIM1,N2+1);
+   IF(N3.gt.0) MINMIN=MIN(NDIM2,N3+1);
+   IF(N4.gt.0) MINMAX=MIN(NDIM2,N4+1);
+   <NPASS=MINPAS,1;
+      IF (NPASS.eq.1) THEN;           "Plot pass ?"
+         SYSIZ=0;
+         IF (SIZE.ne.0) THEN;
+            SYSIZ=SIZE;
+         ELSE;
+            SYSIZ=10*MIN(0.7*ABS(XY2(2,2)-XY2(2,1)),
+                         ABS(XY2(1,2)-XY2(1,1))/ENCHAR);
+            SYSIZ=SIGN(SYSIZ,LBLSIZ);
+            IF (ABS(SYSIZ).gt.ABS(LBLSIZ)) SYSIZ=LBLSIZ;
+         ENDIF;
+         IF (SYSIZ.eq.0) SYSIZ=LBLSIZ;
+         SCHSIZ=SYSIZ*REDUCE(2)/10;
+      ENDIF;
+      <IY=MINMIN,MINMAX;                        "Do the Y values"
+         Y1=ARRAY(1,1,IY);
+         IF(LLIMIT .or.
+            (Y1.GE.TLIM(MESH2,1) .and. Y1.LE.TLIM(MESH2,2))) THEN;
+            XYZ(MESH2)=Y1;
+            <IX=MAJMIN,MAJMAX;                 "Now loop over the X values"
+               X1=ARRAY(1,IX,1);
+               XYZ(MESH1)=X1;
+               IF ($TRAP) GOTO :RET:;
+               IF(LLIMIT .or.
+                  (X1.GE.TLIM(MESH1,1) .and. X1.LE.TLIM(MESH1,2))) THEN;
+                  Z1=ARRAY(1,IX,IY);
+                  IF(LLIMIT .or.
+                     (Z1.GE.TLIM(MESH3,1).AND.Z1.LE.TLIM(MESH3,2))) THEN;
+                        XYZ(MESH3)=Z1;
+                     IF (LCYCLE) THEN;
+                        IF (LLOG) THEN;
+                           IF( Z1 .ne. 0) THEN;
+                              Z1=ALOG10(ABS(Z1));
+                           ELSE; Z1=ZMIN; ENDIF;
+                        ENDIF;
+                        ICYCLE=N_CYCLE*((Z1-ZMIN)/ZDIFF)+1;
+                        ICYCLE=MAX(MIN(N_CYCLE,ICYCLE),1);
+                        CALL T2CWTS(ITX_CYCLE(ICYCLE),IDUM);
+                        CALL T2CWTS(ITXTUR,IDUM);
+                        CALL TXSDEF;
+                     ENDIF;
+                     CALL T2TLAB(9,XYZ(MESH3),BASE,8,1,
+                           TEXT,NTEXT,CASE,NCASE,IFIRST);
+                        T=TXXCSZ(TEXT(1:NTEXT),CASE(1:NTEXT),SCHSIZ);
+                        ENCHAR=MAX(ENCHAR,T+2);
+                        IF (NPASS.gt.0) THEN;         "Plot pass"
+                           CALL T2XFRM(3,1,XYZ,NONLIN,XFRM13,2,XY);
+                           XY(1)=XY(1)-T/2;
+
+                           CALL T2XFRM(2,1,XY,LINEAR,XFRM34,2,XY2);
+
+                           IF (T2SCIS(XY2))
+                            CALL TXTEXT(XY2(1,1),XY2(2,1),    "Write number"
+                              SYSIZ,0.,
+                              TEXT(1:NTEXT),
+                              CASE(1:NTEXT));
+                    ENDIF;
+                  ENDIF;
+               ENDIF;
+            >
+         ENDIF;
+      >
+   >
+:RET:
+   CALL T2CWTS(ITXSAV,IDUM);
+   CALL TXSCIS(1);                "reset scaling to full screen"
+   IF (.not.$POLAR.and..not.$3D) CALL T2TCKS(0); "EVEN IF NP=0"
+   END;

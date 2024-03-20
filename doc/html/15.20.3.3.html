@@ -1,0 +1,35 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.20.3.3</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.20.3.3  Example</H4></B>  - The PF1 and PF2 keys are already defined:  
+     TD:<U>DEFINE</U> <U>KEY</U> <U>PF1</U> <U>"</U> <U>"</U> <U>/SET_STATE=gold</U>
+     TD:<U>DEFINE</U> <U>KEY</U> <U>PF2</U> <U>"HELP</U> <U>"/TERMINATE</U>
+
+                                 examples
+     TD:<U>DEFINE</U> <U>KEY</U> <U>PF3</U> <U>"SET</U> <U>HIST</U> <U>PREV;</U>  <U>NEW;HIST"</U> <U>/TERMINATE</U>
+     TD:<U>DEFINE</U> <U>KEY</U> <U>PF4</U> <U>"SET</U> <U>HIST</U> <U>NEXT;</U>  <U>NEW;HIST"</U> <U>/TERMINATE</U>
+This sets up 2 keys so that you can step through a list of histograms.
+
+     TD:<U>DEFINE</U> <U>KEY</U> <U>MINUS</U> <U>"SET</U> <U>HIST</U> <U>ID="</U>
+This sets up key to give the command.  When the minus key on the keypad is
+<A NAME="61">pressed the command is entered, and you enter the number followed  by  the </A>
+"RETURN" key.
+
+     TD:<U>DEFINE</U> <U>KEY</U> <U>KP7</U> <U>"HISTOGRAM"/TERMINATE</U>
+This sets up the 7 key on the keypad to histogram.
+
+     TD:<U>DEFINE</U> <U>KEY</U> <U>COMMA</U> <U>"SET</U> <U>FILE</U> <U>INPUT</U> <U>'myfile'"/term</U>
+This sets up the comma (,) key on the keypad to get commands from the file
+MYFILE.TOP.
+
+     TD:<U>DEFINE</U> <U>KEY</U> <U>PF4</U> <U>"SET</U> <U>THREE</U> <U>ON"/term</U>
+     TD:<U>DEFINE</U> <U>KEY</U> <U>PF4</U> <U>"SET</U> <U>THREE</U> <U>OFF"/term/ifstate=gold</U>
+This sets up PF4 as a key to turn THREE ON or OFF.  To turn on three press
+PF4.  To turn THREE OFF press PF1 PF4.
+
+
+</PRE>
+</BODY>

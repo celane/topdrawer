@@ -1,0 +1,25 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.78.14</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.78.14  MINUS</H4></B> 
+
+Subtracts  the value from the coordinate or the coordinate from the value.
+If you specify ERROR and you are subtracting a constant to X,Y, or  Z  the
+DX,DY,  or  DZ  are  also  modified.  DY=SQRT(DY**2+(e)**2) where e is the
+specified error.
+                                  example
+To subtract 2+-0.1 from y
+     Y=Y MINUS 2 ERROR=.1
+          or...
+     Y=Y - 2 ERROR=.1
+To subtract Y from 2.
+     Y=2 MINUS Y
+          or...
+     Y=2 - Y
+
+
+</PRE>
+</BODY>

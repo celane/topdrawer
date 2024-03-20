@@ -1,0 +1,57 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.55</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.55  STORAGE</H4></B> 
+
+This defines what is kept in storage.  SET ORDER automatically  calls  SET
+STORAGE  if  room  for extra data is needed.  This option remains the same
+until changed by a SET ORDER or SET STORAGE command.  The VAX uses virtual
+memory, so the actual amount of storage is not not limited, but expands as
+needed.  If you have a virtual memory allocation failure, you may  prevent
+it  by preallocating the needed memory with the SIZE option.  If you still
+get memory allocation failures, ask your system manager  to  increase  the
+available virtual memory.
+<U>SE</U>T <U>STO</U>RAGE [<U>AL</U>L] [[N][R|D]<U>X</U>|<U>TH</U>ETA] [[N][R|D]<U>Y</U>|<U>RA</U>DIUS] [[N][R|D]<U>Z</U>|<U>PH</U>I]
+          [[N][R|D]<U>U</U>] [[N][R|D]<U>V</U>] [[N][R|D]<U>W</U>] [<U>SY</U>MBOL]
+     [<U>SI</U>ZE=n]
+
+(Default:SYMBOL,X,Y,DX,DY)
+
+ALL selects all coordinates.  If this command is used without any options,
+the storage is reset to the default.   If  all  3  coordinates  X,Y,Z  are
+included in storage, 3-d plots are turned on.
+
+If  DX,  the  error  on X, is selected then X is also selected.  If NDX is
+selected  then  both  DX  and  X  are  selected.   Likewise   DY,DZ,..DPHI
+automatically select Y....PHI.  SYMBOL, X and Y are always included in the
+storage.  All other variables must be declared.
+
+The  NDX  is  the  negative half of the error bar while DX is the positive
+half.  If NDX is not in stoage then DX specifies both  halves.   Similarly
+NDY and NDZ are the negative halves of the Y,Z error bars.
+
+If  THETA  is specified polar coordinates are enabled permanently.  If PHI
+is specified spherical coordinates are enabled.
+
+SIZE=n  allows  you to pick the number of words of storage to allocate for
+the VAX.  This is not necessary, but  it  may  save  time  since  you  may
+preallocate  the  storage  and avoid multiple automatic storage expansion.
+Normally the amount of storage needed for  regular  data  is  about  n*d+4
+where  n  is  the  number  of  points  and  d is the number of coordinates
+available  in  storage  (SYMBOL,X,DX,Y,DY,....).   For  mesh  data  it  is
+((n+1)*(m+1)+4)*d+4  where  n and m are the mesh dimensions and d is 1 for
+regular mesh data or 2 for data with errors.  If you have a name  for  the
+<A NAME="176">data set it takes up 1 storage location for every 4 characters. </A>
+
+                                  Example
+     TD:<U>SET</U> <U>STORAGE</U> <U>X</U> <U>Y</U> <U>SYMBOL</U>
+To see the current storage use the command:  SHOW STORAGE.
+     TD:<U>SET</U> <U>STORAGE</U> <U>SIZE=&lt;4+101*201+20&gt;</U>
+Preallocates storage for a 100 by 200 mesh with an 80 character name.
+
+
+</PRE>
+</BODY>

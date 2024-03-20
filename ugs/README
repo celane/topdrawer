@@ -1,0 +1,175 @@
+                     Univied Graphics System 2
+                            Ver. 2.10d
+                                on
+                             L I N U X
+                                                           岡村 弘之
+                                                      東京大学理学部
+
+この UGS (Unified Graphics Library) は、FNAL の A.E. Kreymer 氏が、
+UNIX 上で Topdrawer を動かすために移植した版を、さらに Linux 上で
+動作するように書き換えたものです。ただし、オリジナルの FNAL 版に
+対して、以下の変更・改良が加えられています。
+
+o f2c + gcc でプリプロセッサを使わずに通るように書き換えました (ただし
+  一部で g77 を使用)。修正されたソースは他社の UNIX fortran に対しても
+  上位互換となるように留意しました。
+
+o X-window に関しては Xlib + Xtoolkit(Intrinsics) だけを使うように
+  変更しました。FNAL 版では Motif widget を使っていましたが、Motif を
+  使う必然性は極めて希薄で、逆に Motif のライセンスを持たないシステム
+  への移植を困難にするからです。
+
+o X-window では、ウィンドウの前後関係が入れ替わった時 
+  (Exposure イベントが発生した時) ウィンドウの隠れていた部分の再描画を
+  ユーザープログラムで行わなければなりません。VMS の Xlib では非同期
+  イベントというのが定義できて、リアルタイムにイベントを処理する事が
+  可能だったのですが、一般に UNIX の Xlib ではイベント処理のためのポー
+  リングが必要です。完全に X でクローズしている、所謂マウスグリグリの
+  ソフトならこれでも不便ではないのですが、Topdrawer のようにメインが
+  標準入力待ちの状態でイベント処理を混ぜるというのは素直には実現しません。
+  しようが無いので一秒毎のタイマー割り込みでイベントを処理する事にしま
+  した。従って、描画が一呼吸止まるような感覚を覚える時があるかと思います
+  が、我慢してください。ちなみに gnuplot では、X 関係の処理のためにサブ
+  プロセスを起こしており、その中ではポーリングによってイベントをチェック
+  しています。これを真似るのは相当の書き換えが必要なので、御勘弁を...
+
+o X-window ドライバの点描画の部分がバグってました。カラー設定の引数が
+  間違っていたんですが、8 ビットカラーで白黒しか使わないと偶然 (?) にも
+  うまく描画されてしまうので、FNAL の作者も気付かなかったのでしょう。
+
+o マウスカーソルによる座標の読み採り
+  カーソルは、X-server の能力に応じてできるだけ大きなビットマップを割り
+  当てるようにしています。ビットマップカーソルが機能しない場合には、
+  フォントカーソルを使います。
+
+o X-window でビットマップフォントを使えるようにしました。
+  綺麗な出力を得るためには duplex フォントだけで十分とは思いますが、
+  大量のヒストグラムデータをパラパラ眺めたいという時などは、ハード(?)の
+  フォントを使う方が速いし、縮小した時の可読性が高いと言えます。
+  フォントは、後で述べる font pattern にマッチするものの中から、
+  要求される大きさに最も近いものを自動的に選択します。従って、
+  font pattern のサイズ指定部分は asterisk (*) にしておくのが無難です。
+
+o DUPLEX フォントとして UBCFONT を使用し、若干の拡張を加えました。
+  UBCFONT では CASE 文に "I"、"J"、"1"、"2" を指定すると、各々
+  Italic, Script, Sans-Serif, Gothic で出力されます 
+  (ただし set font duplex を実行した場合のみ)。
+  これも TDRVAX.EXE の拡張機能ですが、UGS2 が字体として使用している 
+  Hershey database (*) には元来含まれていたフォントの一部です。
+  今回は更に、CASE 文 "3"、"4" の指定で Bold-Roman, Bold-Italic が出力
+  されるように拡張を加えました。
+  また、負号 "-" はハイフンとして使うと間延びしてしまうので、CASE "1" で
+  修飾される "-" は、長さを少し短目にしました。
+
+ (*) Hershey database (NBS Special Publication No. 424) とは、Alan V. 
+     Hershey 氏が National Bureau of Standards 在職中にまとめたプロッター
+     用ベクトルフォントデータ集で、2000 以上のグリフから成っています。
+     GhostScript でも Hershey database をフォントに使っており、詳しい
+     説明が ghostscript/doc/hershey.doc にあります。
+
+o 出力デバイスとして EPSF を追加しました。
+  と言っても、このデバイス名は慣習的なものです。実は FNAL 版の PostScript
+  用 UGS ドライバでは既に BoundingBox を描画域ピッタリに設定する機能が付加
+  されており、紙面の端に小さく描かれた図を TeX に取り込む場合でも自動的に
+  位置決めされるようになっています。追加した EPSF ドライバの PostScript 
+  ドライバと異なる点は、単に用紙を縦置きにして使用する (上側半分を使用し
+  ない) 事だけです。本質的には上記の set size ... コマンドで実現できる事
+  なのですが、ファイルの書き換えを必要とする点、および TeX の EPSF マクロ
+  では“回転”ができないという点から、意外に重宝すると期待します。
+
+  ちなみに、適切に BoundingBox の指定された (Topdrawer 出力ではそうなって
+  いると期待するわけですが) PostScript ファイルを TeX に取り込むには、
+          \documentstyle[...,epsf]{....}
+             .......
+          \begin{figure}[h]
+          \centering
+          \epsfile{file=figure.eps, scale=0.5}
+          \caption{hogehoge}
+          \end{figure}
+             ......
+  等とやるだけです。後は xdvi を起動して PSfile ボタンをクリックすれば、
+  自動的に最適の位置に貼り込まれているのが確認されるはずです。
+
+o PostScript および EPSF の出力ファイル名の長さを 256 文字としました。
+
+o Xterm (Kterm) 上での利用を考慮して、TEK4010 のデバイス依存コードに
+  VT100 <=> TEK4010 のモード切替えのエスケープシークエンスを加えました。
+
+o X-window 出力の際に、default-file から属性を見るようにしました。
+  アプリケーション名は“Ugs”で、リソース名と省略値は
+         Ugs*width:       768         # ウィンドウの大きさ
+         Ugs*height:      585
+         Ugs*white:       White       # UGS の色指定に対応して
+         Ugs*red:         Red         # 実際に使われるの色の名前
+         Ugs*green:       Green       # または‘#RRGGBB’の文字列
+         Ugs*blue:        Blue
+         Ugs*yellow:      Yellow
+         Ugs*magenta:     Magenta
+         Ugs*cyan:        Cyan
+         Ugs*background:  Black
+         Ugs*fontPattern: -adobe-helvetica-medium-r-normal--*-*-75-75-*
+                                      # 前述のビットマップフォントを参照
+         Ugs*title:       UGS on X Window System    # タイトルバー
+         Ugs*iconName:    UGS
+         Ugs*geometry:   (指定無し)
+                          # +0+0 等とすれば画面の左上端にウィンドウを開く
+  等となっています。変更したい場合は ~/.Xdefaults にこれらの行を書き
+  加えてください (font>P<attern や icon>N<ame の大文字に注意してください。
+  これは意地悪では無く、X の通常の慣習に従っただけです)。少し X に慣れて
+  いる人は、いきなり toplevel のクラスの値を指定して、ウィジェット名 
+  (実は“pad”となっています) を付けないのは不自然に思うかも知れませんが、
+  間違いではありません。何しろウィジェットが一つしか無いので、リソースを
+  そのまま引き継いでいるのです。
+
+  X のアプリケーションでは、常識的に -geometry とか -display という
+  コマンドラインオプションでデフォルトを変更する事ができますが、メインが
+  FORTRAN で書かれている UGS では、コマンドラインパラメータの渡し方が
+  規定されていないので、残念ながらこれらのオプションは使えません。
+
+o 塗潰しシンボルの追加
+  通常のプロットシンボル (SLAC 版では 'P'、Bonner Lab. 版では 'O' で修飾
+  される) 0, 1,... 9 の他に、以下のシンボルを加えました。
+         A  B  C  D  E  F  G  H  I  J  K  L  X  Y
+         ● ○ ■ □ ◆ ◇ ▲ △ ▼ ▽ ★ ☆ \\ \\
+  ただし塗潰しをサポートするデバイス、即ち X-window と PostScript でしか
+  実際には塗潰せません。オープンシンボルは背景色で塗潰してから描画している
+  ので、他のシンボルや曲線と重なっても (それが後から描かれたものならば) 
+  オープンシンボルのままです。
+  'X' および 'Y' で指定される '\\' は、各々 X 軸および Y 軸の“不連続”を
+  表す記号です (微分断面積を縦に並べて描く場合、スケールの切れ目を表す時に
+  使う、と言えばわかる人にはわかる)。二本の線の間は背景色で塗潰されるので、
+  “ちゃんと”切れ目ができます。
+
+
+o PostScript のデバイス依存コマンドの追加
+  postscr (epsf) のデバイス依存モジュールに以下のコマンドを追加しました。
+        FONT=<font>
+        WHITE=<rgb>
+        (RED, GREEN, BLUE, YELLOW, MAGENTA, CYAN, BLACK も同様)
+  ここで <rgb> とは赤緑青の色比を表す 16 進数 6 桁または 12 桁の文字列で、
+  <font> とは
+        Times-Roman
+        Times-Italic
+        Times-Bold
+        Times-BoldItalic
+        Helvetica
+        Helvetica-Oblique
+        Helvetica-Bold
+        Helvetica-BoldOblique
+        Courier
+        Courier-Oblique
+        Courier-Bold
+        Courier-BoldOblique
+        Symbol
+  のいずれかの文字列です (大/小文字は区別しません)。指定が無い場合の
+  デフォルトは、FONT=Helvetia、WHITE=FFFFFF、RED=FF0000、GREEN=00FF00、
+  BLUE=0000FF、YELLOW=FFFF00、MAGENTA=FF00FF、CYAN=00FFFF、BLACK=000000
+  です。
+
+o PostScript ドライバのデフォルトの解像度を 300dpi から 600dpi に変更しま
+  した。更に、線幅が解像度に依存する (解像度を上げると、線がより細くなる)
+  バグを修正しました。線幅の最小単位は 1/300″にしています。解像度 (と描画
+  域) に関するデバイス依存パラメータの名前と初期値は以下の通りです。
+        RUCMX = 600/2.54   RUCMY = 600/2.54  ;  Rusters/cm
+        XMIN  =  300       YMIN  =  300      ;  Minimum in ruster unit
+        XMAX  = 6300       YMAX  = 4800      ;  Maximum in ruster unit

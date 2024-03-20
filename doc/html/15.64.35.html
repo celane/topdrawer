@@ -1,0 +1,34 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.35</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.35  LIMITS</H4></B> 
+
+<U>SE</U>T <U>LIM</U>ITS [<U>CU</U>RSOR] [<U>PE</U>RMANENT] [<U>SC</U>ALE n1 [[<U>TO</U>] n2]]
+                         either...
+     <U>FR</U>OM [<U>X</U>=]nx,[[<U>Y</U>=]ny,[[<U>Z</U>=]nz]]] <U>TO</U> [<U>X</U>=]nx,[[<U>Y</U>=]ny,[[<U>Z</U>=]nz]]]
+                         or...
+     [X [<U>FR</U>OM] x [<U>TO</U>] x]
+     [Y [<U>FR</U>OM] y [<U>TO</U>] y]
+     [Z [<U>FR</U>OM] z [<U>TO</U>] z]
+     [<U>XMI</U>N=x] [<U>XMA</U>X=x] [<U>YMI</U>N=y] [<U>YMA</U>X=y] [<U>ZMI</U>N=z] [<U>ZMA</U>X=z] [<U>PE</U>RMANENT]
+Limits define the space to draw the data.  They do not necessarily limit
+the data points plotted.  Normally limits are automatically set from all
+available data during the first plot.  If you read data, plot and then
+read more data and plot again, the first data set determines the limits.
+This command allows you to set the limits of the plot independently of the
+data.  This should be used before the first PLOT, JOIN, HIST, or BARGRAPH
+command.  The limits are reset when a new plot is started.  If this
+command is issued without any limits specified, all currently set limits
+are removed.
+                                  <U>WARNING</U>
+     If this command is issued in between 2 plots overlaying each
+<A NAME="156">     other, they will not have the same scales. </A>
+
+See also:SET WINDOW
+
+
+</PRE>
+</BODY>

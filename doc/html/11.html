@@ -1,0 +1,39 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual Chapter 11</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>Chapter 11  COORDINATE_FRAME</H4></B>
+<A NAME="19"> </A>
+There are 2 different sets of frames used in  creating  plots.   They  are
+DATA  and TEXT frames.  TEXT is always specified in inches Unless modified
+by either a SET SIZE or SET UNITS command.  The character and symbol sizes
+and  are  all specified in tenths of inches.  Both of these may be changed
+by the SET UNITS command.  The actual data is in the DATA frame, which  is
+mapped  to  the  physical (TEXT) frame at the time of plotting.  The plots
+are all scaled automatically, unless you use the  command  SET  LIMITS  to
+specify  the  scale.   All commands which plot "things" work in either the
+DATA or the TEXT frame.  You may select the frame with the option DATA  or
+TEXT.   In  addition if 3d coordinates are used the frame is automatically
+DATA.
+
+     The  DATA  frame  is  not  mapped  to the TEXT frame until a plotting
+command or a command which uses the data frame is used.  Plotting commands
+are  JOIN,  HISTOGRAM,  PLOT and so on.  Commands which use the data frame
+are ARROW DATA, BOX DATA, TITLE DATA and so  on.   If  you  wish  to  have
+TOPDRAWER  automatically  set  the  data frame, you should supply the data
+<U>before</U> any commands which reference the data frame.
+
+Several commands modify the data frame, once it has been defined:
+     SET WINDOW
+     SET LIMITS
+     SET THREE
+     SET SIZE
+     SET SCALE
+These commands allow you to overlay different plots with different scales.
+Just reading in new data does not change the current data frame.
+
+
+</PRE>
+</BODY>

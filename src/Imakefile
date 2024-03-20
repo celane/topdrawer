@@ -1,0 +1,48 @@
+#
+# Imakefile for topdrawer/src
+#
+
+LIB      = ../td.a
+
+#include "../Imakefile.def"
+
+OBJ  = \
+readpr_.o  \
+readx_.o   \
+help_.o    \
+hb_search_id.o \
+help.o     \
+smctrl.o   \
+t2axes.o   \
+t2cntr.o   \
+t2del.o    \
+t2fft.o    \
+t2fill.o   \
+t2fit.o    \
+t2main.o   \
+t2mesh.o   \
+t2plot.o   \
+t2savd.o   \
+t2set.o    \
+t2setc.o   \
+t2seth4.o  \
+t2show.o   \
+t2smooth.o \
+t2spline.o \
+t2tabl.o   \
+t2timf.o   \
+t2xfrm.o   \
+td.o       \
+tdend.o    \
+tdtext.o   \
+token.o    \
+txline.o   \
+txxug77.o  \
+td2ugs.o
+
+AllTarget($(LIB))
+
+$(LIB):: $(OBJ)
+	$(AR) $(ARFLAGS) $(LIB) $(OBJ)
+	$(RANCMD)
+

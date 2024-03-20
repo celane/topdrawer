@@ -1,0 +1,33 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 18.33</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>18.33  TD3JIN</H4></B> 
+
+This joins 3-d data.
+CALL TD3JIN(ARRAY,NX,NY,[[[[[[IXYZ],ITXTUR],NXL],NYL],NXH],NYH])
+     1.  ARRAY(NX,NY+1) - Contains the 3-d data.
+      *  ARRAY(1,1) - N1+N2*4 - N=1,2,3 for X,Y,Z
+         N1=1 if ARRAY(1,1) is X, 2 if Y, 3 if Z.
+         N2=1 if ARRAY(1,1) is X, 2 if Y, 3 if Z.
+      *  ARRAY(2:NX,1) - X values at center of bin
+      *  ARRAY(1,2:NY) - Y values at center of bin
+      *  ARRAY(2:NX,2:NY) - Z values
+     2.  IXYZ controls type of plot.
+      *  0 = draw X,Y,Z
+      *  1 = draw X lines only
+      *  2 = draw Y lines only
+      *  3 = draw Z lines only
+     3.  ITXTUR - (N*64=texture, N=1:7)
+     4.  NXL - Low X chan to plot (0=plot all)
+     5.  NYL - Low Y chan to plot (0=plot all)
+     6.  NXH - High X chan to plot (0=plot all)
+     7.  NYH - High Y chan to plot (0=plot all)
+For      more      information      see      the      sample      program:
+TOPDRAWER_ROOT:[EXAMPLES]TD_DEMO3.FOR
+
+
+</PRE>
+</BODY>

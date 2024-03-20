@@ -1,0 +1,4846 @@
+%N
+%U+ TDMACROS.MOR
+%L
+<TOKEN USING INFOIN,CARDIN>;
+%';SUBROUTINE'=';<RESET>;<SET>;"SUBROUTINE"'
+
+<SET>;					"Ready for reset"
+"
+	This module contains data 'manipulation routines'
+	T2_CONVOLUTE	- Convolute 2 data sets
+	T2_FIT		- Fit data and create a data set containing the fit
+	T2_FREQUENCY	- Bin data into 'frequency' distibution
+	T2_MDIV		- ADD,MULTIPLY,DIVIDE data sets
+	T2_PROJECT	- PROJECT mesh to 2-d data
+	T2_LIST_FIT	- Write fit param to a file
+	T2_SAVE_FIT	- Save/restore fit
+	T2_SHOW_FIT	- Show fit param
+	T2_SORT		- Sort data according to field.
+	T2_SYMBOL	- Insert symbols into existing data
+	T2_SWAP		- Swap data axes
+	T2_VALUE	- Insert or modify data in storage
+	T2VFTB		- Parses FROM/TO/BY fields
+	T2FTBY		- Parses FROM/TO/BY fields
+	T2FPAR		- Setup FROM/TO/BY params from scales/or spec. data
+	T2MSCK		- Check mesh axes
+	T2_CHECK_DEPERR	- CHeck if dependent error exists.
+
+Written by John Clement	RIce University
+
+"
+%E  SUBROUTINE T2_CONVOLUTE  --- Convolute a data set
+   SUBROUTINE T2_CONVOLUTE($INFO,$CARD);
+"
+	Convolute several data sets by the selected data set
+"
+   IMPLICIT NONE;
+   INTEGER $INFO(10);
+   CHARACTER*(*) $CARD;
+   CHARACTER*1 CXYZ(3) /'X','Y','Z'/;
+   $SPECIFICATION;
+   $POINT ARRAYS($NPOINTS);
+   $SPECIFYNONE;
+   $SELECTSPEC;
+   $MAINSPEC;
+   $BOOLEAN LINVER ,LHIS ,LHIS2 ,LERR ,LNERR ,LNORM ,CFT ,LCFT;
+   $BOOLEAN LFIRST, LTEST;
+   INTEGER T2BTRIM;
+   INTEGER ISET,JSET,IOFF(2);
+   INTEGER I,J,K,L,M,N,IMAX,JMAX;
+"
+	Pointers to Z values for data sets 1,2,3
+       1 is data set to convolute
+       2 is the convolution data
+       3 is result
+"
+   INTEGER IZ1,IZ2,IZ3,IDZ1,IDZ2,IDZ3,IZ1S,IZ2S,IZ3S;
+   INTEGER ICONV;				"Convolution data set"
+   INTEGER NPTS,NLIN;
+   REAL T,TR,TI,Y1,Y2,X0(2,3),DX(2,3),TNORM,DENOM,SUM,DSUM;
+   INTEGER IOUT;
+   INTEGER ISETC(NSETD,4);
+   ICONV=0;
+   LERR=.true.;
+   LINVER=.false.;
+   LNORM=.false.;
+   LCFT=.false.;
+   LFIRST=.true.;
+   <I=1,3; <J=1,2; DX(J,I)=0; X0(J,I)=0; >  >
+   N_NAME=0;
+   <TOKEN KEY LOOP> <
+      APPEND:Y    <LAPPEN=LTOKEN;>
+      BY:D      <
+	ICONV=INTEG;
+	IF ($ERROR) RETURN;			"Error ?"
+		"Check if convolution is a histogram"
+	CALL T2IHIS($INFO,$CARD,LCHECK,ICONV,1,$LARGE INTEGER,
+					      1,$LARGE INTEGER,HNONE,
+					      ISETC,X0,DX);
+	IF ($ERROR) RETURN;			"Error ?"
+      >
+      CHECK:Y     <LCHECK=LTOKEN;>
+      ERROR:Y     <LERR=LTOKEN;>
+      FFT:Y       <LCFT=LTOKEN;>
+      INVERT:Y    <LINVER=LTOKEN;>
+      LOG:Y       <LLOG=LTOKEN;>
+      MONITOR:Y   <LMONITOR=LTOKEN; >
+      NORMALIZED:Y <LNORM=LTOKEN;>
+      SETS        <CALL T2NSET($INFO,$CARD,NS1,NS2);>
+      SELECT:S    <C_SELECT=STRNG; N_SELECT=MAX(1,NSTRNG); >
+      NAME:S      <N_NAME=MAX(1,NSTRNG); C_NAME=STRNG(:N_NAME); >
+   >
+   IF ($ERROR) RETURN;
+   IF (ICONV.eq.0) THEN;
+	ERROR OUT; '*** ERROR *** Missing convolution set';
+	RETURN;
+   ENDIF;
+   IF (N_NAME .eq. 0) THEN;
+	C_NAME='Convolution %';
+	IF (LINVER)  C_NAME='Convolution-1 %';
+	N_NAME=T2BTRIM(C_NAME);
+   ENDIF;
+
+	"Check if selected data sets match"
+
+
+   <ISET=NS1,NS2;
+      IF (ISET .eq. ICONV .and. NS1.ne.NS2) <NEXT>;	"Skip convolution set"
+      CALL T2GDSET(ISET,N1,N2,N3,N4,ISETD,HNONE,C_SELECT(:N_SELECT));
+      IF (NP .lt. N1) <NEXT>;
+      CALL T2IHIS($INFO,$CARD,LCHECK,ISET,N1,N2,N3,N4,HNONE,
+					  ISETC(1,2),X0(1,2),DX(1,2));
+      IF (ISETC(NBTYPE,2).lt.ISETC(NBTYPE,1)) THEN;
+	 ERROR$MESSAGE
+	 '*** ERROR *** You may not convolute histogram by mesh, Set=',ISET;
+      ELSEIF (LCHECK) THEN;
+	 <I=1,ISETC(NBTYPE,2);
+	    IF ( ABS( ABS(DX(I,1))-ABS(DX(I,2)) )*ISETC(NPDATA+I-1,2)
+		.ge. 0.01*ABS(DX(I,2)) ) THEN;
+	       ERROR$MESSAGE  '*** ERROR *** ',CXYZ(I),
+		  ' data set widths do not match Sets:',ICONV,ISET;
+	    ENDIF;
+	 >
+      ENDIF;
+      IF ($ERROR) RETURN;
+   >
+   IF (LNORM) THEN;
+      TNORM=0.0;
+      K=ISETC(NZDATA,1);
+      <I=1,ISETC(NLDATA,1);
+	 <J=1,ISETC(NPDATA,1);
+	    TNORM=TNORM+DATBUF(K);
+	    K=K+ISETC(NINDAT+1,1);
+	 >
+	 K=K+ISETC(NINDAT+1,1);
+      >
+      if (TNORM.eq.0) TNORM=1;
+   ELSE;
+      TNORM=1.0;
+   ENDIF;
+   LCHECK=.false.;
+   <ISET=NS1,NS2;
+      IF (ISET .eq. ICONV) <NEXT>;			"Skip convolution set"
+      CALL T2GDSET(ISET,N1,N2,N3,N4,ISETD,HNONE,C_SELECT(:N_SELECT));
+      IF (NP .lt. N1) <NEXT>;
+      CALL T2IHIS($INFO,$CARD,LCHECK,ISET,N1,N2,N3,N4,HNONE,
+					  ISETC(1,2),X0(1,2),DX(1,2));
+      NPTS=ISETC(NPDATA,2)+ISETC(NPDATA,1)-1;
+      NLIN=ISETC(NLDATA,2)+ISETC(NLDATA,1)-1;
+      IF (LINVER.or.LCFT) THEN;				"Invert ?"
+	 NPTS=NPTS+IAND(1,NPTS);			"Make Number even"
+	 IF (NLIN.gt.1) NLIN=NLIN+IAND(1,NLIN);		"Make Number even"
+      ENDIF;
+      IF (ISETC(NBTYPE,2).eq.1) THEN;			"normal data ?"
+	 CALL T2NEWS(NPTS,C_NAME(:N_NAME));		"Setup the data"
+      ELSE;						"Mesh ?"
+	 CALL T2NEWM(ISETC(NINDAT,2),NPTS+1,NLIN+1,
+		C_NAME(:N_NAME));			"Set it up"
+      ENDIF;
+      JSET=NDSETS;
+      IF (LINVER.or.LCFT) THEN;				"Invert ?"
+	 CALL T2NEWM(4,NPTS,NLIN,' ');			"Get scratch area"
+      ENDIF;
+		"Now get new histogram info"
+      CALL T2IHIS($INFO,$CARD,LCHECK,ICONV,1,$LARGE INTEGER,
+					  1,$LARGE INTEGER,HNONE,
+					  ISETC(1,1),X0(1,1),DX(1,1));
+      CALL T2IHIS($INFO,$CARD,LCHECK,ISET,1,$LARGE INTEGER,
+					  1,$LARGE INTEGER,HNONE,
+					  ISETC(1,2),X0(1,2),DX(1,2));
+      CALL T2IHIS($INFO,$CARD,LCHECK,JSET,1,$LARGE INTEGER,
+					  1,$LARGE INTEGER,HNONE,
+					  ISETC(1,3),X0(1,3),DX(1,3));
+      IF (LINVER.or.LCFT) THEN;
+	 CALL T2IHIS($INFO,$CARD,LCHECK,NDSETS,1,$LARGE INTEGER,
+					  1,$LARGE INTEGER,HNONE,
+					  ISETC(1,4),X0(1,3),DX(1,3));
+      ENDIF;
+      IF ($ERROR) RETURN;
+      IF (LAPPEN) THEN;					"New data set ?"
+	 IOUT=3; IOFF(1)=0; IOFF(2)=0;
+      ELSE;						"Overlay old data"
+	    "The offsets select the center of the data"
+	 IOUT=2;					"Output data"
+	 IOFF(1)=(ISETC(NPDATA,1)-1)/2;			"X Offset of data"
+	 IOFF(2)=(ISETC(NLDATA,1)-1)/2;			"Y Offset of data"
+      ENDIF;
+	  "Do inverse using FFT"
+      IF (LINVER.or.LCFT) THEN;
+	 <N=1,2;
+	       "Now get data set"
+	    IZ2=ISETC(NZDATA,N);			"Original data"
+	    IZ3S=ISETC(NXDATA,4)+2*N-2;			"To location"
+	       "IZ3 must be offset to get correct scale"
+	    IF (N.eq.2.and. .not. LCFT) IZ3S=IZ3S+
+	      ( (ISETC(NPDATA,1)-1)+(ISETC(NLDATA,1)-1)*NPTS )*4;
+	    <M=1,ISETC(NLDATA,N);
+	       IZ3=IZ3S;
+	       <I=1,ISETC(NPDATA,N);
+		  DATBUF(IZ3)=DATBUF(IZ2)/TNORM; "Transfer and normalize"
+		  IZ3=IZ3+4;				"To location"
+		  IZ2=IZ2+ISETC(NINDAT+1,N);			"From location"
+	       >
+	       IZ3S=IZ3S+NPTS*4;
+	       IZ2=IZ2+ISETC(NINDAT+1,N);			"Skip mesh Y"
+	    >
+	       "FFT the data set"
+	    J=ISETC(NXDATA,4)+2*N-2;			"Current data set"
+	    $ERROR=.not. CFT(DATBUF(J),DATBUF(J+1),
+		      NPTS*NLIN,NPTS,
+		      NPTS,4);
+	    IF (ISETC(NBTYPE,2).eq.2 .and. .not. $ERROR)
+	       $ERROR=.not. CFT(DATBUF(J),DATBUF(J+1),
+			  NPTS*NLIN,NLIN,
+			  NPTS*NLIN,4);
+	    IF ($ERROR) GOTO :FFTFAIL:;
+	    TNORM=1.0;
+	 >
+	     "Divide 2 by 1 to do inverse"
+	 J=ISETC(NXDATA,4);				"First set"
+	 DENOM=NPTS*NLIN;
+	 <M=1,NLIN;
+	    <I=1,NPTS;
+	      IF (LINVER) THEN;
+	       DENOM = NLIN*NPTS*(DATBUF(J)**2+DATBUF(J+1)**2);  "Magnitude"
+	       TR= DATBUF(J)*DATBUF(J+2) + DATBUF(J+1)*DATBUF(J+3); "real part"
+	       TI= DATBUF(J+3)*DATBUF(J) - DATBUF(J+2)*DATBUF(J+1);"Imaginary"
+	      ELSE;
+	       TR= DATBUF(J)*DATBUF(J+2) - DATBUF(J+1)*DATBUF(J+3); "real part"
+	       TI= DATBUF(J+3)*DATBUF(J) + DATBUF(J+2)*DATBUF(J+1);"Imaginary"
+	      ENDIF;
+	       DATBUF(J)=TR; DATBUF(J+1)=TI;
+	       IF (DENOM.NE.0.) THEN;			"Magnitude not 0.0 ?"
+		  DATBUF(J)= DATBUF(J)/DENOM;
+		  DATBUF(J+1)= DATBUF(J+1)/DENOM;
+	       ENDIF;
+	       J=J+4;					"New location"
+	    >
+	 >
+	     "Inverse FFT the result"
+	 J=ISETC(NXDATA,4);				"location of result"
+	 $ERROR=.not. CFT(DATBUF(J),DATBUF(J+1),
+			  NPTS*NLIN,NPTS,
+			  NPTS,-4);
+	 IF (ISETC(NBTYPE,2).eq.2 .and. .not. $ERROR) "Mesh data ?"
+	    $ERROR=.not. CFT(DATBUF(J),DATBUF(J+1),
+			  NPTS*NLIN,NLIN,
+			  NPTS*NLIN,-4);
+	 IF ($ERROR) THEN;
+:FFTFAIL:
+	    ERROR OUT; '*** ERROR *** FFT failure (CFT)';
+	    CALL T2RMLS; CALL T2RMLS;			"Remove last data set"
+	    RETURN;
+	 ENDIF;
+	     "Transfer result"
+	 K=ISETC(NXDATA,4);				"In data"
+	 J=ISETC(NZDATA,3);				"Out data"
+	 <M=1,NLIN;
+	    <I=1,NPTS;
+	       DATBUF(J)=DATBUF(K); J=J+ISETC(NINDAT+1,3); K=K+4;
+	    >
+	    J=J+ISETC(NINDAT+1,3);				"Skip Y value"
+	 >
+	 CALL T2RMLS;				"Remove scratch data set"
+      ELSE;
+		"Transfer data to convolute"
+	IZ2=ISETC(NZDATA,2);
+
+	IDZ3=1;
+	IF (LERR .and. ISETC(NDZDATA,2) .ne.1)
+		IDZ3=ISETC(NDZDATA,3);		"Errors ?"
+	LNERR=ISETC(NDZDATA+1,2) .ne.1;
+	L=(ISETC(NPDATA,1)-1)*ISETC(NINDAT+1,3)
+	 +(ISETC(NLDATA,1)-1)*ISETC(NINDAT+2,3);
+	IZ3S=ISETC(NZDATA,3)+L;			"Final loc."
+	<M=1,ISETC(NLDATA,2);
+	    IZ3=IZ3S;
+	    <N=1,ISETC(NPDATA,2);
+		DATBUF(IZ3)=DATBUF(IZ2);	"Transfer and normalize"
+		IF (IDZ3.ne.1) THEN;
+		    DATBUF(IZ3+1)=DATBUF(IZ2+1);	"Transfer error"
+		ENDIF;
+		IZ2=IZ2+ISETC(NINDAT+1,2);		"From location"
+		IZ3=IZ3+ISETC(NINDAT+1,3);		"To location"
+	    >
+	    IZ2=IZ2+ISETC(NINDAT+1,2);			"From location"
+	    IZ3S=IZ3S+ISETC(NINDAT+2,3);
+	>
+		"Now convolute it"
+	IZ3=ISETC(NZDATA,3);
+	IDZ3=1;
+	IF (LERR) IDZ3=ISETC(NDZDATA,3);	"Errors ?"
+	LNERR=ISETC(NDZDATA+1,3) .ne.1;
+	IDZ1=ISETC(NDZDATA,1);
+	<M=1,NLIN;				"Do each Y location or set3"
+	    <N=1,NPTS;				"Now each X location set 3"
+	       SUM=0; DSUM=0;			"Data and error sum"
+	       IZ1S=ISETC(NZDATA,1);
+	       IZ2S=IZ3;
+	       JMAX=MIN(ISETC(NPDATA,1),NPTS-N+1);
+	       <I=1,MIN(ISETC(NLDATA,1),NLIN-M+1);
+		 IZ1=IZ1S;
+		 IZ2=IZ2S;
+		 <J=1,JMAX;
+		    Y1=DATBUF(IZ1)/TNORM;	"Function"
+		    Y2=DATBUF(IZ2);		"Data value"
+		    SUM=SUM+Y1*Y2;		"Convolution"
+		    IF (IDZ3.ne.1) THEN;	"Calc err ?"
+			IF (IDZ1.ne.1) THEN;	"Erron func?"
+			    DSUM=DSUM+(Y2*DATBUF(IZ1+1)/TNORM)**2;
+			ENDIF;
+			DSUM=DSUM+(Y1*DATBUF(IZ2+1))**2;
+		    ENDIF;
+		    IZ1=IZ1+ISETC(NINDAT+1,1);
+		    IZ2=IZ2+ISETC(NINDAT+1,3);
+		  >
+		"Reset pointers for next X pass"
+		  IZ1S=IZ1S+ISETC(NINDAT+2,1);
+		  IZ2S=IZ2S+ISETC(NINDAT+2,3);
+	       >
+	       DATBUF(IZ3)=SUM;			"Save convolution"
+	       IF (IDZ3.ne.1) THEN;		"Error ?"
+		  DATBUF(IZ3+1)=SQRT(DSUM);
+		  IF (LNERR) DATBUF(IZ3+2)=DATBUF(IZ3+1);
+	       ENDIF;
+	       IZ3=IZ3+ISETC(NINDAT+1,3);
+	    >
+	    IZ3=IZ3+ISETC(NINDAT+1,3);
+	 >
+      ENDIF;
+	  "Setup symbols"
+      J=ISETC(NSDATA,IOUT);
+      IF (J.ne.1) THEN;
+	 <I=1,ISETC(NPDATA,IOUT); DATBUF(J)=SYMBOL; J=J+ISETC(NINDAT+1,IOUT); >
+      ENDIF;
+	"Now calculate the X/Y values"
+      <I=1,ISETC(NBTYPE,IOUT);
+	 X0(I,1)=X0(I,1)+X0(I,2)+IOFF(I)*DX(I,2);
+	 K=ISETC(NCSIZE*(I-1)+NXDATA,IOUT);		"X/Y value location"
+	 L=ISETC(NCSIZE*(I-1)+NDXDATA,IOUT);		"DX/DY"
+	 <J=1,ISETC(NPDATA+I-1,IOUT);
+	    DATBUF(K)=X0(I,1)+(J-1)*DX(I,2);
+	    K=K+ISETC(I+2,IOUT);
+	    IF (L.ne.1) THEN;
+	       DATBUF(L)=DX(I,2);
+	       L=L+ISETC(I+2,IOUT);
+	    ENDIF;
+	 >
+      >
+      IF (LMONITOR) THEN;			"Monitor result"
+	CALL TXVOID;
+	IF (.not. LFIRST) CALL T2WAIT('Convolute:',LTEST);
+	CALL TXNEXT;
+	CALL T2REST;				"Reset flags"
+	CALL TDSETS('WINDOW 1 OF 2');
+	<I=ISET,NDSETS,NDSETS-ISET;
+	    CALL T2GDSET(I,1,$LARGE INTEGER,1,$LARGE INTEGER,ISETD,HNONE,'*');
+	    NXYLIM(3,1)=I; NXYLIM(3,2)=I;
+	    IF (IBTYPE .eq. 1) THEN;
+		CALL T2HIST(DATBUF(I1),DATBUF(I2),DATBUF(I3),
+		DATBUF(I4),DATBUF(I5),DATBUF(I6),
+		0,0,NP-N1+1,NINCR0,
+		HNONE,HNONE,HNONE);
+	    ELSE;
+		CALL T23JIN(DATBUF(IM),NMESH0,NMESH1,NMESH2,0,0,
+		1,NP,1,NL);
+	    ENDIF;
+	    CALL T2_PLOT_TITLE(I,.false.);
+	    CALL TDSETS('WINDOW 2 OF 2');
+	>
+	CALL TXVOID;				"Flush all plot info"
+      ENDIF;
+      LFIRST=.false.;
+      IF (.not. LAPPEN) THEN;			"Not new data set ?"
+	 K=ISETC(NZDATA,2);
+	 M=1;
+	 IF (ISETC(NDZDATA,3).ne.1) M=ISETC(NDZDATA,2);
+	 <I=1,ISETC(NLDATA,2);
+	    L=ISETC(NZDATA,3)+
+		    (I+IOFF(2)-1)*ISETC(NINDAT+2,3)+
+		    (IOFF(1))*ISETC(NINDAT+1,3);
+	    IF (M.ne.1)
+	    N=ISETC(NDZDATA,3)+
+		    (I+IOFF(2)-1)*ISETC(NINDAT+2,3)+
+		    (IOFF(1))*ISETC(NINDAT+1,3);
+	    <J=1,ISETC(NPDATA,2);
+	       DATBUF(K)=DATBUF(L);
+	       K=K+ISETC(NINDAT+1,2);
+	       L=L+ISETC(NINDAT+1,3);
+	       IF (M.ne.1) THEN;
+		  DATBUF(M)=DATBUF(K);
+		  M=M+ISETC(NINDAT+1,2);
+		  N=N+ISETC(NINDAT+1,3);
+	       ENDIF;
+	    >
+	    K=K+ISETC(NINDAT+1,2);
+	    IF (M.ne.1) M=M+ISETC(NINDAT+1,2);
+	 >
+	 JSET=ISET;
+	 CALL T2RMLS;				"Remove last data set"
+      ENDIF;
+      DATDAT(1,1)=HNONE;
+      IF (LLOG) then;				"WRite result"
+	 WRITE(OUTSTR,'(4(A,I4))')
+	    '   Convolution of',ISET,' by ',ICONV,
+	    ' to ',Jset;
+	 IF (LINVER)OUTSTR(T2BTRIM(OUTSTR)+2:)='Inverted';
+	 IF (LNORM)OUTSTR(T2BTRIM(OUTSTR)+2:)='Normalized';
+	 CALL T2WRSQ(OUTSTR,.true.,$TERMINAL OUT,3);
+      ENDIF;
+   >
+   IF (LFIRST) WRITE($TERMINAL OUT)'   No data sets convoluted';
+   END;
+%E  SUBROUTINE T2IHIS  --- Get Histogram indices.
+SUBROUTINE T2IHIS($INFO,$CARD,LCHECK,ISET,N1,N2,N3,N4,TLIM,ISETC,X0,DX);
+"
+Checks if data is histogram and returns the information.
+Input:
+	$INFO,$CARD	For error message
+	LCHECK=.true.	If check whether hist and issue error message if not
+	N1,N2,N3,N4	Index Limits of the data to check
+	TLIM		Value Limits of data to check
+Output:
+	ISETC(NSETD)	The histogram locations (0 if coordinate not exist)
+	X0		Low X/Y value
+	DX		Difference in X/Y
+"
+   IMPLICIT NONE;
+   INTEGER $INFO(10);
+   CHARACTER*(*) $CARD;
+   INTEGER ISET,N1,N2,N3,N4;
+   REAL TLIM(2,3);
+   REAL X0(2),DX(2);
+   CHARACTER*1 CXYZ(3) /'X','Y','Z'/;
+   $BOOLEAN LCHECK,LHIS;
+   $SPECIFICATION;
+   $POINT ARRAYS($NPOINTS);
+   $MAINSPEC;
+   $SPECIFYNONE;
+   INTEGER I,J,ISETC(NSETD),JPTS;
+   CALL T2GDSET(ISET,N1,N2,N3,N4,ISETD,TLIM,'*');      "Get data set"
+   IF ($ERROR) RETURN;
+   NP=NP-N1+1; NL=NL-N3+1;
+   IF (IBTYPE.eq.1) THEN;			"1-D not mesh ?"
+      I3=I2; I6=I5;				"Setup Z as Y"
+      NINCR2=0;
+   ELSEIF (MESHN(3).ne.3) THEN;			"Z coordinate not 3 ?"
+      ERROR$MESSAGE  '*** ERROR *** Bad Z coordinate, Set=',ISET;
+      RETURN;
+   ELSEIF (MESHN(1).eq.2) THEN;
+      NINCR2=NINCR0;
+      I=I1;     I1=I2;	 I2=I;
+      I=I4;     I4=I5;	 I5=I;
+      I=NP;     NP=NL;	 NL=I;
+   ELSE;
+      NINCR2=NINCR1; NINCR1=NINCR0;
+   ENDIF;
+   NINCR2=NINCR2*NINCR1;
+   J=1;
+   <I=1,IBTYPE;
+      IF (IBTYPE.eq.2) J=MESHN(I);
+      CALL T2FHIS(ISET,J,N1,N2,N3,N4,LHIS,JPTS,X0(J),DX(J));
+      IF (.not.LHIS .and. LCHECK) THEN;
+	 ERROR$MESSAGE
+	 '*** ERROR *** Not a histogram coordinate ',CXYZ(J),' Set=',ISET;
+      ENDIF;
+   >
+"
+   <I=NSDATA,NSDATA+$MAXCOR-1; IF (DATBUF(ISETD(I)).eq.HNONE) ISETD(I)=0; >
+"
+   <I=1,NSETD; ISETC(I)=ISETD(I); >
+END;
+%E  SUBROUTINE T2SCOP  --- Selectively copy data sets
+   SUBROUTINE T2SCOP($INFO,$CARD,
+		     ISET1,N1P,NP1,N1L,NL1,
+		     ISET2,N2P,NP2,N2L,NL2,STRING);
+"
+      ISET1,2 are the data set numbers if ISET2=0 a new data set is created
+      N1P,NP1 is the range of points
+      N1L,NL1 is the range of lines
+"
+   IMPLICIT NONE;
+   INTEGER $INFO(10);
+   CHARACTER*(*) $CARD;
+   INTEGER ISET1,ISET2,N1P,N1L,NP1,NL1,N2P,N2L,NP2,NL2;
+   CHARACTER*(*) STRING;
+   $MAINSPEC;
+   $SPECIFICATION;
+   $POINT ARRAYS($NPOINTS);
+   $SPECIFYNONE;
+   INTEGER    NLDAT          ;
+   PARAMETER (NLDAT=NPDATA+1);
+   INTEGER ISETC(NSETD),I,J,K,L,M,N;
+   CALL T2GDSET(ISET1,N1P,NP1,N1L,NL1,ISETC,HNONE,'*');
+   IF ($ERROR) RETURN;
+   IF (ISETC(NPDATA).lt.N1P .or. ISETC(NPDATA+1).lt.N1L) RETURN;
+   IF (ISET2.eq.0.and.ISETC(NBTYPE).ne.0) THEN;      "Create a hist ?"
+      IF (ISETC(NBTYPE).eq.2) THEN;       "2-d ?"
+	 CALL T2NEWM(ISETC(NINDAT),ISETC(NPDATA)-N1P+2,ISETC(NPDATA+1)-N1L+2
+		,STRING);
+      ELSE;
+	 CALL T2NEWS(ISETC(NPDATA)-N1P+1,STRING);
+      ENDIF;
+      IF ($ERROR) RETURN;
+      ISET2=NDSETS;
+   ENDIF;
+   CALL T2GDSET(ISET2,N2P,NP2,N2L,NL2,ISETD,HNONE,'*');
+   IF ($ERROR) RETURN;
+   IF (ISETC(NBTYPE).eq.0 .or. ISETC(NBTYPE).ne.ISETD(NBTYPE)) THEN;
+      ERROR$MESSAGE '*** ERROR *** Mismatched data sets:',ISET1,ISET2; RETURN;
+   ENDIF;
+   IF (ISETD(NBTYPE).eq.1) THEN;			"Point data ?"
+      <M=-1,$MAXCOR-2;					"Transfer each coordinate"
+	 K=ISETC(NXDATA+M); L=ISETD(NXDATA+M);
+	 IF (DATBUF(K).ne.HNONE .and. DATBUF(L).ne.HNONE ) THEN;
+	    <I=1,MIN(ISETC(NPDATA)-N1P+1,ISETD(NPDATA)-N2P+1);
+		DATBUF(L)=DATBUF(K);
+		K=K+ISETC(NINDAT+1);
+		L=L+ISETD(NINDAT+1);
+	    >
+	 ENDIF;
+      >
+   ELSE;						"Mesh data ?"
+      DATBUF(ISETD(NMDATA))=DATBUF(ISETC(NMDATA));	"Save X/Y"
+      ISETC(NINDAT+1)=ISETC(NINDAT)*ISETC(NINDAT+1);
+      ISETD(NINDAT+1)=ISETD(NINDAT)*ISETD(NINDAT+1);
+      <M=0,2*NCSIZE-1;
+	J=M/NCSIZE;					"Move X,DX,Y,DY"
+	L=ISETD(NXDATA+M);
+	K=ISETC(NXDATA+M);
+	IF (DATBUF(K).ne.HNONE .and. DATBUF(L).ne.HNONE ) THEN;
+	    <I=1,MIN(ISETC(NPDATA+J),ISETD(NPDATA+J));
+		DATBUF(L)=DATBUF(K);
+		K=K+ISETC(NINDAT+J);
+		L=L+ISETD(NINDAT+J);
+	    >
+	ENDIF;
+      >
+      <M=0,NCMAX;						"Move Z,DZ"
+	 K=ISETC(NXDATA+4+M);
+	 L=ISETD(NXDATA+4+M);
+	 IF (DATBUF(K).ne.HNONE .and. DATBUF(L).ne.HNONE ) THEN;
+	    <I=1,MIN(ISETC(NLDAT)-N1L+1,ISETD(NLDAT)-N2L+1);
+		K=ISETC(NXDATA+4+M);
+		L=ISETD(NXDATA+4+M);
+		<J=1,MIN(ISETC(NPDATA)-N1P+1,ISETD(NPDATA)-N2P+1);
+		    DATBUF(L)=DATBUF(K);
+		    K=K+ISETC(NINDAT); L=L+ISETD(NINDAT);
+	       >
+	       ISETC(NXDATA+4+M)=ISETC(NXDATA+4+M)+ISETC(NINDAT+1);
+	       ISETD(NXDATA+4+M)=ISETD(NXDATA+4+M)+ISETD(NINDAT+1);
+	    >
+	 ENDIF;
+      >
+   ENDIF;
+   END;
+%E  SUBROUTINE T2_PROJECT  --- Select projection
+   SUBROUTINE T2_PROJECT($INFO,$CARD);
+   IMPLICIT NONE;
+   INTEGER $INFO(10);
+   CHARACTER*(*) $CARD;
+   $SPECIFICATION;
+   $SELECTSPEC;
+   $MAINSPEC;
+   $POINT ARRAYS($NPOINTS);
+   $BOOLEAN LINTEG,LAVER,LSPLIT;
+   INTEGER ISET,IP,IL,NN4,IXYZ,INDEP1,INDEP2,IDEP;
+   INTEGER INC0,INC1,INC2;
+   INTEGER IDD,I,II,III,J,K,NBINS,IPNT, IMESH;
+   INTEGER INEXT,IOUT,IIN,IDSETS,IPOINT, INFSAVE, LSTSAVE;
+   REAL XM,XX,WIDTH,DEPTH,T,YINIT;
+   REAL T2MSHX,T2MSHY,T2MSHZ;
+   CHARACTER*7 CXYZ;
+   REAL DVEC($MAXCOR),SUMDAT,YBEG,YEND,X0,X1,Y0,Y1,Z0,DZ0,DZ,YMIN,YMAX;
+   REAL DENOM,FAC;
+   REAL PARM(4);
+   $SPECIFYNONE;
+   $EQUIVALENCE;
+   $DATA;
+   EQUIVALENCE (IPNT,ICPOIN(1));
+   EQUIVALENCE (IIN,$IVTEMP2);
+   EQUIVALENCE (IOUT,$INEXTPTR);
+	"Create a set of projections from mesh data"
+   N_NAME=-16;   C_NAME='Project        %';
+   IXYZ=0;
+   LSPLIT=.false.;		"Split data line by line"
+   LINTEG=.false.;		"Integrate data ?"
+   LAVER=.false.;		"Average data ?"
+   IIN=$INEXTPTR;		"Next data set location"
+   INEXT=$INEXTPTR;
+   IDSETS=0;			"Counts number of data sets created"
+   INDEP1=N_XDATA;		"Independent axis (X)"
+   INDEP2=N_ZDATA;		"Other independent axis (Z)"
+   IDEP=N_YDATA;		"Dependend axis (U)"
+   <TOKEN KEY LOOP> <
+      SETS            <CALL T2NSET($INFO,$CARD,NS1,NS2);>
+      SELECT:S        <C_SELECT=STRNG; N_SELECT=MAX(1,NSTRNG); >
+      SPLIT:Y         <LSPLIT=LTOKEN; >
+      LOG:Y           <LLOG=LTOKEN; >
+      NAME:S      <N_NAME=MAX(1,NSTRNG); C_NAME=STRNG(:N_NAME); >
+      ADD:N,AVERAGE:Y <LAVER=LTOKEN; >
+      APPEND:Y        <LAPPEN=LTOKEN; >
+      INTEGRATE:Y     <LINTEG=LTOKEN; >
+      X:1,Y:2,Z:3 <
+	INFSAVE=$INFO(3);		"Read same token for each mesh"
+	LSTSAVE=NSTJOU;			"And keep the journal"
+	IXYZ=INTEG;
+	LINTEG=LINTEG.or.LSPLIT;
+	<ISET=NS1,NS2;
+	 CALL T2GDSET(ISET,N1,N2,N1,N2,ISETD,HNONE,C_SELECT(:N_SELECT));
+	 IF (NP .lt. N1 .or. IBTYPE.ne.2) <NEXT>;
+	 IDD=NINCR0-1;			"Non zero if mesh has error"
+	 IF (IXYZ.eq.MESH1) THEN;
+	    IP=NL;
+	    IL=NP;
+	    INC1=NINCR1*NINCR0;
+	    INC2=NINCR0;
+	    IMESH=1;
+	    YBEG=T2MSHX(DATBUF(IM),NINCR0,NINCR1,NINCR2,0);
+	    YEND=T2MSHX(DATBUF(IM),NINCR0,NINCR1,NINCR2,NINCR1);
+	 ELSEIF (IXYZ.eq.MESH2) THEN;;
+	    IP=NP;
+	    IL=NL;
+	    INC2=NINCR0*NINCR1;
+	    INC1=NINCR0;
+	    IMESH=2;
+	    YBEG=T2MSHY(DATBUF(IM),NINCR0,NINCR1,NINCR2,0);
+	    YEND=T2MSHY(DATBUF(IM),NINCR0,NINCR1,NINCR2,NINCR2);
+	 ELSE;
+	    ERROR OUT;('*** ERROR *** Wrong axis selected');
+	    RETURN;
+	 ENDIF;
+	 YMIN=MIN(YBEG,YEND); YMAX=MAX(YBEG,YEND);
+	 YBEG=YMIN;           YEND=YMAX;
+	 PARM(1)=YMIN; PARM(2)=YMAX; PARM(4)=1;
+	 $INFO(3)=INFSAVE;
+	 NSTJOU=LSTSAVE;
+	 CALL T2FTBY($INFO,$CARD,PARM,11+16);
+	 IF ($ERROR) RETURN;
+	 NBINS=NINT(PARM(4));
+	 IF (MIN(PARM(1),PARM(2)) .gt. YEND .or.
+	     MAX(PARM(1),PARM(2)) .lt. YBEG )
+	     ERROR OUT;'*** Warning *** Range outside of mesh';
+	 <III=1,NBINS;				"Now do for each proj"
+	    XX=PARM(1)+PARM(3)*(III-1);
+	    XM=XX+PARM(3); IF (III .eq. NBINS) XM=PARM(2);
+	    YMIN=MIN(XX,XM); YMAX=MAX(XX,XM);	"RAnge to project"
+	    IF (YMIN .gt. YEND) <NEXT>;		"Outside data range ?"
+	    IF (YMAX .lt. YBEG) <NEXT>;
+	    YMIN=MIN(MAX(YMIN,YBEG),YEND);	"Limit YMIN to correct range"
+	    YMAX=MIN(MAX(YMAX,YBEG),YEND);	"Limit YMAX to correct range"
+	    Y1=YBEG;
+	    N3=0; N4=IL;
+	    <I=1,IL;				"Find the range of points"
+		Y0=Y1;
+		IF (IMESH.eq.1) THEN;		"Get end of mesh bin"
+		   Y1=T2MSHX(DATBUF(IM),NINCR0,NINCR1,NINCR2,I+1);
+		ELSE;
+		   Y1=T2MSHY(DATBUF(IM),NINCR0,NINCR1,NINCR2,I+1);
+		ENDIF;
+		WIDTH=Y1-Y0;
+		FAC=SIGN(1.,WIDTH);
+		IF (FAC*(YMIN-Y0).ge.0 .and. FAC*(YMIN-Y1).lt.0) N3=I;
+		IF (FAC*(YMAX-Y0).ge.0 .and. FAC*(YMAX-Y1).lt.0) N4=I;
+	    >
+	    IF (N3.eq.0) N3=IL;
+	    IF (N3.gt.N4) then;				"indices reversed ?"
+	       I=N3; N3=N4; N4=I;
+	       T=YMIN; YMIN=YMAX; YMAX=T;
+	    ENDIF;
+	    IF (N_NAME .lt. 0) THEN;
+		CALL T2GVNM(NCSIZE*(IXYZ-1)+N_XDATA,C_NAME(9:15));
+	    ENDIF;
+	    CALL T2NEWS(IP,C_NAME(:ABS(N_NAME)));	"Setup the data"
+	    IF ($ERROR) RETURN;
+	    IPOINT=IPOINT+IP;				"Count the points"
+	    IDSETS=IDSETS+1;				"And data sets"
+	    INEXT=$IMSPTR;			"The next point goes here"
+	    IF (IMESH.eq.1) THEN;
+	       Y0=T2MSHX(DATBUF(IM),NINCR0,NINCR1,NINCR2,N3);
+	       Y1=T2MSHX(DATBUF(IM),NINCR0,NINCR1,NINCR2,N4+1);
+	       X1=T2MSHY(DATBUF(IM),NINCR0,NINCR1,NINCR2,0);
+	    ELSE;
+	       Y0=T2MSHY(DATBUF(IM),NINCR0,NINCR1,NINCR2,N3);
+	       Y1=T2MSHY(DATBUF(IM),NINCR0,NINCR1,NINCR2,N4+1);
+	       X1=T2MSHX(DATBUF(IM),NINCR0,NINCR1,NINCR2,0);
+	    ENDIF;
+	    YINIT=Y0;
+	    IF (.not.LSPLIT) THEN;
+	       YMIN=Y0; YMAX=Y1;
+	    ENDIF;
+	    DATDAT(1,1)=HNONE;
+	    IF (LLOG) THEN;
+	       CALL T2GVNM(NCSIZE*(IXYZ-1)+N_XDATA,CXYZ);
+	       WRITE(OUTSTR,*)
+	       '  Project along ',CXYZ,
+	       ' From ',YMIN,' to ',YMAX,' Set=',MAX(1,NDSETS);
+	       CALL T2WRSQ(OUTSTR,.true.,$TERMINAL OUT,3);
+	    ENDIF;
+	    <I=1,$MAXCOR; DVEC(I)=0; >
+	    DVEC(N_SYMBOL)=SYMBOL;
+	    DVEC(INDEP2)=(YMIN+YMAX)/2;
+	    DVEC(INDEP2+1)=ABS(YMIN-YMAX)/2;
+	    DVEC(IDEP)=0;
+	    IF (IDD.ne.0) THEN;			"Error ?"
+		I1=IM;
+		<J=1,IP;
+		    I1=I1+INC1;
+		    IPNT=I1+N3*INC2+1;
+		    <I=N3,N4;
+			IF (DATBUF(IPNT).ne.0) GOTO :DZOK:;
+			IPNT=IPNT+INC2;
+		>   >
+		IDD=0;				"No error"
+	    ENDIF;
+:DZOK:
+	    I1=IM;
+	    DZ0=1;
+	    <J=1,IP;
+	       X0=X1;
+	       IF (IMESH.eq.1) THEN;
+		  X1=T2MSHY(DATBUF(IM),NINCR0,NINCR1,NINCR2,J+1);
+	       ELSE;
+		  X1=T2MSHX(DATBUF(IM),NINCR0,NINCR1,NINCR2,J+1);
+	       ENDIF;
+	       DVEC(INDEP1)=(X1+X0)/2;
+	       DVEC(INDEP1+1)=ABS(X1-X0)/2;
+	       I1=I1+INC1;
+	       IPNT=I1+N3*INC2;
+	       SUMDAT=0;
+	       Y1=YINIT;
+	       DZ=0;
+	       DENOM=0;
+	       <I=N3,N4;
+		  Z0=DATBUF(IPNT);			"Get Z value"
+		  IF (IDD.ne.0) DZ0=DATBUF(IPNT+1)**2;	"And DZ value"
+		  IF (DZ0.gt.0) THEN;			"DZ too small ?"
+		     FAC=1;				"Nomalization"
+		     IF (LAVER) THEN;
+			FAC=1/DZ0;		"If averaging normal."
+		     ENDIF;
+		     IF (LINTEG) THEN;			"Integrate or split?"
+			Y0=Y1;				"Find depth"
+			IF (IMESH.eq.1) THEN;
+			   Y1=T2MSHX(DATBUF(IM),NINCR0,NINCR1,NINCR2,I+1);
+			ELSE;
+			   Y1=T2MSHY(DATBUF(IM),NINCR0,NINCR1,NINCR2,I+1);
+			ENDIF;
+			DEPTH=ABS(Y1-Y0);
+			IF (DEPTH.eq.0) DEPTH=1;
+			IF     (I.eq.N3) THEN; FAC=FAC*ABS(Y1-YMIN);
+			ELSEIF (I.eq.N4) THEN; FAC=FAC*ABS(YMAX-Y0);
+			ELSE;                  FAC=FAC*DEPTH;
+			ENDIF;
+			IF (LSPLIT) FAC=FAC/DEPTH;	"If splitting chan"
+		     ENDIF;
+		     DENOM=DENOM+FAC;
+		     SUMDAT=SUMDAT+Z0*FAC;
+		     DZ=DZ+FAC*DZ0;
+		  ENDIF;
+		  IPNT=IPNT+INC2;
+	       >
+	       IF (IDD.eq.0) DZ=0;
+	       DZ=SQRT(DZ);
+	       IF (LAVER) THEN;
+		  IF (DENOM.eq.0) DENOM=1;
+		  DZ=DZ/DENOM;
+		  SUMDAT=SUMDAT/DENOM;
+	       ENDIF;
+	       DVEC(IDEP)=SUMDAT;
+	       DVEC(IDEP+1)=DZ;
+	       DVEC(IDEP+2)=DZ;
+	       <K=1,NINCR; DATBUF(INEXT)=DVEC(IVARBL(K)); INEXT=INEXT+1; >
+	    >
+	 >
+       >
+      >
+   >
+   IF ($ERROR) RETURN;
+   IF (NDSETS .eq. IDSETS) THEN;
+	ERROR OUT;'*** No mesh data projected';
+   ELSEIF (IXYZ.le.0) THEN;
+      ERROR OUT; ('*** ERROR *** No axis selected');
+   ELSEIF (IPOINT .gt. 0) THEN;
+      IF ( .not. LAPPEN) THEN;
+	 NDSETS=IDSETS;
+	 NPOINT=IPOINT;
+	 IOUT=$IBASEPTR;
+	 <J=IIN,INEXT-1; DATBUF(IOUT)=DATBUF(J); IOUT=IOUT+1; >
+      ENDIF;
+   ENDIF;
+END;
+%E  SUBROUTINE T2_FREQUENCY  --- BIN command
+SUBROUTINE T2_FREQUENCY($INFO,$CARD);
+"
+	Handles 'FREQUENCY' or 'BIN' command
+"
+   IMPLICIT NONE;
+   INTEGER $INFO(10);
+   CHARACTER*(*) $CARD;
+   CHARACTER*4 CXYZ(2);
+   DATA CXYZ/' (X ',' (Y '/;
+   $SPECIFYNONE;
+   $SPECIFICATION;
+   $SELECTSPEC;
+   $MAINSPEC;
+   $POINT ARRAYS($NPOINTS);
+   $BOOLEAN LSET(4,2),LXYZ(2);
+   $BOOLEAN LDVEC($MAXCOR),LNORMAL,LCVEC(2);
+   $BOOLEAN LBINS(2),LMESH,LERROR,LSPLITX,LSPLITY;
+   $BOOLEAN LYV,LZV,LDX,LDY,LDZ;
+   $BOOLEAN LGAUS ,LAVER;
+   INTEGER IVALS,IN,ISSAV,IPSAV,NSTEP1,IPOINT;
+   REAL WGTMIN,WGT,FAC1,FAC2;
+   INTEGER ISET,INDEP,INDDEP,IDEP,IDDEP,IXYZ,JLIM, IZERO;
+   INTEGER I,J,K,M,N,IMIN,IMAX,JMIN,JPNT;
+   INTEGER MMIN,MMAX,NBINS,NROWS,NSTEP,NLIM;
+   REAL T2FRQF;
+   REAL PARM(4,2);
+   REAL DVEC($MAXCOR),SPREAD;
+
+   REAL XV,DX,AX,BX,ZX,DZX,WGTX,RWX,XLO,XHI;
+   REAL YV,DY,AY,BY,ZY,DZY,WGTY,RWY,YLO,YHI;
+   REAL ZV,DZ,DZ2,NDX;
+   EQUIVALENCE (XV,DVEC(N_XDATA)),(DX,DVEC(N_DXDATA));
+   $EQUIVALENCE;
+   $DATA;
+	"extensively Modified by J. Clement for missing params"
+	"This also handles DX,DY correctly"
+   IF (NPOINT.le.0) THEN;      "No data ??"
+      ERROR OUT; ('*** ERROR *** No data to bin');
+      RETURN;
+   ENDIF;
+   LGAUS=.true.;
+   <I=1,$MAXCOR; LDVEC(I)=.false.;>
+   <I=1,NINCR; J=IVARBL(I); LDVEC(J)=.true.; >
+	"LDVEC is true if param is present in buffer"
+	"LDVEC - Symbol:1,X:2,DX:3,Y:4,DY:5,Z:6,DZ:7"
+   <IXYZ=1,2; LCVEC(IXYZ)=.false.; LBINS(IXYZ)=.true.;
+      <I=1,4; LSET(I,IXYZ)=.false.; > >
+   IZERO=0;
+   LAVER=.false.;
+   N_NAME=3;   C_NAME='Bin';
+   IVALS=0;
+   LERROR=.false.;
+   LMESH=.false.;
+   LNORMAL=.true.;
+   JLIM=0;
+   IXYZ=1;
+   LCVEC(1)=.true.;
+   <TOKEN KEY LOOP> <
+      APPEND:Y  <LAPPEN=LTOKEN; >
+      AVERAGE:Y <LAVER=LTOKEN;>
+      LOG:Y   <LLOG=LTOKEN; >
+      LIMITED   <
+	 JLIM=2; if (LDVEC(N_ZDATA)) JLIM=3;
+	 CALL T2XYZC($INFO,$CARD,TLIM,2,NLIM);
+	 NLIM=MAX(2,NLIM);
+      >
+      MESH:Y          <LMESH=LTOKEN; LCVEC(2)=.true.; >
+      MONITOR:Y      <LMONITOR=LTOKEN; >
+      NAME:S      <N_NAME=MAX(1,NSTRNG); C_NAME=STRNG(:N_NAME); >
+      NORMAL:Y  <LNORMAL=LTOKEN;>
+      POINTS  <CALL T2PNTS($INFO,$CARD,N1,N2);>
+      SETS    <CALL T2NSET($INFO,$CARD,NS1,NS2);>
+      SELECT:S  <C_SELECT=STRNG; N_SELECT=MAX(1,NSTRNG); >
+      VALUES:N  <LBINS(IXYZ)=LTOKEN;>
+      WITH      <CONTINUE;>
+      ERRORS:Y  <LERROR=LTOKEN;>
+      X:1,Y:2 <
+	 IVALS=0; LBINS(INTEG)=LBINS(IXYZ); IXYZ=INTEG;
+	 LCVEC(IXYZ)=.true.;
+      >
+      FROM:1,
+      TO:2,
+      BY:3,STEP:3,WIDTH:3,
+      N:4,NUMBER:4,BINS:4 <  I=INTEG;
+	 <TOKEN NUMBER> <
+	    IF (IVALS.eq.3.or.LSET(I,IXYZ)) THEN;
+	       ERROR OUT; ('*** ERROR *** Redundant value');
+	    ELSEIF (I.le.2 .or.
+		  (FLOTNG.ge.1) .or.
+		  (I.eq.3.and.FLOTNG.ne.0)) THEN;
+		 PARM(I,IXYZ)=FLOTNG; LSET(I,IXYZ)=.true.; IVALS=IVALS+1;
+	    ELSE;
+	       ERROR OUT; ('*** ERROR *** Value too small');
+	    ENDIF;
+	 >
+      >
+   >
+      "Check some values"
+   IF ($ERROR) RETURN;
+   CALL T2FPAR($INFO,$CARD,PARM,LSET,N1,N2,N3,N4,NS1,NS2,LBINS,.true.,1,TLIM
+	,C_SELECT(:N_SELECT),1);
+   IF ($ERROR) RETURN;
+   IF (LCVEC(2)) THEN;
+      INDEP=N_YDATA;
+      IDEP=N_ZDATA;
+      CALL T2FPAR($INFO,$CARD,PARM(1,2),LSET(1,2),N1,N2,N3,N4,NS1,NS2
+	,LBINS(2),.true.,2,TLIM
+	,C_SELECT(:N_SELECT),1);
+      IF ($ERROR) RETURN;
+      NROWS=NINT(PARM(4,2));
+      RWY=1./PARM(3,2);
+   ELSE;
+      INDEP=N_ZDATA;
+      IDEP=N_YDATA;
+      NROWS=1;
+   ENDIF;
+   NBINS=NINT(PARM(4,1));
+   RWX=1./PARM(3,1);
+	"Check for all weights (Y-values)=zero, and replace by 1."
+   INDDEP=INDEP+1;
+   IDDEP=IDEP+1;
+   LDX=LDVEC(N_DXDATA);		"defaults"
+   LYV=LDVEC(INDEP);		"Which coord exist"
+   LDY=LDVEC(INDDEP);
+   LZV=LDVEC(IDEP);
+   LDZ=LDVEC(IDDEP);
+   IF (LZV) THEN;		"If Z value exists check for non zero"
+      LZV=.false.;		"Set it to false"
+      <ISET=NS1,NS2;
+	 CALL T2GDSET(ISET,N1,N2
+		,N3,N4,ISETD,TLIM,C_SELECT(:N_SELECT));  "Get data set"
+	 IF (IBTYPE.eq.2) <NEXT>;		"Not for Mesh"
+	 I3=ISETD(NXDATA+IDEP-N_XDATA); "!!!HACK"
+	 IF (DATBUF(I3) .EQ. HNONE) THEN;
+		LZV=.FALSE.;
+		<EXIT>;
+	 ENDIF;
+	 <I=N1,NP;
+	    IF (DATBUF(I3).NE.0) THEN;
+	       LZV=.true.;	"Flag that we do need to use zvalues"
+	       <EXIT>;
+	    ENDIF;
+	    I3=I3+NINCR;
+	 >
+      >
+   ENDIF;
+"
+	Check if errors exist
+	Look at entire array for errors.
+"
+   IF (LDZ) THEN;		"If DZ value exists check for non zero"
+      LDZ=.false.;		"Set it to false"
+      <ISET=NS1,NS2;
+	 CALL T2GDSET(ISET,N1,N2
+		,N3,N4,ISETD,TLIM,C_SELECT(:N_SELECT));  "Get data set"
+	 IF (IBTYPE.eq.2) <NEXT>;		"Not for Mesh"
+	 I3=ISETD(NXDATA+IDDEP-N_XDATA);
+	 IF (DATBUF(I3) .EQ. HNONE) THEN;
+		LDZ=.FALSE.;
+		<EXIT>;
+	 ENDIF;
+	 <I=N1,NP;
+	    IF (DATBUF(I3).NE.0) THEN;
+	       LDZ=.true.;	"Flag that we do need to use DYvalues"
+	       <EXIT>;
+	    ENDIF;
+	    I3=I3+NINCR;
+	 >
+      >
+   ENDIF;
+"
+	All set. bin them, using the unused data points
+	sum of weights**2, and buffer array for sum of weights
+	IDEP points to dependent variable (Ones we add)
+	IDDEP points to dependent error
+	INDEP points to second independent variable. (Z or Y)
+	INDDEP points to second independent error
+"
+   IF (LMESH) I=I-4;
+   ISSAV=NDSETS;		"Save number of data sets/points"
+   IPSAV=NPOINT;
+   IF (LMESH) THEN;		"Create mesh data ??"
+      NSTEP1=2*(NBINS+1);
+      CALL T2NEWM(2,NBINS+1,NROWS+1,C_NAME(:N_NAME));
+      IF ($ERROR) RETURN;
+      CALL T2GDSET(ISSAV+1,1,$LARGE INTEGER
+		,1,$LARGE INTEGER,ISETD,HNONE,'*');
+      JMIN=I3;
+		"Fill in X values"
+      <I=1,NBINS; DATBUF(I1)=PARM(1,1)+(I-0.5)*PARM(3,1);
+		  DATBUF(I4)=PARM(3,1)/2;
+		  I1=I1+NINCR0; I4=I4+NINCR0; > "X value"
+		"Fill in Y values"
+      <I=1,NROWS; DATBUF(I2)=PARM(1,2)+(I-0.5)*PARM(3,2);
+		  DATBUF(I5)=PARM(3,2)/2;
+		  I2=I2+NSTEP1; I5=I5+NSTEP1; > "Y value"
+   ELSE;	"Create separate data sets"
+      <I=1,NROWS;
+		$ILASTPTR=1;
+		CALL T2NEWS(NBINS,C_NAME(:N_NAME));
+		IF ($ERROR) RETURN; >
+      CALL T2GDSET(ISSAV+1,1,$LARGE INTEGER,1,$LARGE INTEGER,ISETD,HNONE,'*');
+      NSTEP1=IENDAT-IBGDAT+1;		"Size of each set"
+      JMIN=IM;				"First element=Value"
+   ENDIF;
+   NSTEP=NINCR0;
+   JPNT=JMIN;
+   DY=0;
+   ZV=1;
+   DZ2=1;
+   IF (LZV .OR. LDZ) THEN;		"ZV and DZ exist and are not 0 ?"
+	ZV=0; DZ2=0;
+	IF (LAVER) DZ2=1;
+   ENDIF;
+   WGTMIN=SQRT($SMALL REAL);
+   IPOINT=0;
+   <J=1,$MAXCOR; DVEC(J)=0;>
+   SPREAD=1;  IF (LNORMAL) SPREAD=4;
+   MMIN=1; MMAX=1;
+   LSPLITY=.false.;
+   <ISET=NS1,NS2;			"Do for selected sets"
+      CALL T2GDSET(ISET,N1,N2
+		,N3,N4,ISETD,TLIM,C_SELECT(:N_SELECT));  "Get data set"
+      IF (IBTYPE.eq.2) THEN;
+	 NP=-1;		"Not for Mesh"
+      ENDIF;
+      IF (NP .lt. N1) <NEXT>;			"No data ?"
+      <I=N1,NP;			"Do selected points"
+	 ICPOIN(1)=IM;
+			"Now get data"
+	 <J=1,NINCR; DVEC(IVARBL(J))=DATBUF(IM); IM=IM+1; >
+	 <J=1,JLIM;			"Check if inside limits"
+	    IF ( DVEC(NCSIZE*(J-1)+N_XDATA).lt.TLIM(J,1) .or.
+	    DVEC(NCSIZE*(J-1)+N_XDATA).gt.TLIM(J,2)) GOTO :FREQ1:;
+	 >
+	 IPOINT=IPOINT+1;			"It is OK!"
+	 IF (LDX) DX=ABS(DVEC(N_DXDATA));	"Now get values needed"
+	 IF (LYV) THEN; YV=DVEC(INDEP);
+	    IF (LDY) THEN;
+		DY=ABS(DVEC(INDDEP));
+	    ENDIF;
+	 ENDIF;
+	 IF (LZV) THEN; ZV=DVEC(IDEP);
+	    IF (LDZ) THEN; DZ2=DVEC(IDDEP)**2;
+		IF (LAVER .and. DZ2.eq.0) THEN;
+			IZERO=IZERO+1;
+			<NEXT>;
+		ENDIF;
+	    ENDIF;
+	 ENDIF;
+	 IF (LCVEC(2)) THEN;
+	    YLO = YV-SPREAD*DY;	"4 sigma spread"
+	    YHI = YV+SPREAD*DY;
+	    MMIN = (YLO-PARM(1,2))*RWY+1.0;
+	    IF (MMIN.GT.NROWS) GOTO :FREQ1:;
+	    MMAX = (YHI-PARM(1,2))*RWY+1.0;
+	    IF (MMAX.LE.0)     GOTO :FREQ1:;
+	    LSPLITY=MMIN.ne.MMAX;	"Spread over several chans ?"
+	    MMIN=MAX(1,MMIN);	"Limit spread"
+	    MMAX=MIN(NROWS,MMAX);
+	    JPNT=JMIN+(MMIN-1)*NSTEP1;
+	    IF (LSPLITY) THEN;	"If spread then must split chans "
+	       ZY = PARM(1,2)+PARM(3,2)*(MMIN-1);  "Start point"
+	       DZY = PARM(3,2)/DY;		"Width"
+	       IF (LNORMAL) THEN;		"Normal dist ?"
+		 ZY = (ZY-YV)/DY;
+		 AY = T2FRQF(ZY);		"Amount of normal"
+	      ELSE;
+		  DZY = 0.5*DZY;
+		  AY = 0.5*(ZY-YLO)/DY;	"Amount left out"
+	       ENDIF;
+	    ENDIF;
+	 ENDIF;
+	 XLO = XV-SPREAD*DX;	"4 sigma spread"
+	 XHI = XV+SPREAD*DX;
+	 IMIN = ((XLO-PARM(1,1))*RWX + 1.0);
+	 IF (IMIN.GT.NBINS) GOTO :FREQ1:;
+	 IMAX = ((XHI-PARM(1,1))*RWX + 1.0);
+	 IF (IMAX.LE.0) GOTO :FREQ1:;
+	 LSPLITX=IMIN.ne.IMAX;
+	 IMIN=MAX(1,IMIN);
+	 IMAX=MIN(NBINS,IMAX);
+	 WGTX=1; WGTY=1;
+	 <M=MMIN-1,MMAX-1;
+	    IF (LSPLITY) THEN;
+	       JPNT=JMIN+M*NSTEP1;
+	       IF (LNORMAL) THEN;
+		  BY = AY;
+		  ZY = ZY+DZY;
+		  AY = T2FRQF(ZY);	"Normal function"
+		  WGTY=MAX(1.00006*(AY-BY),WGTMIN);
+			"Fuzz for cutoff at 4 sigma"
+	       ELSE;
+		  BY=MAX(AY,0.0);
+		  AY=MIN(DZY+AY,1.0);
+		  WGTY=MIN(MAX(AY-BY,0.0),1.0);
+	       ENDIF;
+	    ENDIF;
+	    IF (LSPLITX) THEN;
+	       ZX = PARM(1,1)+PARM(3,1)*(IMIN-1);
+	       DZX = PARM(3,1)/DX;
+	       IF (LNORMAL) THEN;
+		  ZX = (ZX-XV)/DX;
+		  AX = T2FRQF(ZX);
+	       ELSE;
+		  DZX = 0.5*DZX;
+		  AX = 0.5*(ZX-XLO)/DX;
+	       ENDIF;
+	       WGTX=0;
+	    ENDIF;
+	    <J=IMIN-1,IMAX-1;
+	       K = J*NSTEP+JPNT;
+	       ICPOIN(2)=K;		"Point for error messages"
+	       IF (LSPLITX) THEN;
+		  IF (LNORMAL) THEN;
+		     BX = AX;
+		     ZX = ZX+DZX;
+		     AX = T2FRQF(ZX);		"Normal function"
+		     WGTX=MAX(1.00006*(AX-BX),WGTMIN);
+			"Fuzz for cutoff at 4 sigma"
+		  ELSE;
+		     BX=MAX(AX,0.0);
+		     AX=MIN(DZX+AX,1.0);
+		     WGTX=MIN(MAX(AX-BX,0.0),1.0);
+		  ENDIF;
+	       ENDIF;
+	       WGT=WGTX*WGTY;
+	       IF (LAVER) THEN;
+		  WGT=DZ2/WGT;
+		  IF (DATBUF(K+1).gt.0) THEN;
+		     FAC1=WGT/(DATBUF(K+1)+WGT);
+		     FAC2=DATBUF(K+1)/(DATBUF(K+1)+WGT);
+		  ELSE;
+		     FAC2=1 ; FAC1=0;
+		  ENDIF;
+		  DATBUF(K) = FAC2*ZV + FAC1*DATBUF(K);
+		  DATBUF(K+1)=FAC2**2*WGT +  FAC1**2*DATBUF(K+1);
+		  IF (LYV.and..not.LMESH) THEN;
+		     DATBUF(K+2)=FAC1*DATBUF(K+2)+FAC2*YV*ZV;
+		     IF (LDY) DATBUF(K+3)=FAC1*DATBUF(K+3)+
+			      FAC2*(YV**2+DY**2)*ZV*WGT;
+		  ENDIF;
+	       ELSE;
+		  DATBUF(K)=DATBUF(K)+ZV*WGT;
+		  DATBUF(K+1)=DATBUF(K+1)+DZ2*WGT;
+		  IF (LYV.and..not.LMESH) THEN;
+		     DATBUF(K+2)=DATBUF(K+2)+YV*ZV*WGT;
+		     IF (LDY) DATBUF(K+3)=DATBUF(K+3)+
+				 (YV**2+DY**2)*ZV*WGT;
+		  ENDIF;
+	       ENDIF;
+	    >
+	 >
+:FREQ1:
+      >
+   >
+      "All binned.  clean up"
+   IF (IZERO.gt.0) THEN;
+      ERROR$MESSAGE
+	 '*** WARNING *** Ignored ',IZERO,' points with ERROR=0.0';
+   ENDIF;
+   IF (LMESH) THEN;
+      CALL T2GDSET(NDSETS,1,$LARGE INTEGER,1,$LARGE INTEGER,ISETD,HNONE,'*');
+      IF (.not.LERROR) THEN;				"Do not keep errors?"
+	 NMESH0=1;
+	 I=IM;
+	 <J=IM,IENDAT,2; DATBUF(I)=DATBUF(J); I=I+1; >    "Move mesh down"
+	 DATBUF(IBGDAT+2)=DATBUF(IBGDAT+2)-($INEXTPTR-I);
+	 DATBUF(IM-3)=1;
+	 $INEXTPTR=I;
+      ENDIF;
+   ELSE;				"2-d data"
+      <J=1,$MAXCOR; DVEC(J)=0;>		"Data to save"
+      DVEC(N_SYMBOL)=SYMBOL;		"Symbol"
+      DVEC(N_DXDATA)=PARM(3,1)/2;	"X error"
+	DVEC(N_NDXDATA)=DVEC(N_DXDATA);
+      DVEC(N_DYDATA)=PARM(3,2)/2;	"Y error"
+	DVEC(N_NDYDATA)=DVEC(N_DYDATA);
+      <ISET=ISSAV+1,NDSETS;
+	 CALL T2GDSET(ISET,1,$LARGE INTEGER,1,$LARGE INTEGER,ISETD,HNONE,'*');
+	 DVEC(INDEP) = PARM(1,2)+(ISET-ISSAV+0.5)*PARM(3,2);   "Z value"
+	 DVEC(INDDEP)= PARM(3,2);
+	 <I=1,NP;
+	    DVEC(N_XDATA) = PARM(1,1)+(I-0.5)*PARM(3,1);	"X value"
+	    DVEC(IDEP) = DATBUF(IM);			"Y value"
+	    WGT=ABS(DATBUF(IM+1));
+	    DVEC(IDDEP) = SQRT(WGT);			"Y error"
+	    DVEC(IDDEP+1) = DVEC(IDDEP);		"NDY error"
+	    IF (LYV.and.DVEC(N_YDATA).ne.0.and..not.LCVEC(2)) THEN;
+		IF (LDY) THEN;
+			DVEC(N_DZDATA)=
+			SQRT(ABS(DATBUF(IM+3)/DVEC(N_YDATA)-DVEC(N_ZDATA)**2));
+		ENDIF;
+		DVEC(N_ZDATA)=DATBUF(IM+2)/DVEC(N_YDATA);
+	    ENDIF;
+	    <J=1,NINCR; DATBUF(IM)=DVEC(IVARBL(J)); IM=IM+1; >
+	 >
+      >
+   ENDIF;
+   IF (.not.LAPPEN) THEN;
+      CALL T2GDSET(ISSAV+1,1,$LARGE INTEGER,1,$LARGE INTEGER,ISETD,HNONE,'*');
+      I=$IBASEPTR;
+      NPOINT=NROWS*NBINS;
+      NDSETS=NDSETS-ISSAV;
+      <J=IBGDAT,$INEXTPTR-1; DATBUF(I)=DATBUF(J); I=I+1; >    "Move header"
+      $INEXTPTR=I;
+      ISSAV=0;
+   ENDIF;
+   DATDAT(1,1)=HNONE;
+   IF (LLOG) THEN;
+      IMAX=1; IF (LCVEC(2)) IMAX=2;
+      WRITE(OUTSTR,'(A,I6,A,I6,1P,2(2A,3(G10.3,A)))')
+	    '  Bin ',IPOINT,' pts Set(s)=',NDSETS-ISSAV,
+	    (CXYZ(I),'From',PARM(1,I),' to',PARM(2,I),' by',Parm(3,I),')'
+	    ,I=1,IMAX);
+      CALL T2WRSQ(OUTSTR,.true.,$TERMINAL OUT,3);
+   ENDIF;
+   IF (LMONITOR) THEN;
+	CALL TXVOID;
+	CALL TXNEXT;
+	CALL T2REST;		"Reset flags"
+	CALL T2GDSET(NDSETS,1,$LARGE INTEGER,1,$LARGE INTEGER,ISETD,HNONE,'*');
+	NXYLIM(3,1)=NDSETS; NXYLIM(3,2)=NDSETS;
+	IF (IBTYPE .eq. 1) THEN;
+	    CALL T2HIST(DATBUF(I1),DATBUF(I2),DATBUF(I3),
+		DATBUF(I4),DATBUF(I5),DATBUF(I6),
+		0,0,NP-N1+1,NINCR0,
+		HNONE,HNONE,HNONE);
+	ELSE;
+	    CALL T23JIN(DATBUF(IM),NMESH0,NMESH1,NMESH2,0,0,
+		1,NP,1,NL);
+	ENDIF;
+	CALL T2_PLOT_TITLE(NDSETS,.false.);
+	CALL TXVOID;		"Flush all plot info"
+   ENDIF;
+END;
+%E  SUBROUTINE T2_SORT  --- SORT command
+SUBROUTINE T2_SORT($INFO,$CARD);
+   IMPLICIT NONE;
+   INTEGER $INFO(10);
+   CHARACTER*(*) $CARD;
+   $SPECIFYNONE;
+   $SPECIFICATION;
+   $SELECTSPEC;
+   $MAINSPEC;
+   $POINT ARRAYS($NPOINTS);
+   INTEGER LDVEC($MAXCOR);
+   REAL DVEC($MAXCOR),TEMP;
+   INTEGER ISORT($MAXCOR),NSORT,JLIM,NLIM,JSORT,I,J,K,L;
+   INTEGER ISET,JMIN,IMIN,IMAX,ISETS,IPOINT;
+   $EQUIVALENCE;
+   $DATA;
+   IF (NPOINT.le.0) THEN;      "No data ??"
+      ERROR OUT; ('*** ERROR *** No data to sort');
+      RETURN;
+   ENDIF;
+   <I=1,$MAXCOR; LDVEC(I)=0;>
+   <I=1,NINCR; J=IVARBL(I); LDVEC(J)=I;>
+	"LDVEC - Symbol:1,X:2,DX:3,Y:4,DY:5,Z:6,DZ:7"
+   N_NAME=1;   C_NAME='%';
+   NSORT=0; JSORT=0;
+   <TOKEN KEY LOOP> <
+      SYMBOL:1,X:2,DX:3,Y:4,DY:5,Z:6,DZ:7,
+      NDX:8,NDY:9,NDZ:10,
+      U:11,DU:12,NDU:13,V:14,DV:15,NDV:16,W:17,DW:18,NDW:19,
+      THETA:2,DTHETA:3,RADIUS:4,DRADIUS:5,PHI:6,DPHI:7,
+      NDTHETA:8,NDRADIUS:9,NDPHI:10 <
+	 INTEG=I_VORDER(INTEG,1);
+	 I=2**INTEG;
+	 IF (IAND(JSORT,I).ne.0) THEN;
+	    ERROR OUT;'*** ERROR *** Duplicate field';
+	 ELSEIF (LDVEC(INTEG).ne.0) THEN;
+	    JSORT=IOR(JSORT,I);
+	    NSORT=NSORT+1; ISORT(NSORT)=LDVEC(INTEG);
+	 ELSE;
+	    ERROR OUT;'*** ERROR *** Nonexistant coordinate';
+	 ENDIF;
+      >
+      LOG:Y   <LLOG=LTOKEN; >
+      POINTS  <CALL T2PNTS($INFO,$CARD,N1,N2);>
+      SETS    <CALL T2NSET($INFO,$CARD,NS1,NS2);>
+      SELECT:S  <C_SELECT=STRNG; N_SELECT=MAX(1,NSTRNG); >
+      NAME:S      <N_NAME=MAX(1,NSTRNG); C_NAME=STRNG(:N_NAME); >
+      APPEND:Y  <LAPPEN=LTOKEN; >
+      LIMITED   <
+	 JLIM=2; if (LDVEC(N_ZDATA).ne.0) JLIM=3;
+	 CALL T2XYZC($INFO,$CARD,TLIM,2,NLIM);
+	 NLIM=MAX(2,NLIM);
+      >
+   >
+      "Check some values"
+   IF ($ERROR) RETURN;
+   <I=1,$MAXCOR; IF (LDVEC(I).ne.0.and. IAND(2**I,JSORT).eq.0) THEN;
+	      NSORT=NSORT+1; ISORT(NSORT)=LDVEC(I);
+	   ENDIF;
+   >
+   ISETS=1; IPOINT=0;
+   <ISET=NS1,NS2;
+      ISETS=ISETS+1;
+      CALL T2GDSET(ISET,N1,N2,N3,N4,ISETD,HNONE,C_SELECT(:N_SELECT));
+      IF (IBTYPE.eq.2) NP=-1;			"Skip mesh data"
+      IF (NP .lt. N1) <NEXT>;			"No data ?"
+      IMIN=IM;
+      NP=NP-N1+1;
+      IF (LAPPEN.and.NP.gt.0) THEN;
+	 CALL T2NEWS(NP,C_NAME(:N_NAME));		"New data set"
+	 IF ($ERROR) RETURN;
+	 I=$IMSPTR;
+	 <J=1,NP*NINCR0; DATBUF(I)=DATBUF(IM); IM=IM+1; I=I+1; >
+	 IMIN=$IMSPTR;
+      ENDIF;
+      IMAX=IMIN+NP*NINCR0-1;
+      <I=IMIN,IMAX,NINCR0;
+	 IPOINT=IPOINT+1;
+	 JMIN=0;
+	 <K=1,NINCR0; DVEC(K)=DATBUF(I+K-1); >
+	 <J=I,IMAX,NINCR0;
+	    <K=1,NSORT;
+	       IF     (DATBUF(J+ISORT(K)-1) .gt. DVEC(ISORT(K))) THEN;
+		  <EXIT>;
+	       ELSEIF (DATBUF(J+ISORT(K)-1) .lt. DVEC(ISORT(K))) THEN;
+		  JMIN=J; <L=1,NINCR0; DVEC(L)=DATBUF(J+L-1); >
+		  <EXIT>;
+	       ENDIF;
+	    >
+	 >
+	 IF (JMIN.ne.0) THEN;
+	    <K=1,NINCR0;
+		DATBUF(JMIN+K-1)=DATBUF(I+K-1);
+		DATBUF(I+K-1)=DVEC(K);
+	    >
+	 ENDIF;
+      >
+   >
+   IF (LLOG .or. IPOINT .eq. 0) THEN;
+      WRITE(OUTSTR,*)
+	    '  Sorted ',IPOINT,' points Set=',MAX(1,ISETS);
+      CALL T2WRSQ(OUTSTR,.true.,$TERMINAL OUT,3);
+   ENDIF;
+   "AND THAT'S ALL, FOLKS"
+END;
+%E  SUBROUTINE T2FHIS --- Test to see if data set is histogram
+SUBROUTINE T2FHIS(ISET,IXYZ,N1,N2,N3,N4,LHIS,NCHAN,X0,XS);
+"
+	INPUT:
+		ISET=Data set to check
+		IXYZ=Coordinate to check (1,2,3) X,Y,Z
+		     <0 Do not check DX,DY,DZ
+		N1,N2=Limits on Rows
+		N3,N4=Limits on columns
+	OUTPUT:
+		LHIS=True/False if hist or not
+		NCHAN=Number of channels
+		X0=Lowest value
+		XS=Average Difference between chans
+"
+   IMPLICIT NONE;
+   INTEGER ISET,IXYZ,NCHAN;
+   $BOOLEAN LHIS;
+   REAL X0,XS;
+   $SPECIFICATION;
+   $MAINSPEC;
+   $POINT ARRAYS($NPOINTS);
+   $SPECIFYNONE;
+   INTEGER N1,N2,N3,N4,I,J,K,M,N;
+   REAL DT,T,T0,DVAL,DV,DV0,CHAN,FAC;
+   CALL T2GDSET(ISET,N1,N2,N3,N4,ISETD,HNONE,'*');
+   J=ABS(IXYZ);
+   IF (IBTYPE.eq.2) THEN;
+	J=MESHN(J);
+	IF (J.ge.3) RETURN;			"Third coordinate ??"
+	IF (J.eq.2) NINCR0=NINCR0*NINCR1;	"Second coordinate ?"
+   ENDIF;
+   K=ISETD(NCSIZE*(J-1)+NDXDATA);		"index of error"
+   J=ISETD(NCSIZE*(J-1)+NXDATA);		"Index of data"
+   IF (DATBUF(K).eq.HNONE)K=0;			"No error ?"
+   IF (IXYZ.lt.0) K=0;				"Do not check error ?"
+   LHIS=.FALSE.;				"Set initially false"
+   IF (DATBUF(J).eq.HNONE) RETURN;		"No data ?"
+   IF (NP.le.N1) RETURN;			"Too few points (2 min) ?"
+   T0=DATBUF(J);
+   X0=DATBUF(J);				"Min value"
+   NCHAN=NP-N1+1;				"Number of points"
+   CHAN=NCHAN-1;
+   DT=DATBUF(J+NINCR0*(NP-N1))-DATBUF(J);	"Step"
+   XS=DT/CHAN;
+   DVAL=ABS(0.01*XS);				"Error allowed"
+   IF (K.ne.0) DV0=DATBUF(K);			"First error"
+   <I=N1,NP;					"Check for hists"
+	T=DATBUF(J);				"Value"
+	J=J+NINCR0;
+	IF (K.ne.0) THEN;			"Error ??"
+	    DV=DATBUF(K);			"Error value"
+	    K=K+NINCR0;				"Check for identical errors"
+	    IF (ABS(DV-DV0) .ge. DVAL) RETURN;	"Bad error ???"
+	ENDIF;
+	FAC=(I-N1)/CHAN;
+	IF (ABS((T-T0)-FAC*DT).ge. DVAL) RETURN;	"Not same width ?"
+   >
+   LHIS=.TRUE.;
+END;
+%E  SUBROUTINE T2FPAR --- Set up params for T2_FREQ,T2_FIT
+SUBROUTINE T2FPAR($INFO,$CARD,PARM,LSET,N1,N2,N3,N4,NS1,NS2
+	,LBINS,LGET,IXYZ,TLIM,NAME,IMESH);
+   IMPLICIT NONE;
+"	Routine to set up paramters
+	It fills in missing parameters using the specified data
+    INPUT:
+	PARM(I) - Contains FROM,TO,BY,NBINS
+	LSET(I) - .true. if PARM(I) is set
+	N1	- First data point to use
+	N2	- Last data point to use
+	N3	- First line to use (mesh)
+	N4	- Last line
+	NS1	- First data set to use
+	NS2	- Last data set to use
+	LBINS	- .true. If bins are specified
+		  .false. If values (centroid of bin)
+	LGET	- .true. If missing parameters are to be supplied
+	IXYZ	- Coordinate (1,2,3 --> X,Y,Z) to look at
+	TLIM	- X,Y,Z limits to look at.
+	NAME	- Name of the data sets to check
+	IMESH	- 1,2,3 for regular,mesh,both types of data
+    OUTPUT:
+	PARM(I)	- Contains FROM,TO,BY,NBINS
+		  These are bin specs, not values.
+	LSET(I)	- .true.  - For each param set.
+"
+   INTEGER $INFO(10);
+   CHARACTER*(*) $CARD;
+   $SPECIFICATION;
+   $MAINSPEC;
+   $SPECIFYNONE;
+   $BOOLEAN LSET(4),LBINS,LGET;
+   CHARACTER*6	CFRTO(4)/'FROM,','TO,','BY,','N,'/;
+   CHARACTER*(*) NAME;
+   INTEGER IBUFF(2),ISUM,IXYZ,IVALS,I,J,K,M,N;
+   INTEGER JSETS,NBINS,ISET,NS1,NS2,N1,N2,N3,N4,IMESH;
+   INTEGER IDXYZ(3,2),INXYZ(3,2),IDNXYZ(3);
+   INTEGER T2BTRIM;
+   REAL BUFFR(2),T,TD,T0,SUM1,SUM2;
+   REAL TLIM(3,2);
+   REAL XPARM(6),PARM(4);
+   $POINT ARRAYS($NPOINTS);
+   IVALS=0; <I=1,4; IF (LSET(I)) IVALS=IVALS+1; >
+   IF (.not.LGET .and. IVALS.lt.3) THEN;
+	OUTSTR=' ';
+	<I=1,4;
+	    IF (.not. LSET(I)) THEN;
+		OUTSTR(T2BTRIM(OUTSTR)+1:)=CFRTO(I);
+	    ENDIF;
+	>
+	ERROR OUT;'*** ERROR *** Missing either'//OUTSTR(:T2BTRIM(OUTSTR)-1);
+	RETURN;
+   ELSEIF (IVALS.LT.3) THEN;		"Not enough info. get my own values"
+      JSETS=0; ISUM=0; XPARM(3)=0;
+      XPARM(1)=$LARGE REAL; XPARM(2)=-$LARGE REAL;
+      XPARM(5)=$LARGE REAL; XPARM(6)=-$LARGE REAL;
+      SUM1=0; SUM2=0;
+      <ISET=NS1,NS2;
+	CALL T2GDSET(NS1,N1,N2,N3,N4,ISETD,TLIM,NAME);
+	IF ( IAND(IBTYPE,IMESH) .eq. 0) <NEXT>;	"Not correct type"
+	TD=0;
+	<I=1,3; IDXYZ(I,1)=NINCR0;
+		IDXYZ(I,2)=NINCR0*NINCR1;
+		IDNXYZ(MESHN(I))=ISETD(NCSIZE*(I-1)+NDXDATA);
+		INXYZ(MESHN(I),1)=ISETD(NCSIZE*(I-1)+NXDATA); >
+	IF ( INXYZ(IXYZ,1) .le. 1) <NEXT>;		"No such coordinate ?"
+	IF (IBTYPE.ne.1)  THEN;				"Mesh data ?"
+	    IDXYZ(MESH2,1)=0;
+	    IDXYZ(MESH1,2)=0;
+	    IF ( IXYZ .eq. MESH1 ) NL=MIN(NL,N3);
+	    IF ( IXYZ .eq. MESH2 ) NP=MIN(NP,N1);
+	ENDIF;
+	JSETS=MAX(JSETS,(NP-N1+1)*(NL-N3+1));		"MAX Points/set"
+	T0=DATBUF(INXYZ(IXYZ,1));
+	<M=N3,NL;					"DO all rows"
+	    INXYZ(IXYZ,2)=INXYZ(IXYZ,1);		"Save location"
+	    <N=N1,NP;					"Check for hists"
+		T=DATBUF(INXYZ(IXYZ,1));
+		IF (IDNXYZ(IXYZ) .gt. 1) THEN;
+		    TD=ABS(DATBUF(INXYZ(IXYZ,1)+1));
+		ENDIF;
+		INXYZ(IXYZ,1)=INXYZ(IXYZ,1)+IDXYZ(IXYZ,1);
+		XPARM(1)=MIN(T,XPARM(1));		"Find min/max value"
+		XPARM(2)=MAX(T,XPARM(2));		"Max value"
+		XPARM(5)=MIN(T-TD,XPARM(5));		"Find min/max value"
+		XPARM(6)=MAX(T+TD,XPARM(6));
+		IF (T.ne.T0) THEN;
+		    ISUM=ISUM+1;
+		    XPARM(3)=XPARM(3)+ABS(T-T0);	"Sum of differ"
+		    T0=T;
+		ENDIF;
+	    >
+	    INXYZ(IXYZ,1)=INXYZ(IXYZ,2)+IDXYZ(IXYZ,2);	"Restore location"
+	>
+      >
+      IF (JSETS.ge.4 .and. XPARM(3).gt.0) THEN;		"Check for hist ?"
+	XPARM(3)=XPARM(3)/ISUM;				"Average width"
+	<ISET=NS1,NS2;
+	    CALL T2GDSET(NS1,N1,N2,N3,N4,ISETD,HNONE,NAME);
+	    IF ( IAND(IBTYPE,IMESH) .eq. 0) <NEXT>;	"Not correct type"
+	    <I=1,3; IDXYZ(I,1)=NINCR0;
+		IDXYZ(I,2)=NINCR0*NINCR1;
+		INXYZ(MESHN(I),1)=ISETD(NCSIZE*(I-1)+NXDATA); >
+	    IF ( INXYZ(IXYZ,1) .le. 1) <NEXT>;		"No such coordinate ?"
+	    IF (IBTYPE.ne.1)  THEN;				"Mesh data ?"
+		IDXYZ(MESH2,1)=0;
+		IDXYZ(MESH1,2)=0;
+		IF ( IXYZ .eq. MESH1 ) NL=MIN(NL,N3);
+		IF ( IXYZ .eq. MESH2 ) NP=MIN(NP,N1);
+	    ENDIF;
+	    <M=N3,NL;					"DO all rows"
+		INXYZ(IXYZ,2)=INXYZ(IXYZ,1);		"Save location"
+		<N=N1,NP;				"Check for hists"
+		    T=DATBUF(INXYZ(IXYZ,1));
+		    T=ABS((T-XPARM(1))/XPARM(3));
+		    IF (ABS(NINT(T)-T).gt.0.01) GOTO :NOHIST:;
+		    INXYZ(IXYZ,1)=INXYZ(IXYZ,1)+IDXYZ(IXYZ,1);
+		>
+		INXYZ(IXYZ,1)=INXYZ(IXYZ,2)+IDXYZ(IXYZ,2);	"Restore location"
+	    >
+	>
+	IF (LBINS) THEN;
+		XPARM(1)=XPARM(1)-XPARM(3)/2;
+		XPARM(2)=XPARM(2)+XPARM(3)/2;
+	ENDIF;
+	<I=1,3; IF (.not.LSET(I).and.IVALS.lt.3) THEN;
+			PARM(I)=XPARM(I); LSET(I)=.true.; IVALS=IVALS+1;
+		ENDIF;
+	>
+	ENDIF;
+:NOHIST:
+      IF (IVALS.lt.3) THEN;
+	 XPARM(1)=XPARM(5); XPARM(2)=XPARM(6);
+	 <I=1,4; IF (LSET(I)) XPARM(I)=PARM(I); >	"Old values"
+	 CALL TDSLIN(XPARM(1),XPARM(2),			"Now find bins"
+		  NXYZ1(1),NXYZ2(1),SCLPRM(1,1),2,
+		  NBINS,BUFFR,IBUFF);
+	 XPARM(1) = BUFFR(1);
+	 XPARM(3) = BUFFR(2)-BUFFR(1);
+	 if (XPARM(3).eq.0) XPARM(3)=1.;
+	 IF (.not.LBINS) XPARM(1)=XPARM(1)+XPARM(3)/2;
+	 <I=1,3;
+	    IF (.not.LSET(I).and.IVALS.lt.3) THEN;
+	       PARM(I)=XPARM(I); LSET(I)=.true.; IVALS=IVALS+1;
+	    ENDIF;
+	 >
+      ENDIF;
+   ENDIF;
+   IF (LSET(4)) THEN;
+      IF (PARM(4).gt.99999) THEN;
+	 ERROR STRING;('*** ERROR *** Too many bins');
+	 RETURN;
+      ENDIF;
+      NBINS = NINT(PARM(4));
+      IF (.not.LBINS) NBINS=NBINS-1;
+      IF (NBINS.lt.1) THEN;
+	 ERROR STRING;('*** ERROR *** Number of bins too small');
+	 RETURN;
+      ENDIF;
+   ENDIF;
+			"Put in the 4'th parm"
+   IF     (.not.LSET(1))THEN;
+      PARM(1)=PARM(2)-PARM(3)*NBINS;
+   ELSEIF (.not.LSET(2)) THEN;
+      PARM(2)=PARM(1)+PARM(3)*NBINS;
+   ELSEIF (.not.LSET(3)) THEN;
+      PARM(3)=(PARM(2)-PARM(1))/NBINS;
+   ELSEIF (.not.LSET(4)) THEN;
+      PARM(4)=(PARM(2)-PARM(1))/PARM(3);
+      IF (PARM(4).lt.0) THEN; PARM(3)=-PARM(3); PARM(4)=-PARM(4); ENDIF;
+      IF (PARM(4).gt.99999) THEN;
+	 ERROR STRING;('*** ERROR *** Too many bins');
+	 RETURN;
+      ENDIF;
+      NBINS=MAX(1.0,PARM(4));
+      IF (NBINS.lt.PARM(4)) THEN; NBINS=NBINS+1; ENDIF;
+      PARM(2)=PARM(1)+PARM(3)*NBINS;
+   ENDIF;
+   IF (.not.LBINS) THEN;
+      PARM(1)=PARM(1)-PARM(3)/2;
+      PARM(2)=PARM(2)+PARM(3)/2;
+      NBINS=NBINS+1;
+   ENDIF;
+   PARM(4)=NBINS;
+   <I=1,4; LSET(I)=.true.; >
+END;
+%E  SUBROUTINE T2_VALUE  --- X,DX,Y,DY... commands
+SUBROUTINE T2_VALUE($INFO,$CARD);
+"
+	Called from T2MAIN for X,Y,Z,DX,DY,DZ commands
+	This puts date into specified coordinate
+	or modifes the specified coordinate
+
+"
+   IMPLICIT NONE;
+   INTEGER $INFO(10),INFO1(10);
+   CHARACTER*(*) $CARD;
+   CHARACTER*$MAXSTR CARD1;
+   CHARACTER*9 CORD;
+   CHARACTER*4 CFRTO(4) /' ',' To:',' By:','N:'/;
+   CHARACTER*16 CORD1;
+   CHARACTER*1 COPER(7) /' ',' ','*','+','/','-',' '/;
+   $SPECIFYNONE;
+   $SPECIFICATION;
+   $SELECTSPEC;
+   $MAINSPEC;
+   $POINT ARRAYS($NPOINTS);
+   REAL PARM(4);
+   $BOOLEAN LPOIS, LSET(4);
+   $BOOLEAN LRESET, LSETS, LERR, LNERR, LNOMES, LN5;
+   INTEGER IOP, IBINS, T2BTRIM;
+   INTEGER I,II,J,K,N5,N6,IPTR(6),IPOINT,JPOINT;
+   INTEGER IVALS,MIND,MINR,MD,MR,ME,ID,IR,IE,IMAX,IXYZ;
+   INTEGER ISET, NLIM, IORD(3);
+   $BOOLEAN JORD;
+   REAL SAMPLE,ERROR,VALUE(2),TEMP1,TEMP2,TEMP3,XNSTEP;
+   $EQUIVALENCE;
+   $DATA;
+"
+	START INITIALIZING
+"
+
+   CORD1=' ';
+   IF (INTEG .gt. 100) THEN;
+	$POLAR=.true.;
+	IF (INTEG.gt.200)$SPHERICAL=.true.;
+	INTEG=MOD(INTEG,100);
+   ENDIF;
+   ID=I_VORDER(INTEG,1);		"Output data index"
+   IR=0;				"Input  Data address"
+   N_NAME=1;   C_NAME=' ';
+   "CALL T2GDSET(1,1,1,1,1,ISETD,HNONE,'*');"
+   IXYZ=(ID-N_XDATA)/NCSIZE+1;		"Coordinate index"
+   CALL T2GVNM(ID,CORD);		"Get coordinate name"
+   IF (MOD(ID-N_XDATA,NCSIZE).eq.0 .and.
+	(ID-N_XDATA)/NCSIZE .lt.3) THEN;	"HACK"
+	IE=1;				"Error offset"
+   ELSE;
+	IE=0;
+   ENDIF;
+   LNOMES=.true.;
+	"True if we automatically delete the current data"
+   LRESET=FLAGS(28).and. MOD(ID-N_XDATA,NCSIZE) .eq.0
+		.and. (ID-N_XDATA)/NCSIZE .lt. 3; "HACK"
+   LSETS=.false.;		"Modify existing set ?"
+   LAPPEN=NDSETS.le.0;		"New data set ?"
+   IBINS = 0;
+   LPOIS=.false.;
+   <I=1,4; LSET(I)=.FALSE.; PARM(I)=0.; >
+   <I=1,2; IORD(I)=2; >
+   JORD=.true.;
+"
+	IORD(1) is location of variable in VALUE array
+	IORD(2) is location of constant
+"	
+   IOP=0;
+   IVALS=0;
+   SAMPLE=0;
+   ERROR=-1;
+   INFO1(1)=0;
+   <TOKEN LOOP> <
+      KEY:: <
+	 SETS   <
+	    LSETS=.true.;
+	    CALL T2NSET($INFO,$CARD,NS1,NS2);
+	    IF ($ERROR) RETURN;
+	    GOTO :CHECK1:;
+	 >
+	 SELECT:S <
+		LSETS=.true.;
+		C_SELECT=STRNG;
+		N_SELECT=MAX(1,NSTRNG);
+		GOTO :CHECK1:;
+	 >
+	 POINTS,COLUMNS <
+	    LSETS=.true.;
+	    CALL T2PNTS($INFO,$CARD,N1,N2);
+	    GOTO :CHECK1:;
+	 >
+	 LIMITED   <
+		LSETS=.true.;
+		CALL T2XYZC($INFO,$CARD,TLIM,2,NLIM);
+		GOTO :CHECK1:;
+	 >
+	 LINES,ROWS <
+	    LSETS=.true.;
+	    CALL T2ROWS($INFO,$CARD,N3,N4);
+	    GOTO :CHECK1:;
+	 >
+	 LOG:Y      < LLOG=LTOKEN; >
+	 NAME:S      <N_NAME=MAX(1,NSTRNG); C_NAME=STRNG(:N_NAME); >
+	 INTEGERS   < FLOTNG=1;  I=3; GOTO :NUM:; >
+	 NOERROR    < IE=0; >
+	 ERROR:0::0 <
+	    IF (ID .ne. IR .and. IR .ne.0) GOTO :CONFLICT:;
+	    IF (IE.eq.0) GOTO :CONFLICT:;
+	    ERROR=FLOTNG**2;
+	 >
+	 APPEND:Y   <
+	    IF (NDSETS.ne.0) LAPPEN=LTOKEN;
+	    GOTO :CHECK1:;
+	 >
+	 SAMPLES:1::0,
+	 POISSON:0,SQRT:0 <
+	    LSETS=.true.;
+	    LPOIS=.true.;
+	    SAMPLE=FLOTNG;
+	    IF (IOP.eq.0) IOP=1;
+	    IF (IR.eq.0) IR=NCSIZE*((ID-N_XDATA)/NCSIZE)+N_XDATA;
+	    I=INDEX(CORD,' ')-1;
+	    IF (I.le.0) I=LEN(CORD);
+	    CORD1='SQRT('//CORD(2:I)//')';
+	    IF (JORD) THEN;
+		JORD=.false.; IORD(1)=1;
+	    ENDIF;
+	    GOTO :CHECK1:;
+	 >
+	 VALUES:0,BINS:1 < IBINS=INTEG; >
+	 FROM:1,
+	 TO:2,
+	 STEP:3,BY:3,WIDTH:3,
+	 N:4 <
+	    I=INTEG;
+	    <TOKEN NUMBER> <
+	       IF ((FLOTNG.lt.1 .and. I.eq.4) .or.
+		  (FLOTNG.eq.0 .and. I.eq.3)) THEN;
+		  ERROR OUT;('*** ERROR *** Bad value');
+	       ENDIF;
+	       GOTO :NUM:;
+	    >
+	 >
+
+	 *:2,TIMES:2,+:3,PLUS:3,/:+4,DIVIDE:4,-:5,MINUS:5 <
+		LSETS=.true.;
+		IF (IOP .gt. 1) GOTO :CONFLICT:;
+		IOP=INTEG;
+		GOTO :CHECK1:;
+	 >
+
+	 X:2,DX:3,Y:4,DY:5,Z:6,DZ:7,
+         NDX:8,NDY:9,NDZ:10,
+	 U:11,DU:12,NDU:13,V:14,DV:15,NDV:16,W:17,DW:18,NDW:19,
+	 THETA:102,DTHETA:103,RADIUS:104,DRADIUS:105,PHI:206,DPHI:207,
+	   <
+	    LSETS=.true.;
+	    IF (IOP.eq.0) IOP=1;
+	    IF (INTEG .gt. 100) THEN;
+		$POLAR=.true.;
+		IF (INTEG.gt.200)$SPHERICAL=.true.;
+		INTEG=MOD(INTEG,100);
+	    ENDIF;
+	    INTEG=I_VORDER(INTEG,1);
+	    IR=INTEG;
+	    CALL T2GVNM(IR,CORD1);
+	    IF (IR.ne.ID .and. ERROR.ge.0) GOTO :CONFLICT:;
+	    IF (JORD) THEN;
+		JORD=.false.; IORD(1)=1;
+	    ENDIF;
+	 >
+      >
+      NUMBER:: < I=1;
+:NUM:    IF (LSET(I)) goto :CONFLICT:;
+	 PARM(I)=FLOTNG; LSET(I)=.true.;
+	 IF (JORD) THEN;
+		JORD=.false.; IORD(2)=1;
+	 ENDIF;
+:CHECK:  IVALS=IVALS+1;
+:CHECK1: IF (IVALS.gt.3 ) GOTO :CONFLICT:; "Too many specs ?"
+	 LAPPEN=LAPPEN .or. LSET(4);			"N implies new set"
+		"No options, append, numbers with equation"
+	 IF (INFO1(1).gt.0 .and. (IVALS+IOP.gt.0.or.LPOIS .or.LAPPEN.or.
+	      IR.gt.0))
+		  GOTO :CONFLICT:;
+		"No data sets, points, lines with append or 3 numbers or size"
+		"If sets selected + too many values or append ?"
+	 IF (LSETS .and.
+	     (LAPPEN.or.IVALS.ge.3)) GOTO :CONFLICT:;
+		"No Stepped and operate ?"
+	 IF ((LSET(2).or.LSET(3).or.LSET(4)) .and.
+	     (IOP.gt.1.or.IR.gt.0)) goto :CONFLICT:;
+		"Source + append"
+      >
+      STRING:: <
+	 IF (NSTRNG.gt.0) THEN;
+	    CARD1='<'//STRNG(1:NSTRNG)//'>';		"Save the string"
+	    INFO1(1)=NSTRNG+2;				"and length"
+	    LSETS=.true.;				"Do not reset data"
+	    CORD1=' Eqn:';
+	    GOTO :CHECK1:;				"CHeck for conflict"
+	 ENDIF;
+      >
+   >
+   IF (JORD) THEN;
+	JORD=.false.; IORD(1)=1;
+   ENDIF;
+   IF ( $ERROR ) RETURN;			"no errors"
+		"If value + variable specified, assume operator=*"
+   IF (IR.ne.0 .and. IVALS .gt. 0 .and. iop .eq. 1) IOP=2;
+   IF (IR.eq.0) IR=ID;
+   IF (IR.ne.ID ) IE=0;				"No Handle errors ?"
+   LSETS=LSETS .or.
+	((IVALS.lt.3) .and. (.not. LAPPEN));	"Modify existing ?"
+   IF (LSETS) THEN;				"Modify existing data sets ?"
+     LAPPEN=.false.;				"Do not create new one"
+     <ISET=NS2,NS1,-1;
+      CALL T2GDSET(ISET,N1,N2,N3,N4,ISETD,TLIM,C_SELECT(:N_SELECT));
+      IF ($ERROR) RETURN;
+      NP=NP-N1+1; NL=NL-N3+1;
+      IF (ISETD(NBTYPE).eq.2) THEN;
+	 IF ((ID-N_XDATA)/NCSIZE .ne. (IR-N_XDATA)/NCSIZE) THEN;
+	     ERROR OUT; ('*** ERROR *** Mismatched coordinates:'
+		//CORD//' '//CORD1);
+	     RETURN;
+	 ENDIF;
+	 CALL T2MSDA(ISETD);
+	 IF (IXYZ.eq.MESH3) THEN;
+	    NP=NL*NP;
+	 ELSEIF (IXYZ.eq.MESH2) THEN;
+	    NP=NL;
+	 ENDIF;
+      ENDIF;
+      IF (DATBUF(ISETD(NXDATA+ID-N_XDATA)).eq.HNONE) THEN;
+	 ERROR OUT; ('*** ERROR *** Nonexistant coordinate:'//CORD);
+	 RETURN;
+      ELSEIF (DATBUF(ISETD(NXDATA+IR-N_XDATA)).eq.HNONE) THEN;
+	 ERROR OUT; ('*** ERROR *** Nonexistant coordinate:'//CORD1);
+	 RETURN;
+      ENDIF;
+     >
+"
+	PARM(4)=NP;
+	LSET(4)=.true.;
+	IVALS=IVALS+1;
+"
+				"If no min/max or step assume 0 for step"
+
+"
+      IF (.not. LSET(3) .and. IVALS.eq.2) THEN;
+	LSET(3)=.true.;
+	IVALS=3;
+      ENDIF;
+"
+      IF (INFO1(1).gt.0) IVALS=4;
+      IF (LSET(1)) IVALS=4;
+      IF (IVALS .gt.1) IVALS=4;
+      IF (IOP.eq.1) IVALS=4;
+   ELSE;
+	<I=1,NINCR; IF (IVARBL(I) .eq. ID) <EXIT>; >
+	IF (I .eq. NINCR+1) THEN;
+	    ERROR OUT; ('*** ERROR *** Nonexistant coordinate:'//CORD);
+	    RETURN;
+	ENDIF;
+	LAPPEN=.true.;
+   ENDIF;
+   LRESET=LRESET .and. .not. LAPPEN .and. .not. LSETS;	"No reset if append"
+
+   IF ($ERROR) RETURN;
+						"Check some values"
+   IF (IVALS.le.3) THEN;			"Need rest of values ?"
+	CALL T2FPAR1($INFO,$CARD,PARM,LSET,(IBINS.eq.1));
+	IF ($ERROR) RETURN;
+	NP = NINT(PARM(4));
+   ENDIF;
+   IF (IOP.eq.4 .and. PARM(1) .eq. 0 .and. IORD(2) .eq. 2) THEN;
+	ERROR OUT;('*** ERROR *** Division by zero');
+	RETURN;
+   ENDIF;
+   IF (LAPPEN) THEN;
+      IF (LRESET) CALL T2PNTR;			"Wipe out old points if used"
+      CALL T2NEWS(NP,C_NAME(:N_NAME));
+      IF ($ERROR) RETURN;
+      NS1=NDSETS; NS2=NDSETS;
+"
+	Fill out the value arrays, if they were not defined before
+"
+   ENDIF;
+   FLAGS(28)=.false.;
+   JPOINT=0;
+   N6=0;
+   IF (ERROR .le. 0) THEN;			"Error=0 ?"
+	IF (IOP.eq.3 .or. IOP.eq.5 ) IE=0;	"Optimize for error=0"
+	IF (IOP.eq.0 .and. INFO1(1).eq.0) IE=0;	"Likewise"
+	ERROR=0;				"Set to 0.0"
+   ENDIF;
+   <ISET=NS1,NS2;
+      CALL T2GDSET(ISET,N1,N2,N3,N4,ISETD,TLIM,C_SELECT(:N_SELECT));
+      IF ($ERROR) RETURN;
+      NP=NP-N1+1; NL=NL-N3+1;
+      IF (NP*NL .lt. 1) <NEXT>;
+      IF (.not.LSET(1)) THEN;
+	PARM(1)=PARM(2)-(NP*NL+IBINS-1)*PARM(3);
+      ELSEIF (.not.LSET(3).and. NP*NL .gt. 1 .and. LSET(2)) THEN;
+	PARM(3)=(PARM(2)-PARM(1))/(NP*NL+IBINS-1);
+      ENDIF;
+      IF (IBTYPE.eq.2) THEN;
+	CALL T2MSDA(ISETD);
+	NINCR1=NINCR1*NINCR0;
+	N5=IM+NINCR1*NINCR2;
+	IF (IXYZ.eq.MESH1) THEN;
+	    LN5=NP.eq.NINCR1-1;			"Kill current limits ?"
+	    NL=N3;
+	    N6=N5+NINCR0;
+	    IF (NINCR0.ne.1) N6=0;		"No limits ?"
+	ELSEIF (IXYZ.eq.MESH2) THEN;
+	    LN5=NL.eq.NINCR2-1;			"Kill current limits ?"
+	    N5=N5+2*NINCR0;
+	    N6=N5+NINCR0;
+	    IF (NINCR0.ne.1) N6=0;		"No limits ?"
+	    NP=NL; NL=N3;
+	    NINCR0=NINCR1;
+	ENDIF;
+	IF (IOP.eq.4 .and. IORD(1).eq.2) N6=0;
+      ENDIF;
+						"Now the specified array"
+      IF (	DATBUF(ISETD(NXDATA+ID-N_XDATA)).eq.HNONE .or.
+		DATBUF(ISETD(NXDATA+IR-N_XDATA)).eq.HNONE) THEN;
+	 ERROR OUT; ('*** ERROR *** Nonexistant coordinate');
+	 RETURN;
+      ENDIF;
+      IF (IE.ne.0) THEN;
+	 LERR=DATBUF(ISETD(NXDATA+ID-N_XDATA+IE)).ne.HNONE;
+	 LNERR=DATBUF(ISETD(NXDATA+ID-N_XDATA+IE+1)).ne.HNONE;
+      ELSE;
+	 LERR=.false.;
+	 LNERR=.false.;
+      ENDIF;
+      XNSTEP = 0.5*IBINS;
+      IPOINT=0;
+      TEMP2=0;
+      IF (IOP.eq.0.and.LERR) THEN;
+	TEMP2=SQRT(ERROR);
+	TEMP3=TEMP2;
+      ENDIF;
+      MIND=ISETD(ID+NXDATA-N_XDATA);
+      MINR=ISETD(IR+NXDATA-N_XDATA);
+      ICHSAVE(1)=0;				"No optimization unless"
+      IF (NL*NP.gt.1) ICHSAVE(1)=1;		"Multiple passes ?"
+      <II=1,NL;
+	 MD=MIND;
+	 MR=MINR;
+	 <I=1,NP;
+	    ME=MR+1;
+	    ICPOIN(1)=MD; ICPOIN(2)=MR;
+	    IF ($TRAP) RETURN;
+	    VALUE(IORD(1))=DATBUF(MR);		"Get data"
+	    IF (INFO1(1).ne.0) THEN;
+		INFO1(3)=0;
+		CALL T2EXPR(INFO1,CARD1,ICHSAVE,NCHSAVE);
+		IF (JPOINT .eq. 0) THEN;
+		    IF (INFO1(1) .gt. INFO1(3)) THEN;
+			ERROR OUT;'*** ERROR *** Unprocessed expression:'//
+			CARD1(INFO1(3)+1:INFO1(1));
+		    ENDIF;
+		ENDIF;
+		IF ($ERROR.and.II.eq.1.and.I.eq.1) RETURN;
+		VALUE(IORD(2))=FLOTNG;
+		IF (LERR) THEN;
+		IF (LNERR) THEN;
+		  TEMP3=ABS(DATBUF(ME+1));
+		  DATBUF(MR)=DATBUF(MR)-TEMP3;
+		  INFO1(3)=0;
+		  DATBUF(ME+1)=ERROR;
+		  CALL T2EXPR(INFO1,CARD1,ICHSAVE,NCHSAVE);
+		  DATBUF(MR)=VALUE(IORD(1));
+		  DATBUF(ME+1)=TEMP3;
+		  IF ($ERROR.and.II.eq.1.and.I.eq.1) THEN;
+		    RETURN;
+		  ENDIF;
+		  TEMP3=-(FLOTNG-VALUE(IORD(2)));
+		ENDIF;
+		  TEMP2=ABS(DATBUF(ME));
+		  DATBUF(MR)=DATBUF(MR)+TEMP2;
+		  INFO1(3)=0;
+		  DATBUF(ME)=ERROR;
+		  CALL T2EXPR(INFO1,CARD1,ICHSAVE,NCHSAVE);
+		  DATBUF(MR)=VALUE(IORD(1));
+		  DATBUF(ME)=TEMP2;
+		  IF ($ERROR.and.II.eq.1.and.I.eq.1) THEN;
+		    RETURN;
+		  ENDIF;
+		  TEMP2=ABS(FLOTNG-VALUE(IORD(2)));
+		ENDIF;
+	    ELSE;
+		VALUE(IORD(2))=(PARM(1)+XNSTEP*PARM(3));	"Get constant"
+						"Binomial stat ?"
+		IF (SAMPLE.gt.0) VALUE(IORD(1))=
+		    VALUE(IORD(1))*(SAMPLE-VALUE(IORD(1)))/SAMPLE;
+		IF (LPOIS) VALUE(IORD(1))= SQRT(ABS(VALUE(IORD(1))));
+	    ENDIF;
+	    IF (IOP.eq.1) THEN;			"Transfer value"
+		DATBUF(MD) = VALUE(IORD(1));
+	    ELSEIF (IOP.eq.2) THEN;		"Multiply by const"
+		DATBUF(MD) = VALUE(1)*VALUE(2);
+		IF (LERR) THEN;			"Handle error ?"
+		    DATBUF(ME)=SQRT(ERROR*(VALUE(IORD(1)))**2+
+			(DATBUF(ME)*(VALUE(IORD(2))))**2);
+		IF (LNERR)			"Handle error ?"
+		    DATBUF(ME+1)=SQRT(ERROR*(VALUE(IORD(1)))**2+
+			(DATBUF(ME+1)*(VALUE(IORD(2))))**2);
+		ENDIF;
+	    ELSEIF (IOP.eq.3) THEN;		"Add to const"
+		DATBUF(MD) = VALUE(1)+VALUE(2);
+		IF (LERR) THEN;			"Handle error ?"
+		    DATBUF(ME)=SQRT(DATBUF(ME)**2+ERROR);
+		    IF (LNERR)			"Handle error ?"
+			DATBUF(ME+1)=SQRT(DATBUF(ME+1)**2+ERROR);
+		ENDIF;
+	    ELSEIF (IOP.eq.4) THEN;		"Divide by const"
+	      IF (VALUE(2) .eq. 0) THEN;
+		DATBUF(MD) = 0;
+		IF (LERR) DATBUF(ME)=0;
+		IF (LNERR) DATBUF(ME+1)=0;
+		ERROR OUT; '*** ERROR *** Attempt to divide by 0.0';
+		CALL T2TERR;			"Type out location"
+	      ELSE;
+		DATBUF(MD) = VALUE(1)/VALUE(2);
+		IF (LERR) THEN;			"Handle error ?"
+		    DATBUF(ME)=SQRT(ERROR*(VALUE(IORD(1)))**2+
+			(DATBUF(ME)*(VALUE(IORD(2))))**2);
+		    DATBUF(ME) = DATBUF(ME)/VALUE(2)**2;
+		    IF (LNERR) THEN;			"Handle error ?"
+		  	DATBUF(ME+1)=SQRT(ERROR*(VALUE(IORD(1)))**2+
+			    (DATBUF(ME+1)*(VALUE(IORD(2))))**2);
+		  	DATBUF(ME+1) = DATBUF(ME)/VALUE(2)**2;
+		    ENDIF;
+		ENDIF;
+	      ENDIF;
+	    ELSEIF (IOP.eq.5) THEN;		"Subtract constant"
+		DATBUF(MD) = VALUE(1)-VALUE(2);
+		IF (LERR) THEN;			"Handle error ?"
+		    DATBUF(ME)=SQRT(DATBUF(ME)**2+ERROR);
+		    IF (LNERR)			"Handle error ?"
+		    	DATBUF(ME+1)=SQRT(DATBUF(ME+1)**2+ERROR);
+		ENDIF;
+	    ELSE;				"Set to const"
+		DATBUF(MD) = VALUE(IORD(2));
+		IF (LERR) THEN;
+		    DATBUF(ME)=TEMP2;	"Handle error ?"
+		    IF (LNERR) DATBUF(ME+1)=TEMP3;	"Handle error ?"
+		ENDIF;
+	    ENDIF;
+	    IF (LNERR) THEN;
+		IF (DATBUF(ME+1) .lt. 0) THEN;
+		    TEMP3=DATBUF(ME+1);
+		    DATBUF(ME+1)=ABS(DATBUF(ME));
+		    DATBUF(ME)=ABS(TEMP3);
+		ENDIF;
+	    ENDIF;
+	    IF (LERR) DATBUF(ME)=ABS(DATBUF(ME));
+	    IPOINT=IPOINT+1;
+	    MD=MD+NINCR0;
+	    MR=MR+NINCR0;
+	    XNSTEP=XNSTEP+1.;
+	 >
+	 MIND=MIND+NINCR1;
+	 MINR=MINR+NINCR1;
+      >
+      IF (N6.ne.0) THEN;			"Fill in limits ?"
+	 XNSTEP=-0.5;
+	 IF (DATBUF(N5).ne.0 .or. DATBUF(N6).eq.0.or.IOP.eq.0) THEN;
+	    <MINR=N5,N6,N6-N5;
+	       ICPOIN(1)=MINR;
+	       IF (INFO1(1).eq.0) THEN;
+		  ICPOIN(1)=MINR;
+		  VALUE(IORD(1))=DATBUF(MINR);
+		  VALUE(IORD(2))=PARM(1)+XNSTEP*PARM(3);
+	       ELSE;
+		  VALUE(IORD(1))=0;
+		  VALUE(IORD(2))=0;
+	       ENDIF;
+	       if (.not.LN5) THEN;
+		  DATBUF(MINR) = 0;
+	       ELSEIF (IOP.eq.1) THEN;		"Transfer value"
+		  DATBUF(MINR) = VALUE(IORD(1));
+	       ELSEIF (IOP.eq.2) THEN;		"Multiply by const"
+		  DATBUF(MINR) = VALUE(1)*VALUE(2);
+	       ELSEIF (IOP.eq.3) THEN;		"Add to const"
+		  DATBUF(MINR) = VALUE(1)+VALUE(2);
+	       ELSEIF (IOP.eq.4) THEN;
+		  DATBUF(MINR) = VALUE(1)/VALUE(2);
+	       ELSEIF (IOP.eq.5) THEN;
+		  DATBUF(MINR) = VALUE(1)-VALUE(2);
+	       ELSE;				"Set to const"
+		  DATBUF(MINR) = VALUE(IORD(2));
+	       ENDIF;
+	       IF (NMESH0.eq.2) DATBUF(MINR+1)=DATBUF(MINR);
+	       XNSTEP=XNSTEP+NP;
+	    >
+	 ENDIF;
+	 Call T2MSCK($INFO,$CARD);
+      ENDIF;
+      JPOINT=JPOINT+IPOINT;
+	IF (IPOINT .gt.0)    DATDAT(1,1)=HNONE;
+      IF (LLOG.and.IPOINT.gt.0) THEN;
+	K=0;
+	WRITE(OUTSTR,*)'  ',CORD,' (',IPOINT,' points Set=',ISET,') = ',
+	     CORD1;
+	CALL T2SQEZ(OUTSTR(3:LEN(OUTSTR)),K);
+	K=K+4;
+	IF     (IOP.eq.0.and.INFO1(1).ne.0) THEN;
+	   OUTSTR(K:)=CARD1(2:INFO1(1)-1);
+	   IF (K+INFO1(1)-2.gt.LEN(OUTSTR))
+	      OUTSTR(LEN(OUTSTR)-2:LEN(OUTSTR))='...';
+	ELSEIF (IOP.ne.1) THEN;
+	   OUTSTR(K:)=COPER(IOP+1)//' (';
+	   XNSTEP=0.5*IBINS*PARM(3);
+	   IMAX=3; IF (PARM(3) .eq. 0) IMAX=1;
+	   <I=1,IMAX;
+		IF (LSET(I)) THEN;
+		    K=T2BTRIM(OUTSTR)+2;
+		    WRITE(OUTSTR(K:),*) CFRTO(I),PARM(I)+XNSTEP;
+		ENDIF;
+		XNSTEP=-XNSTEP;
+		IF (I .ge. 2) XNSTEP=0;
+	    >
+	    OUTSTR(T2BTRIM(OUTSTR)+1:)=')';
+	ENDIF;
+	CALL T2WRSQ(OUTSTR,.true.,$TERMINAL OUT,3);
+	IF (LERR) THEN;
+	    WRITE(OUTSTR,*)'    D',CORD(2:),' = D',CORD1(2:),
+		' Modified by +-',SQRT(ERROR);
+	    CALL T2WRSQ(OUTSTR,.true.,$TERMINAL OUT,4);
+	ENDIF;
+      ENDIF;
+   >
+   IF (JPOINT .eq. 0) THEN;
+	WRITE($TERMINAL OUT,*) '   NO data created or modified';
+   ELSE;
+	DATDAT(1,1)=HNONE;
+   ENDIF;
+   RETURN;
+:CONFLICT:
+   ERROR OUT; ('*** ERROR *** Conflicting options');
+END;
+%E  SUBROUTINE T2MSDA  --- Reorder data coord X/Y/Z of a mesh
+SUBROUTINE T2MSDA(ISETD);
+"
+	Subroutine to reorder Mesh coordinates to X/Y/Z
+"
+   IMPLICIT NONE;
+   INTEGER ISETD(2,8),IS(2,3),I,J;
+   $SPECIFICATION;
+   <I=1,3;
+      <J=1,2;
+	 IS(J,I)=ISETD(J,2+MESHN(I));
+      >
+   >
+   <I=1,3;
+      <J=1,2;
+	 ISETD(J,2+I)=IS(J,I);
+      >
+   >
+END;
+%E  SUBROUTINE T2MSCK --- Check mesh axes
+SUBROUTINE T2MSCK($INFO,$CARD);
+   IMPLICIT NONE;
+   INTEGER $INFO(10);
+   CHARACTER*(*) $CARD;
+   $SPECIFICATION;
+   $POINT ARRAYS($NPOINTS);
+   CHARACTER*1 CXYZ(3);
+   DATA CXYZ/'X','Y','Z'/;
+   INTEGER I,J,K,IMESH,IMIN,IMAX,IJUMP;
+   REAL S,TEMP,TEMP1;
+   $BOOLEAN LTEST;
+   IF (NMESH1*NMESH2.le.0) RETURN;
+   IJUMP=NMESH0;
+   J=$IMSPTR+IJUMP;
+   <IMESH=1,2;
+      LTEST=.false.;
+      TEMP=DATBUF(J);
+      S=DATBUF(J+IJUMP*(NMESHN(IMESH)-2))-TEMP;
+      IF (S.ne.0) S=SIGN(1.0,S);
+      K=NMESH0*(NMESH1*NMESH2+2*(IMESH-1))+$IMSPTR;
+      IMAX=NMESHN(IMESH);
+      IF (DATBUF(K).ne.0 .and. DATBUF(K+NMESH0).ne.0.and.NMESH0.eq.1) THEN;
+	 TEMP=DATBUF(K);
+	 IMIN=2;
+	 K=K+NMESH0;
+      ELSE;
+	 J=J+IJUMP;
+	 K=0;
+	 IMIN=3;
+      ENDIF;
+      <I=IMIN,IMAX;
+	 TEMP1=TEMP;
+	 TEMP=DATBUF(J);
+	 J=J+IJUMP;
+	 LTEST=LTEST.or. (S*(TEMP-TEMP1).le.0);
+      >
+      IF (K.ne.0) THEN;
+	 TEMP1=TEMP;
+	 TEMP=DATBUF(K);
+	 LTEST=LTEST.or. (S*(TEMP-TEMP1).le.0);
+      ENDIF;
+      IF (LTEST) THEN;
+	 ERROR OUT; '*** WARNING *** '//
+	    CXYZ(MESHN(IMESH))//' Axis is not strictly monotonic';
+      ENDIF;
+      IJUMP=NMESH0*NMESH1;
+   >
+END;
+%E  SUBROUTINE T2_FIT --- Fit the data with series
+   SUBROUTINE T2_FIT($INFO,$CARD);
+"
+	Program to fit data points
+"
+   IMPLICIT NONE;
+   INTEGER $INFO(10);
+   CHARACTER*(*) $CARD;
+   $SPECIFICATION;
+   $SPECIFYFIT;
+   $MAINSPEC;
+   $SPECIFYNONE;
+   $POINT ARRAYS($NPOINTS);
+   INTEGER    MAX_FITS    ;
+   PARAMETER (MAX_FITS=10);
+   CHARACTER*12 CFIT(MAX_FITS)
+      /'User','Polynomial','Sine','Cosine','Leg[Cos','Legendre',
+	     'Laurent','Equation',2*' '/;
+   CHARACTER*12 CY(2,2) /'Y =','Log(Y) =','Z =','Log(Z) ='/;
+   CHARACTER*12 CX(2) /'[X-OFF]','[Log(X-OFF)]'/;
+   CHARACTER*10 C_MINUIT(2) /'MIGRAD','SET INT'/;
+   INTEGER I_MINUIT;
+   CHARACTER*20 CTFIT(MAX_FITS)
+	/'User%[$]',' $**% ;',' sin(%*$);',' cos(%*$);'
+	,' Leg[%](Cos$);'
+	,' Leg[%]$ ;',' $**-% ;',' Equation',2*' '/;
+   $BOOLEAN LSET(4,2);
+   $BOOLEAN LDVEC($MAXCOR);
+   $BOOLEAN LNOYES(2);
+   $BOOLEAN LLOG,LGAUSS,LAPPEN,LBINS,LCURVE,LFULL,INTRAC,LMONITOR;
+   $BOOLEAN LLINEAR, LGRADIENT, LCONSTRAIN, L_FIT_SET/.false./;
+   $BOOLEAN LLIN_SET,LNDY;
+   INTEGER IZERO,JSET, I_BAD_DY,T2BTRIM;
+   INTEGER IVALS,IPASS;
+   INTEGER I,J,JJ,K,L,M,N;
+   INTEGER ISET,IXV,INOYES;
+   INTEGER IXYZ(3,2),IDXYZ(3,2);
+   INTEGER IERR, KLIM, T2_CONFIRM, ITERMS, IERROR;
+   INTEGER MIN_COFF, IMESH_CURVE, IFIT_SPEC;
+   REAL PARM(4,2),T,TEMP,DY;
+   REAL DVEC($MAXCOR),FREEN;
+   DOUBLE PRECISION A1,A2,A3, MN_PRINT_LEV/-1/,DTOLER/0/;
+   DATA LNOYES/.FALSE.,.TRUE./;
+   EXTERNAL T2_FCN, T2_DUMMY;
+   DOUBLE PRECISION WEIGHT,Y2SUM;
+   DOUBLE PRECISION B(MAXTER,MAXTER);
+   DOUBLE PRECISION YSUM(MAXTER),XSUM(MAXTER*MAXTER);
+   DOUBLE PRECISION DTEMP,YF,ARGLIS(10),MN_REPEAT;
+   DOUBLE PRECISION CLIM(MAXTER,2),D_XYZVAL(4);
+$VAX;
+   EXTERNAL T2_HANDL;
+   CALL LIB$ESTABLISH(T2_HANDL);
+$END;
+   <TOKEN> <
+      KEY:: < AGAIN:Y < L_FIT_SET=LTOKEN; > >
+      ELSE::< <READ SAME TOKEN>; >
+   >
+   IF (.not. L_FIT_SET) THEN;
+	<I=1,NINCR; J=IVARBL(I); IF (J.gt.0)LDVEC(J)=.true.;>
+	IFIT=0;
+	NTERMS=2;
+	NCOFF=0;
+	N1_FIT=1; N2_FIT=$LARGE INTEGER; N3_FIT=1; N4_FIT=$LARGE INTEGER;
+	NS1_FIT=1; NS2_FIT=NDSETS;
+	LAPPEN=$APPEND; LCURVE=.false.; LXLOG=.false.; LYLOG=.false.;
+	LLOG=.true.;
+	<I=1,MAXTER;
+		LFIT(I)=.true.;
+		LCOFF(I)=.false.;
+		DCOFF(I)=0.0;
+"
+		COFF(I)=0.0;
+"
+		<J=1,2; CLIM(I,J)=0; >
+	>
+	<J=1,2; <I=1,4; LSET(I,J)=.false.; PARM(I,J)=0.;> > IVALS=0;
+	N_FIT_LIM=0;				"Max number of limits used"
+	TEMP=$LARGE REAL;
+	XOFF=0;
+	LGAUSS=.false.;
+	LBINS=.false.;
+	LMONITOR=$MONITOR;
+	LFULL=.false.;
+	LGRADIENT=.true.;
+	LCONSTRAIN=.TRUE.;
+	LLINEAR=.true.;			"Default is linear"
+	LLIN_SET=.false.;		"Except for Gauss fits"
+	D_CHISQ=0;
+	FIT_LIM(1,3)=HNONE;
+	MN_REPEAT=0;
+	N_NAME=3;   C_NAME='Fit';
+	I_MINUIT=1;
+	IMESH_CURVE=1;
+	IMESH_FIT=1;
+	IDEP_FIT=0;
+	IFIT_SPEC=0;
+   ENDIF;
+   L_FIT_SET=INTEG .eq. 1;
+
+   <TOKEN KEY LOOP> <
+			"Get data set"
+      Y:2,Z:3 < IDEP_FIT=INTEG; >
+      POLYNOMIAL:1,SINE:2,COSINE:3,LEGENDRE:5,INVERSE:6,GAUSSIAN:108,
+      EXPONENTIAL:109,DGAUSSIAN:310,DPOLYNOMIAL:211 <
+	IFIT_SPEC=INTEG;
+	IF (IFIT+INTEG.eq.8.and.IFIT*INTEG.eq.15) THEN; IFIT=4;
+	ELSEIF (IFIT.eq.0) THEN; IFIT=MOD(INTEG,100);
+	ELSE;
+	    ERROR OUT;('*** ERROR *** Conflicting operations');
+	    GOTO :ERET:;
+	ENDIF;
+	IF (IAND(IFIT_SPEC/100,1) .gt. 0) LLINEAR=LLIN_SET;
+      >
+      CURVE < LCURVE=.true.;
+	 J=1;
+	 <TOKEN LOOP> <
+	    KEY:: <
+	       APPEND:Y        < LAPPEN=LTOKEN;>
+	       NAME:S      <N_NAME=MAX(1,NSTRNG); C_NAME=STRNG(:N_NAME); >
+	       BINS:Y,VALUES:N < LBINS=LTOKEN;>
+	       X:1,Y:2 < J=INTEG; IVALS=0; IMESH_CURVE=IOR(IMESH_CURVE,J); >
+	       FROM:1,TO:2,STEP:3,BY:3,WIDTH:3,N:4 <
+		  I=INTEG;
+		  <TOKEN NUMBER> <
+		     IF (IVALS.eq.3 .or. LSET(I,J)) THEN;
+			ERROR OUT;('*** ERROR *** Redundant value');
+		     ELSEIF (I.le.2 .or.
+		       (I.eq.4.and.FLOTNG.ge.0) .or.
+		       (I.eq.3.and.FLOTNG.ne.0)) THEN;
+			PARM(I,J)=FLOTNG;
+			IVALS=IVALS+1; LSET(I,J)=.true.;
+		     ELSE;
+			ERROR OUT; ('*** ERROR *** Value too small');
+			GOTO :ERET:;
+		     ENDIF;
+		  >
+	       >
+	    >
+	    ELSE:: <<READ SAME TOKEN>; <EXIT>;>
+	 >
+      >
+      CONSTRAIN:Y             < LCONSTRAIN=LTOKEN; >
+      COEFFICIENTS:0,ERRORS:1,ECOEFFICIENTS:1,CMINIMUM:3,CMAXIMUM:4 <
+
+	IXV=1;
+	J=INTEG;
+	<TOKEN LOOP> <
+	    KEY:: <
+	       I:0:19:0,INDEX:0:19:0 < IXV=INTEG+1; >
+	       CONSTRAIN:Y < LCONSTRAIN=LTOKEN; >
+	    >
+	    NUMBER:: <
+	       IF (IXV.gt.0.and.IXV.le.MAXTER) THEN;
+		  IF (J.eq.0) THEN;
+			DCOFF(IXV)=0;
+			COFF(IXV)=FLOTNG;
+			LFIT(IXV)=.TRUE.;
+			LCOFF(IXV)=LCONSTRAIN;
+			IF (IXV.gt.NTERMS) NTERMS=IXV;
+		  ELSEIF (J.eq.1) THEN;
+			DCOFF(IXV)=ABS(FLOTNG);
+		  ELSE;
+			CLIM(IXV,J-1)=FLOTNG;
+		  ENDIF;
+		  IXV=IXV+1;
+	       ELSE;
+		  ERROR OUT;('*** ERROR *** Term INDEX out of range (0-19)');
+		  GOTO :ERET:;
+	       ENDIF;
+	    >
+	    ELSE:: <<READ SAME TOKEN>; <EXIT>;>
+	 >
+      >
+      ECHISQ:.001:1000:1.0 < D_CHISQ=FLOTNG; >
+      EQUATIONS:S <
+"
+	NEXTER	is the number of terms in an equation
+	NEXPR	points to the begin,end of each term
+	SEXPR	Contains the terms
+"
+	LGRADIENT = .false.;				"No gradient for eq"
+	IFIT=7;						"Arb equation"
+	ICHSAVE(1)=1;					"Setup optimization"
+	IF (NSTRNG.gt.1) THEN;				"Use existing string ?"
+	    SEXPR='Constant;';				"First term"
+	    NTERMS=1;					"is alread constant"
+	    J=1;					"Start of string"
+	    L=INDEX(SEXPR,';');				"Find end of SEXPR"
+	    <I=2,MAXTER+1;				"Find the terms"
+		IF (J .gt. NSTRNG) <EXIT>;		"At end ?"
+		K=INDEX(STRNG(J:NSTRNG),';');		"Locate ;"
+		IF (K.eq.0) K=NSTRNG+2-J;		"At end ?"
+		IF (K.le.1) <EXIT>;			"None ?"
+		IF (STRNG(J:J+K-2) .eq. ' ') <EXIT>;	"Blank term ?"
+		NTERMS=I;				"Terms !"
+		SEXPR(L+1:L+K+2)='<'//STRNG(J:J+K-2)//'>;';	"Save it"
+		L=L+K+2;				"Start of next one"
+		J=J+K;					"End of term"
+	    >
+	ENDIF;
+      >
+      FULL:Y        < LFULL=LTOKEN; >
+      GRADIENT:Y    < LGRADIENT=LTOKEN; >
+      INCLUDE:1,EXCLUDE:2 < INOYES=INTEG;		"2=exclude"
+	 <I=1,MAXTER; LFIT(I)=LNOYES(INOYES); >		"Set all terms"
+	 <TOKEN LOOP> <
+	    KEY:: <
+	       NONE < CONTINUE; >
+	       EVEN:1,ODD:2 <<I=INTEG,MAXTER,2; LFIT(I)=LNOYES(3-INOYES);>>
+	    >
+	    NUMBER:: < INTEG=INTEG+1;
+	       IF (INTEG.le.0 .or.INTEG.gt.MAXTER) THEN;
+		  ERROR OUT;('*** ERROR *** Term INDEX out of range (0-19)');
+		  GOTO :ERET:;
+	       ELSE;
+		  NTERMS=MAX(NTERMS,INTEG);
+		  LFIT(INTEG)=LNOYES(3-INOYES);
+	       ENDIF;
+	    >
+	    ELSE:: < <READ SAME TOKEN>; <EXIT>; >
+	 >
+      >
+      LINES,ROWS      < CALL T2ROWS($INFO,$CARD,N3_FIT,N4_FIT); >
+      LIMITED <
+	 CALL T2XYZC($INFO,$CARD,FIT_LIM(1,3),MAX_FIT_LIM-2,N_FIT_LIM);
+	 N_FIT_LIM=MAX(2,N_FIT_LIM);
+      >
+      LOG:Y           < LLOG=LTOKEN; >
+      MINUIT:2        < I_MINUIT=INTEG; LLINEAR=.false.; LLIN_SET=.false.; >
+      MESH:Y          < IMESH_FIT=1; IF (LTOKEN) IMESH_FIT=2; >
+      MONITOR:Y        < LMONITOR=LTOKEN; >
+      NONLINEAR:N     < LLINEAR=LTOKEN; LLIN_SET=LTOKEN; >
+      OFFSET:::0      < XOFF=FLOTNG;>
+      ORDER:0:19:1    < NTERMS=INTEG+1; >
+      POINTS,COLUMNS  < CALL T2PNTS($INFO,$CARD,N1_FIT,N2_FIT);>
+      PRINTLEVEL:-1:3:-1 < MN_PRINT_LEV=INTEG; >
+      REPEAT:0:100000:0 < MN_REPEAT=FLOTNG; >
+      SETS            < CALL T2NSET($INFO,$CARD,NS1_FIT,NS2_FIT);>
+      SCALE           < LXLOG=NONLIN(1).eq.-2; LYLOG=NONLIN(2).eq.-2;>
+      TERMS:1:20:2    < NTERMS=INTEG; >
+      TOLERENCE:0:1000:0 < DTOLER=FLOTNG; >
+      USER:1:99:1     < IFIT=-INTEG; SEXPR=' '; >
+   >
+
+   IF ($ERROR) GOTO :ERET:;
+   IF (L_FIT_SET) GOTO :END:;
+   IF (IFIT.eq.0) IFIT=1;
+   <I=1,2; <J=1,3; FIT_LIM(J,I)=FIT_LIM(J,I+2); >  >
+   <I=1,N_FIT_LIM,2; K=MOD((I-1),2)+1;
+      <J=1,3;
+         FIT_LIM(J,K)=MIN(FIT_LIM(J,I+2),FIT_LIM(J,K));
+         FIT_LIM(J,K+1)=MAX(FIT_LIM(J,I+3),FIT_LIM(J,K+1));
+      >
+   >
+   IF (LCURVE .or. LMONITOR) THEN;			"Generate curve"
+	IMESH_CURVE=IOR(IMESH_CURVE,IMESH_FIT);
+	CALL T2FPAR($INFO,$CARD,PARM,LSET
+		,N1_FIT,N2_FIT,N3_FIT,N4_FIT,NS1_FIT,NS2_FIT
+		,LBINS,.true.,1,FIT_LIM
+		,C_SELECT(:N_SELECT),IMESH_FIT);	"Check X parameters"
+	IF (.not. $ERROR .and. IMESH_FIT .ge. 2)	"Mesh ?"
+	    CALL T2FPAR($INFO,$CARD,PARM(1,2),LSET(1,2)
+		,N1_FIT,N2_FIT,N3_FIT,N4_FIT,NS1_FIT,NS2_FIT
+		,LBINS,.true.,2,FIT_LIM
+		,C_SELECT(:N_SELECT),IMESH_FIT);	"Check Y parameters"
+	IF ($ERROR) GOTO :ERET:;
+   ENDIF;
+   IF (IFIT .eq. 5 .and. $POLAR) IFIT=4;
+"
+	Check if errors exist
+"
+   LDY_FIT=.false.;					"No errors at first"
+   IF (IAND(IFIT_SPEC/200,1) .gt. 0) IDEP_FIT=3;	"Must be 3 ?"
+   IF (IDEP_FIT .eq. 0) IDEP_FIT=MIN(IMESH_FIT+1,3);	"Set DEP var default"
+   <ISET=NS1_FIT,NS2_FIT;
+	CALL T2GDSET(ISET,N1_FIT,N2_FIT,N3_FIT,N4_FIT
+		,ISETD,FIT_LIM,C_SELECT(:N_SELECT));
+	IF ( IMESH_FIT .ne. IBTYPE) <NEXT>
+	KLIM=3; IF (DATBUF(I3).eq.HNONE) KLIM=2;
+	IF (IDEP_FIT .gt. KLIM) THEN;
+		ERROR OUT;'*** ERROR *** Missing Z coordinate';
+		GOTO :ERET:;
+	ENDIF;
+	IF (IBTYPE.eq.2) THEN;				"Mesh data ?"
+	    I5=I6;
+	    IF (MESH3 .ne.3) THEN;
+		ERROR OUT;'*** ERROR *** Mesh Z must be dependent variable';
+		GOTO :ERET:;
+	    ENDIF;
+	ENDIF;
+	IF (DATBUF(I5).eq.HNONE) THEN;			"No Error data ?"
+		LDY_FIT=.false.;
+		<EXIT>
+	ENDIF;
+	<M=N3_fIT,NL;					"Check data for errors"
+	    I6=I5;
+	    <N=N1_FIT,NP;				"Over selected range"
+		DY=DATBUF(I5); I5=I5+NINCR0;		"LDY=.true. if DY>0"
+		IF (DY.gt.0 .and. DY .lt. $LARGE REAL) THEN;
+		    LDY_FIT=.true.; <EXIT>;
+		ENDIF;
+	    >
+	    I5=I6+NINCR0*NINCR1;			"Next row"
+	>
+   >
+"
+	Setup fit titles etc.
+"
+   IF ( IFIT .eq. 8 .or. IFIT .eq. 9) THEN;		"Gauss or EXP ?"
+	IF (LLINEAR) THEN;
+		LYLOG=.true.;				"Linear fit ???"
+	ELSE;
+		LYLOG=.false.;
+	ENDIF;
+   ENDIF;
+   I=1; IF (LYLOG) I=2;
+   FITSTR=CY(I,IDEP_FIT-1);				"Dep var ="
+   J=1; IF (LXLOG) J=2;					"J=2 if LXLOG"
+   MIN_COFF=0;
+   IF (IFIT .eq. 8) THEN;				"Gaussian fit ?"
+	MIN_COFF=3;
+	NTERMS=MAX(NTERMS,3);
+	SEXPR='Height;Center;Width/2;Constant;';
+	IF (LLINEAR) THEN;
+	    NTERMS=3;
+	    FITSTR(T2BTRIM(FITSTR)+1:)=
+		'LOG(CO[0])+[-.5*[[X-CO[1]]/CO[2]]**2]';
+	    IFIT=1; LGAUSS=.true.;
+	    IF ((LCOFF(1).and.LFIT(3)) .or.
+		(LCOFF(2).and.LFIT(3)) .or.
+		(LCOFF(1).and.COFF(1).lt.$SMALL REAL) .or.
+		(LCOFF(3).and.COFF(3).lt.$SMALL REAL) )THEN;
+		ERROR OUT;('*** ERROR *** Illegal options for GAUSSIAN fit');
+		GOTO :ERET:;
+	    ENDIF;
+	    IF (LCOFF(3)) THEN;
+		COFF(3)=-0.5/COFF(3)**2;
+		DCOFF(3)=DCOFF(3)/(.5*SQRT(0.5)/(-COFF(3))**1.5);
+		ENDIF;
+	    IF (LCOFF(2)) THEN;
+		DCOFF(2)=DCOFF(2)/(-.5/COFF(3));
+		XOFF=COFF(2); COFF(2)=0;
+	    ENDIF;
+	    IF (LCOFF(1)) THEN;
+		DCOFF(1)=DCOFF(1)/COFF(1);
+		COFF(1)=LOG(COFF(1));
+	    ENDIF;
+	ELSE;
+	    FITSTR(T2BTRIM(FITSTR)+1:)='CO[0]*EXP[-.5*[[X-CO[1]]/CO[2]]**2]';
+	    IF (NTERMS .gt. 3) THEN;
+		FITSTR(T2BTRIM(FITSTR)+1:)=
+			' + Polynomial'//CX(J)(:T2BTRIM(CX(J)));
+		<I=4,NTERMS;
+		    WRITE(SEXPR(T2BTRIM(SEXPR)+1:),'(A,I2.2,A)')
+		    CX(J)(:T2BTRIM(CX(J)))//'**',I-3,';'; >
+	    ENDIF;
+	ENDIF;
+   ELSEIF (IFIT .eq. 9) THEN;			"Exponential"
+	MIN_COFF=2;
+	SEXPR='Height;1/Width;Constant;';
+	NTERMS=MAX(NTERMS,2);
+	IF (LLINEAR) THEN;
+	    NTERMS=2;
+	    FITSTR(T2BTRIM(FITSTR)+1:)=' CO[0]+CO[1]*'//CX(J);
+	    IFIT=1;
+	    GOTO :GET TITLE:;
+	ELSE;
+	   FITSTR(T2BTRIM(FITSTR)+1:)='EXP( CO[0]+CO[1]*'//CX(J)//' )';
+	   IF (NTERMS .gt. 2) THEN;
+		FITSTR(T2BTRIM(FITSTR)+1:)=' + Polynomial'//CX(J);
+		<I=5,NTERMS;
+		    WRITE(SEXPR(T2BTRIM(SEXPR)+1:),'(A,I2.2,A)')
+			CX(J)(:T2BTRIM(CX(J)))//'**',I-4,';'; >
+	   ENDIF;
+	ENDIF;
+   ELSEIF (IFIT .eq. 10) THEN;				"DGaussian fit ?"
+	LLINEAR=.false.;
+	MIN_COFF=5;
+	NTERMS=MIN(MAX(NTERMS,5),8);
+	FITSTR(T2BTRIM(FITSTR)+1:)='CO[0]*EXP[-.5*[[[X-CO[1]]/CO[2]]**2'//
+			'+[[X-CO[3]]/CO[4]]**2]';
+	if (NTERMS .gt. 5)
+		FITSTR(T2BTRIM(FITSTR)+1:)=' + Polynomial(X,Y)';
+	SEXPR='Height;XCenter;XWidth/2;YCenter;Ywidth/2;Constant;';
+	K=6;
+	if (NTERMS .gt. K) GOTO :DPOLY:;
+   ELSEIF (IFIT .eq. 11) THEN;				"Dpolynomial"
+	FITSTR(T2BTRIM(FITSTR)+1:)='Polynomial(X,Y)';
+	SEXPR='Constant;';
+	K=1;
+:DPOLY:
+	<I=1,5;
+	    <L=0,I;
+		K=K+1;
+		if (K .gt. NTERMS) GOTO :END11:;
+		IF (L .eq. 0) THEN;
+		    WRITE(SEXPR(T2BTRIM(SEXPR)+1:),'(3(A,I2.2))')
+		    CX(J)(:T2BTRIM(CX(J)))//'**',I,';';
+		ELSEIF (L .eq. I) THEN;
+		    WRITE(SEXPR(T2BTRIM(SEXPR)+1:),'(3(A,I2.2))')
+		    '[Y]**',L,';';
+		ELSE;
+		    WRITE(SEXPR(T2BTRIM(SEXPR)+1:),'(3(A,I2.2))')
+		    CX(J)(:T2BTRIM(CX(J)))//'**',I-L,
+		    '*[Y]**',L,';';
+		ENDIF;
+	    >
+	>
+:END11:
+   ELSE;
+:GET TITLE:
+	IF (IFIT.gt.0) THEN;
+	    FITSTR(T2BTRIM(FITSTR)+1:)=CFIT(MAX(IFIT+1,1));
+	ELSE;
+	    WRITE(FITSTR(T2BTRIM(FITSTR)+1:),'(A,I2,A)')'User[',-IFIT,',';
+	ENDIF;
+	FITSTR(T2BTRIM(FITSTR)+1:)=CX(J);
+	IF (IFIT.eq.4) THEN; FITSTR(T2BTRIM(FITSTR)+1:)=']'; ENDIF;
+	IF (IFIT .ne. 7) THEN;
+	  SEXPR='Constant;';
+	  <I=2,NTERMS;
+	    K=T2BTRIM(SEXPR)+1;
+	    L=INDEX(CTFIT(MAX(IFIT+1,1)),'$');		"Coordinate goes here"
+	    M=INDEX(CTFIT(MAX(IFIT+1,1)),'%');		"Char to convert"
+	    N=INDEX(CTFIT(MAX(IFIT+1,1)),';')-1;	"End of string"
+	    IF (MIN(L,M,N) .eq. 0) THEN;
+		SEXPR(K:)=CTFIT(MAX(IFIT+1,1));
+	    ELSEIF (M .gt. L) THEN;			"First coordinate ?"
+		WRITE(SEXPR(K:),'(1X,3A,I2.2,2A)')
+			CTFIT(MAX(IFIT+1,1))(:L-1)
+			,CX(J)(:T2BTRIM(CX(J)))
+			,CTFIT(MAX(IFIT+1,1))(L+1:M-1)
+			,I-1
+			,CTFIT(MAX(IFIT+1,1))(M+1:N)
+			,';';
+	    ELSE;
+		WRITE(SEXPR(K:),'(1X,A,I2.2,4A)')
+			CTFIT(MAX(IFIT+1,1))(:M-1)
+			,I-1
+			,CTFIT(MAX(IFIT+1,1))(M+1:L-1)
+			,CX(J)(:T2BTRIM(CX(J)))
+			,CTFIT(MAX(IFIT+1,1))(L+1:N)
+			,';';
+	    ENDIF;
+	  >
+	ENDIF;
+   ENDIF;
+   <I=1,MIN_COFF; If (.not. (LCOFF(I) .or. LFIT(I))) THEN;
+			ERROR MESSAGE I;('*** ERROR *** Term',I3,
+			' must be fit or constrained');
+
+		ENDIF;
+   >
+   NFIT=0; J=0; ITERMS=0;
+   NEXPR(1)=0;
+   <I=1,NTERMS;
+	IF (NEXPR(I) .gt. LEN(SEXPR)) <EXIT>;		"Past end of string ?"
+	K=INDEX(SEXPR(NEXPR(I)+1:),';');
+	NEXPR(I+1)=NEXPR(I)+K;
+	IF (LFIT(I).or.LCOFF(I))THEN;			"Either ?"
+	    ITERMS=ITERMS+1;				"Total number of terms"
+	    IF (LCOFF(I)) LFIT(I)=.false.;		"Constrained ?"
+	    IF (LFIT(I)) NFIT=NFIT+1;			"Fit ?"
+	    IF (K .gt. 0 .or.
+		IFIT .ne. 7 .or.
+		.not. LLINEAR) J=I;			"If term, or not Eqatn."
+	    NCOFF=NCOFF+1;
+	ENDIF;
+   >
+   NTERMS=J;
+   IF ( NTERMS .le. 0) THEN;
+	ERROR OUT;'*** ERROR *** Terms=0';
+	GOTO :ERET:;
+   ENDIF;
+   IPASS=0;
+"
+	Now get number of points
+"
+   NPFIT=0;						"Total number of points"
+   DY=1;						"Default DY"
+   IF (NFIT.le.0) NS2_FIT=-1;				"No fit ?? Kill data"
+   IZERO=0; I_BAD_DY=0;
+   <ISET=NS1_FIT,NS2_FIT;
+	CALL T2GDSET(ISET,N1_FIT,N2_FIT,N3_FIT,N4_FIT
+		,ISETD,FIT_LIM,C_SELECT(:N_SELECT));
+	<I=1,3; D_XYZVAL(I)=0; >
+	IF ($ERROR) RETURN;
+	IF ( IMESH_FIT .ne. IBTYPE) <NEXT>
+	<I=1,3; IDXYZ(I,1)=NINCR0;
+		IDXYZ(I,2)=NINCR0*NINCR1;
+		IXYZ(MESHN(I),1)=ISETD(NCSIZE*(I-1)+NXDATA); >
+	KLIM=3; IF (DATBUF(I3).eq.HNONE) KLIM=2;
+	IF (IBTYPE.ne.1)  THEN;				"Mesh data ?"
+	    IDXYZ(MESH2,1)=0;
+	    IDXYZ(MESH1,2)=0;
+	ENDIF;
+	DY=1;						"Initial value"
+	<M=N3_fIT,NL;					"DO all rows"
+	 <I=1,KLIM; IXYZ(I,2)=IXYZ(I,1); >		"Save location"
+	  <N=N1_FIT,NP;					"Selected data sets"
+	    ICPOIN(1)=IXYZ(IDEP_FIT,1);
+	    IF (LDY_FIT) THEN;
+		DY = DATBUF(IXYZ(IDEP_FIT,1)+1);	"Error"
+	    ENDIF;
+	    <I=1,KLIM;
+		    D_XYZVAL(I)=DATBUF(IXYZ(I,1));	"X,Y,Z value"
+		    IXYZ(I,1)=IXYZ(I,1)+IDXYZ(I,1);	"Next one"
+	    >
+	    IF (DY .le. 0) <NEXT>;			"Dy is bad ?"
+	    IF ($TRAP) RETURN;
+	    IF (N_FIT_LIM.gt.0) THEN;		"Check for selected limits ?"
+	       <I=3,N_FIT_LIM+2,2;
+		<K=1,KLIM;
+		    IF ( D_XYZVAL(K) .lt. FIT_LIM(K,I) .or.
+			 D_XYZVAL(K) .gt. FIT_LIM(K,1+I) )
+			<NEXT>;				"Outside limits ?"
+		>
+		<EXIT>;
+	    >
+	    IF (I .gt. N_FIT_LIM+2) <NEXT>;		"outside all limits ?"
+	 ENDIF;
+	 D_XYZVAL(1)=D_XYZVAL(1)-XOFF;
+	 IF (LXLOG) THEN;				"Take log of Y?"
+		IF (D_XYZVAL(1).le.0) THEN; IZERO=IZERO+1; <NEXT>; ENDIF;
+		IF (D_XYZVAL(IDEP_FIT)-DY .LE. 0) THEN;
+			I_BAD_DY=I_BAD_DY+1; <NEXT>; ENDIF;
+	 ENDIF;
+	 IF (LYLOG) THEN;				"Take log of Y?"
+		IF (D_XYZVAL(IDEP_FIT).le.0) THEN;
+			IZERO=IZERO+1; <NEXT>;
+		ENDIF;
+	 ENDIF;
+	 NPFIT=NPFIT+1;
+	 >
+	<I=1,KLIM; IXYZ(I,1)=IXYZ(I,2)+IDXYZ(I,2); >	"Restore location"
+	>
+   >
+   IF (NPFIT .lt. NFIT) THEN;
+      ERROR$MESSAGE
+         '*** ERROR *** More terms (',NFIT,') than data points (',NPFIT,')';
+      GOTO :ERET:;
+   ENDIF;
+   IF (IZERO .ne. 0) THEN;
+	ERROR MESSAGE IZERO;
+	('*** WARNING *** LOG of zero or negative',I6,' points omitted');
+   ENDIF;
+   IF (I_BAD_DY .ne. 0) THEN;
+	ERROR MESSAGE I_BAD_DY;
+	('*** WARNING *** Y-DY zero or negative ',I6,' points omitted');
+   ENDIF;
+"
+	Now do the fitting
+"
+   CALL TDSTAT(FIT_LIM(1,3),N1_FIT,N2_FIT,N3_FIT,N4_FIT
+	,NS1_FIT,NS2_FIT,.true.,N_FIT_LIM,C_SELECT(:N_SELECT));
+   IF (.not. LLINEAR) THEN;				"Non linear fit ?"
+"
+		Find average values
+"
+	DTEMP=MAX( ABS(DATXMN-XOFF), ABS(DATXMX-XOFF));
+	IF     (IFIT .eq. 7) THEN;
+		LGRADIENT=.false.;		"Arb function ?"
+	ELSEIF (IFIT .eq. 8) THEN;			"Gaussian ?"
+		COFF(1)=(DATYMX-DATYMN);	DCOFF(1)=COFF(1)/10;
+		COFF(2)=DATCEN;			DCOFF(2)=DATSTD/10;
+		COFF(3)=DATSTD;			DCOFF(3)=DATSTD/10;
+		CLIM(3,1)=$SMALL REAL;		CLIM(3,2)=100*(DATXMX-DATXMN);
+		COFF(4)=DATYMN;			DCOFF(4)=DCOFF(1);
+		COFF(5)=0;			DCOFF(5)=DCOFF(4)/DTEMP;
+		COFF(6)=0;			DCOFF(6)=DCOFF(5)/DTEMP**2;
+	ELSEIF (IFIT .eq. 10) THEN;			"DGaussian ?"
+		COFF(1)=(DATZMX-DATZMN);	DCOFF(1)=COFF(1)/10;
+		COFF(2)=DATCEN;			DCOFF(2)=DATSTD/10;
+		COFF(3)=DATSTD;			DCOFF(3)=DCOFF(2);
+		CLIM(3,1)=$SMALL REAL;		CLIM(3,2)=10*(DATXMX-DATXMN);
+		COFF(4)=(DATYMX+DATYMN)/2;	DCOFF(4)=(DATYMX-DATYMN)/10;
+		COFF(5)=DCOFF(4)*10;		DCOFF(5)=DCOFF(4);
+		CLIM(5,1)=$SMALL REAL;		CLIM(5,2)=100*(DATYMX-DATYMN);
+		COFF(6)=DATZMN;			DCOFF(6)=DCOFF(1);
+		COFF(7)=0;			DCOFF(7)=DCOFF(4)/DTEMP;
+		COFF(8)=0;			DCOFF(8)=DCOFF(6)/DTEMP;
+	ENDIF;
+	CALL MNINIT($TERMINAL IN,$TERMINAL OUT,$SCRATCH FILE);	"Init."
+	CALL MNSETI(FITSTR(:T2BTRIM(FITSTR)));			"title"
+	CALL MNEXCM(T2_DUMMY,'SET PRINT',MN_PRINT_LEV,1,IERR,0);"Print level"
+	CALL MNEXCM(T2_DUMMY,'CLEAR',0,0,IERR,0);		"Clear"
+	IF (D_CHISQ .le. 0) D_CHISQ=1.0;			"Default"
+	CALL MNEXCM(T2_DUMMY,'SET ERR',D_CHISQ,1,IERR,0);
+	IF (LGRADIENT) THEN;					"Use Grad ?"
+		CALL MNEXCM(T2_DUMMY,'SET GRADIENT',0,0,IERR,0);
+	ELSE;
+		CALL MNEXCM(T2_DUMMY,'SET NOGRADIENT',0,0,IERR,0);
+	ENDIF;
+	L=0;
+	<I=1,NTERMS;					"Setup coef"
+	    A1=0; A2=0; IERR=0;				"Initial limits"
+	    IF (LFIT(I) .or. LCOFF(I)) THEN;		"Fit or choose ??"
+		L=L+1;
+		J=MIN(MAX(NEXPR(I)+1,1),LEN(SEXPR));
+		K=MIN(MAX(NEXPR(I+1)-1,J),LEN(SEXPR));	"Get term string"
+		IF (LFIT(I) .and. DCOFF(I) .eq. 0) THEN;"Fit & no step ??"
+		    DCOFF(I)=0.1*(DATYMX-DATYMN);	"Step = height/10"
+		    IF (IFIT .eq. 1) THEN;
+			DCOFF(I)=DCOFF(I)/DTEMP**(I-1);	"poly?"
+		    ELSE IF (IFIT .eq. 9 .and. I .gt. 3) THEN;	"Exponentisl ?"
+			DCOFF(I)=DCOFF(I)/DTEMP**(I-3);
+		    ELSE IF (IFIT .eq. 7) THEN;
+			DCOFF(I)=DCOFF(I)/10;		"Unknown ??"
+		    ENDIF;
+		ENDIF;
+			"Here set Name, Coef, Step, Limits for fit"
+		CALL MNPARM(L,SEXPR(J:K),COFF(I),DCOFF(I)
+			,CLIM(I,1),CLIM(I,2),IERR);
+		IF (.not. LFIT(I))
+			CALL MNEXCM(T2_DUMMY,'FIX',DBLE(FLOAT(I)),1,IERR,0);
+	    ENDIF;
+	>
+	IF ( MN_REPEAT .lt. 1) MN_REPEAT=MIN(MAX(ITERMS*20,25),100);
+	L=1;
+:CONTIN:
+	ARGLIS(1)=MN_REPEAT;
+	ARGLIS(2)=DTOLER;
+	J=1; IF ( DTOLER .gt. 0) J=2;
+	CALL MNEXCM(T2_FCN,
+		C_MINUIT(I_MINUIT),ARGLIS,J,IERR,0);	"Find coef"
+	IF (IERR .ne. 0) GOTO :FAIL:;
+	CALL MNSTAT(A1, A2, A3, I, J, IERR);
+	FTEST=A2;
+	IF (IERR .ne. 3) THEN;
+	    IF (.not. $TRAP) THEN;
+		IF (L .eq. 4) GOTO :CONTIN:;
+		ERROR MESSAGE A1,A2;
+			('Failure to fit, Chisq=',1p,G10.3,
+			' Delta (est.)=',G10.3);
+		L=T2_CONFIRM('Continue (A=infinite)');
+		IF (L .eq. 1 .or. L .eq. 4) goto :CONTIN:;
+		IF (L .eq. 3) GOTO :FAIL:;		"Quit"
+	    ENDIF;
+	ENDIF;
+	J=0;
+	FREEN=MAX(NPFIT-NFIT,1);			"Free points"
+	"FREEN=1;"
+	<I=1,NTERMS;					"Get coef"
+	   IF (LFIT(I)) THEN;
+		J=J+1;
+		IF (LFULL) THEN;
+		    CALL MNERRS(I,ARGLIS(1),ARGLIS(2),ARGLIS(3),ARGLIS(4));
+		    WRITE($TERMINAL OUT,'(3X,A,I2,1P,5(A,G10.3))')
+			 'Coef=',I
+			,' Err+=',ARGLIS(1)
+			,' Err-=',ARGLIS(2)
+			,' Eparab.=',ARGLIS(3)
+			,' Correlation=',ARGLIS(4);
+		ENDIF;
+		CALL MNPOUT(I,OUTSTR,ACOEF(J),DACOEF(J),A1,A2,IERR);
+		DACOEF(J)=DACOEF(J)/SQRT(FREEN);
+	   ENDIF;
+	>
+	CALL MNEMAT(XSUM,ITERMS);			"Error matrix"
+	<I=1,ITERMS**2; XSUM(I)=XSUM(I)/FREEN; >
+   ELSE;				"Linear fit ?"
+	D_CHISQ=0;
+:AGAIN:
+   IPASS=IPASS+1;
+   <I=1,MAXTER; YSUM(I) = 0.; ACOEF(I) = 0.; DACOEF(I) = 0.; >
+   <I=1,MAXTER*MAXTER; XSUM(I) = 0.; >
+   <I=1,MAXTER; <J=1,MAXTER; EMATRX(J,I) = 0.; > >
+   Y2SUM = 0.;
+	"DO FITTING."
+	"Now get pointers to variables needed"
+	"Mark extra terms as not fit or set"
+   <I=NTERMS+1,MAXTER; LFIT(I)=.false.; LCOFF(I)=.false. >
+   <ISET=NS1_FIT,NS2_FIT;
+      CALL T2GDSET(ISET,N1_FIT,N2_FIT,N3_FIT,N4_FIT
+		,ISETD,FIT_LIM,C_SELECT(:N_SELECT));
+	<I=1,3; D_XYZVAL(I)=0; >
+      IF ($ERROR) RETURN;
+	IF ( IMESH_FIT .ne. IBTYPE) <NEXT>
+      <I=1,3;	IDXYZ(I,1)=NINCR0;
+		IDXYZ(I,2)=NINCR0*NINCR1;
+		IXYZ(MESHN(I),1)=ISETD(NCSIZE*(I-1)+NXDATA); >
+      KLIM=3; IF (DATBUF(I3).eq.HNONE) KLIM=2;
+      IF (IBTYPE.ne.1)  THEN;				"Mesh data?"
+	IDXYZ(MESH2,1)=0;
+	IDXYZ(MESH1,2)=0;
+      ENDIF;
+      <M=N3_fIT,NL;					"DO all rows"
+       <I=1,KLIM; IXYZ(I,2)=IXYZ(I,1); >		"Save location"
+       <N=N1_FIT,NP;					"Selected data sets"
+	    ICPOIN(1)=IXYZ(IDEP_FIT,1);
+	    IF (LDY_FIT) THEN;
+		DY = DATBUF(IXYZ(IDEP_FIT,1)+1);	"Error"
+	    ENDIF;
+	    <I=1,KLIM;
+		    D_XYZVAL(I)=DATBUF(IXYZ(I,1));	"X,Y,Z value"
+		    IXYZ(I,1)=IXYZ(I,1)+IDXYZ(I,1);	"Next one"
+	    >
+	    IF (DY .le. 0) <NEXT>;			"Dy is bad ?"
+	IF ($TRAP) RETURN;
+	IF (N_FIT_LIM.gt.0) THEN;		"Check for selected limits ?"
+	    <I=3,N_FIT_LIM+2,2;
+		<K=1,KLIM;
+		    IF ( D_XYZVAL(K) .lt. FIT_LIM(K,I) .or.
+			 D_XYZVAL(K) .gt. FIT_LIM(K,1+I) )
+			<NEXT>;			"Outside limits ?"
+		>
+		<EXIT>;
+	    >
+	    IF (I .gt. N_FIT_LIM+2) <NEXT>;	"outside all limits ?"
+	ENDIF;
+	D_XYZVAL(1)=D_XYZVAL(1)-XOFF;
+	IF (LXLOG) THEN;			"Take log of X?"
+		IF (D_XYZVAL(1).le.0) <NEXT>;		"Zero data ??"
+		D_XYZVAL(1)=LOG(D_XYZVAL(1));
+	ENDIF;
+	WEIGHT=DY;
+	IF (LYLOG) THEN;			"Take log of Y?"
+		IF (D_XYZVAL(IDEP_FIT).le.0) <NEXT>;	"Zero data ?? skip it"
+		IF (LDY_FIT) THEN;
+		     IF (WEIGHT .lt. D_XYZVAL(IDEP_FIT)/2) THEN;
+			WEIGHT=WEIGHT/D_XYZVAL(IDEP_FIT);
+		     ELSEIF (WEIGHT .lt. D_XYZVAL(IDEP_FIT)) THEN;
+			WEIGHT=(LOG(D_XYZVAL(IDEP_FIT)+WEIGHT)-
+				LOG(D_XYZVAL(IDEP_FIT)-WEIGHT))/2;
+		     ELSE;
+			<NEXT>;
+		     ENDIF;
+		ENDIF;
+		D_XYZVAL(IDEP_FIT)=LOG(D_XYZVAL(IDEP_FIT));
+	ENDIF;
+						"Get function"
+	CALL T2FUNC(XF,NTERMS,D_XYZVAL(1),IFIT
+		,LFIT,LCOFF,Coff,YF,SEXPR,NEXPR);
+	IF ($ERROR .or. LSYERR) GOTO :ERR:;		"If Error then kill fit"
+	D_XYZVAL(IDEP_FIT)=D_XYZVAL(IDEP_FIT)-YF;	"Subtract offset"
+							"Sum over data"
+	CALL T2DSUM(XF,NFIT,D_XYZVAL(IDEP_FIT),WEIGHT,EMATRX,YSUM,Y2SUM);
+	IF (LSYERR) GOTO :ERR:;
+       >
+       <I=1,KLIM; IXYZ(I,1)=IXYZ(I,2)+IDXYZ(I,2); >	"Restore location"
+      >
+   >
+
+   IF (NFIT .gt. 0) THEN;
+      CALL T2DVAL(NFIT,NPFIT,EMATRX,YSUM,Y2SUM,ACOEF,DACOEF,CHISQR,
+		  FTEST,RMUL,B,XSUM);
+      IF (CHISQR.lt.0 .or.
+	  (LGAUSS.and.ACOEF(3).gt.-$SMALL REAL) ) THEN;
+:FAIL:
+	 ERROR OUT;('*** ERROR *** Failure to fit'); GOTO :ERET:; ENDIF;
+   ENDIF;
+   ENDIF;				"End of MINUT/LINEAR fit"
+"
+	COFF is the array of all coefficints
+	ACOEF is the array of only fitted coefficients
+	DCOFF,ACOEF are all,fitted errors
+"
+   J=0;
+   <I=1,NTERMS;				"Insert coef into coef array"
+      IF (LFIT(I)) THEN;
+	 J=J+1; COFF(I)=ACOEF(J);
+	 IF (LDY_FIT) DCOFF(I)=DACOEF(J);
+      ENDIF;
+   >
+   <I=1,NTERMS; ACOEF(I)=COFF(I); DACOEF(I)=DCOFF(I); >"Save coef for err calc"
+   IF (LGAUSS) THEN;			"Calc gauss fit coef"
+"
+	Since a linear fit is used to get gaussian we must now
+	Calculate the gaussian coefficients from the linear coef.
+	On the second pass ACOEF(2) is expected to be 0.0
+	The error calculation is done assuming this to be true!!!
+"
+      COFF(3)=SQRT(-.5/ACOEF(3));
+      DCOFF(3)=DACOEF(3)*(.5*SQRT(0.5)/(-ACOEF(3))**1.5);
+      T=-.5/ACOEF(3);
+      COFF(2)=ACOEF(2)*T;
+      DCOFF(2)=DACOEF(2)*T;
+      T=ACOEF(1)-.25*ACOEF(2)**2/ACOEF(3);
+      COFF(1)=EXP(T);
+      DCOFF(1)=DACOEF(1)*COFF(1);
+      IF (IPASS.lt.3
+	  .and. ABS(COFF(2)) .gt. .0001*(DCOFF(2)+COFF(3))
+	  .and. LFIT(2)) THEN;
+	 XOFF=COFF(2)+XOFF;
+	 GOTO :AGAIN:;
+      ENDIF;
+      COFF(2)=XOFF+COFF(2);
+   ENDIF;
+   <I=1,NTERMS; LCOF1(I)=LCOFF(I).or.LFIT(I); >
+   <I=1,MAXTER; <J=1,MAXTER; EMATRX(J,I) = 0.; > >
+   K=0;
+   L=0;
+   <I=1,NTERMS;
+      IF (LCOF1(I)) THEN;
+	 L=L+1;
+	 IF (LFIT(I)) THEN;
+	    M=0;
+	    <J=1,NTERMS;
+	       IF (LCOF1(J)) M=M+1;
+	       IF (LFIT(J)) THEN; K=K+1; EMATRX(M,L)=XSUM(K); ENDIF;
+	    >
+	 ELSE;
+	    EMATRX(L,L)=DACOEF(I)**2;
+	 ENDIF;
+      ENDIF;
+   >
+   IF (LLOG) THEN;				"Log the results to term."
+      CALL T2_SHOW_FIT($TERMINAL OUT,LFULL);
+   ENDIF;
+   IF (JOUFIL.gt.0 .and. INTRAC(I))  THEN;	"Journal the results"
+      CALL T2_SHOW_FIT(JOUFIL,.true.);
+   ENDIF;
+   IF (LMONITOR) THEN;
+	CALL TXVOID;		"Flush all plot info"
+	CALL TXNEXT;		"Start new picture"
+	CALL T2REST;		"Reset flags"
+      NXYLIM(1,1)=N1_FIT; NXYLIM(1,2)=N2_FIT;	"Setup limited"
+      NXYLIM(2,1)=N3_FIT; NXYLIM(2,2)=N4_FIT;
+      NXYLIM(3,1)=NS1_FIT; NXYLIM(3,2)=NS2_FIT;
+      <I=1,2; <J=1,3; EXYZLIM(J,I)=FIT_LIM(J,I); > >
+	<ISET=NS1_FIT,NS2_FIT;			"Plot all sets"
+	    CALL T2GDSET(ISET,N1_FIT,N2_FIT,N3_FIT,N4_FIT
+		,ISETD,FIT_LIM,C_SELECT(:N_SELECT));
+	    IF (IBTYPE .eq. 1 .and. NP .ge. N1_FIT) THEN;
+		CALL T2PLOT(DATBUF(I1),DATBUF(I2),DATBUF(I3),
+		     DATBUF(I4),DATBUF(I5),DATBUF(I6),
+		     DATBUF(I7),NP-N1_FIT+1,NINCR0,0,0.,FIT_LIM,
+		     HNONE,HNONE,HNONE);
+	    ENDIF;
+	>
+   ELSE;
+	IF ($TRAP.or..not.LCURVE) RETURN;	"No curve generation ?"
+   ENDIF;
+   IF (LCURVE .and. .not.LAPPEN) CALL T2PNTR;	"Clear current data sets?"
+   IERROR=1; IF (LDY_FIT) IERROR=2;		"Errors ?"
+   PARM(1,1)=PARM(1,1)+PARM(3,1)/2;
+   PARM(1,2)=PARM(1,2)+PARM(3,2)/2;
+   CALL T2_CREATE_HIST(PARM,2,C_NAME(:N_NAME),IERROR);	"Start a new data set"
+   PARM(1,1)=PARM(1,1)-PARM(3,1)/2;
+   PARM(1,2)=PARM(1,2)-PARM(3,2)/2;
+   IF ($ERROR) RETURN;				"Not enough storage"
+   CALL T2GDSET(NDSETS,1,$LARGE INTEGER,1,$LARGE INTEGER,ISETD,HNONE,'*');
+   IF ($ERROR) RETURN;
+   KLIM=3; IF (DATBUF(I3).eq.HNONE .or. IBTYPE.eq.1) KLIM=2;
+   I3=ISETD(NCSIZE*(IDEP_FIT-1)+NXDATA);
+   LDY_FIT=LDY_FIT .and. ISETD(NCSIZE*(IDEP_FIT-1)+NDXDATA) .gt. 1;  "Errors ?"
+   LNDY=LDY_FIT .and. ISETD(NCSIZE*(IDEP_FIT-1)+NNDXDATA) .gt. 1;
+   <M=1,NL;						"DO all rows"
+	D_XYZVAL(2)=PARM(1,2)+(M-0.5)*PARM(3,2);	"Next Y value"
+	<N=1,NP;					"Selected data sets"
+	    IF ($TRAP) RETURN;				"If kill requested"
+	    D_XYZVAL(1)=PARM(1,1)+(N-0.5)*PARM(3,1);	"Next X value"
+	    ICPOIN(1)=I3;
+	    D_XYZVAL(1)=D_XYZVAL(1)-XOFF;
+	    IF (LXLOG) D_XYZVAL(1)=LOG(D_XYZVAL(1)-XOFF);	"X value"
+	    IF (LSYERR) GOTO :ERR1:;			"Error quit ??"
+	    CALL T2FUNC(XF,NTERMS,D_XYZVAL(1),IFIT,LCOF1,LCOF1,ACOEF
+		,D_XYZVAL(IDEP_FIT),SEXPR,NEXPR);
+	    IF ($ERROR .or. LSYERR) GOTO :ERR1:;
+	    IF (LYLOG) D_XYZVAL(IDEP_FIT)=EXP(D_XYZVAL(IDEP_FIT));
+							"Log scale in Y ?"
+	    IF (LSYERR) GOTO :ERR1:;
+	    IF (LDY_FIT) THEN;				"Calculate DY ??"
+"
+	Use error matrix for calculating errors
+"
+		DY=0;
+		<J=1,NCOFF;
+		    <K=1,NCOFF;
+			DY=DY+EMATRX(K,J)*XF(K)*XF(J);
+		    >
+		>
+		DY=SQRT(ABS(DY));
+		IF (LYLOG) DY=DY*D_XYZVAL(IDEP_FIT);	"Y logarithmic ?"
+		DATBUF(I3+1)=DY;			"Error"
+		IF (LNDY) DATBUF(I3+2)=DY;		"Negative err"
+	    ENDIF;
+	    DATBUF(I3)=D_XYZVAL(IDEP_FIT);		"X,Y,Z value"
+	    I3=I3+NINCR0;				"Next one"
+	>
+	I3=I3+NINCR0;					"Next one"
+   >
+   IF (LMONITOR) THEN;
+	CALL T2GDSET(NDSETS,1,$LARGE INTEGER,1,$LARGE INTEGER,ISETD,HNONE,'*');
+	CALL T2JOIN(DATBUF(I1),DATBUF(I2),DATBUF(I3),
+	       ITXSEC,0,NP,NINCR0);
+	CALL T2_PLOT_TITLE(NDSETS,.false.);
+	CALL TXVOID;		"Flush all plot info"
+	IF (.not. LCURVE) THEN;
+	    CALL T2RMLS;			"Remove last set"
+	    RETURN;
+	ENDIF;
+   ENDIF;
+   IF (LCURVE) DATDAT(1,1)=HNONE;
+   IF (LLOG) THEN;				"Log the curve generation"
+	WRITE(OUTSTR,'(1p,4(A,G10.3))')		"X values"
+		'	Curve X from ',PARM(1,1)+PARM(3,1)/2,
+		' to ',PARM(2,1)-PARM(3,1)/2,' by ',PARM(3,1);
+	IF (PARM(4,2) .gt. 0.5)			"Y ???"
+	WRITE(OUTSTR(T2BTRIM(OUTSTR)+1:),'(1p,4(A,G10.3))')	"Y values"
+		' Y from ',PARM(1,2)+PARM(3,2)/2,
+		' to ',PARM(2,2)-PARM(3,2)/2,' by ',PARM(3,2);
+	CALL T2WRSQ(OUTSTR,.true.,$TERMINAL OUT,3);	"Trim and write"
+   ENDIF;
+
+:END:
+   RETURN;
+:ERR1:
+   ERROR $MESSAGE '* Curve generation X=',D_XYZVAL(1),' Point=',N;
+   LSYERR=.false.;
+   RETURN;
+:ERR:
+   ERROR $MESSAGE '* Fitting X=',DATBUF(I1-NINCR0),
+	 ' Y=',DATBUF(I2-NINCR0),' Point=',N;
+   LSYERR=.false.;
+:ERET:
+   NTERMS=0;
+END;
+%E  T2_CHECK_DEPERR
+LOGICAL FUNCTION T2_CHECK_DEPERR(NS1,NS2,N1,N2,N3,N4,TLIM);
+   IMPLICIT NONE;
+   $MAINSPEC;
+   $SPECIFYNONE;
+   $POINT ARRAYS($NPOINTS);
+   REAL XV,YV,DY,ZV;
+   INTEGER NS1,NS2,N1,N2,N3,N4;
+   INTEGER ISET,N;
+   REAL TLIM(3,2);
+   REAL XYZVAL(3);
+   EQUIVALENCE (XYZVAL(1),XV),(XYZVAL(2),YV),(XYZVAL(3),ZV);
+   T2_CHECK_DEPERR=.FALSE.;			"No err initially"
+   <ISET=NS1,NS2;
+	CALL T2GDSET(ISET,N1,N2,N3,N4,ISETD,TLIM,'*');
+	IF (DATBUF(I5).eq.HNONE) <NEXT>;	"No Error data ?"
+	IF (IBTYPE.ne.1) <NEXT>;		"Regular data only"
+						"Check data for errors"
+	<N=N1,NP;				"Over selected range"
+	    DY=DATBUF(I5); I5=I5+NINCR0;	"LDY=.true. if DY>0"
+	    IF (DY.gt.0 .and. DY .lt. $LARGE REAL) THEN;
+		T2_CHECK_DEPERR=.TRUE.;		"Found an error!!!"
+		RETURN;
+	    ENDIF;
+	>
+   >
+END;
+%E  SUBROUTINE T2_FCN --- Function for MINUIT
+SUBROUTINE T2_DUMMY;
+END;
+SUBROUTINE T2_FCN(NPAR,GRAD,FVAL,XvAL,IFLAG,FUTIL);
+   IMPLICIT NONE;
+   $SPECIFICATION;
+   $SPECIFYFIT;
+   $MAINSPEC;
+   $POINT ARRAYS($NPOINTS);
+   $SPECIFYNONE;
+   EXTERNAL FUTIL;
+   DOUBLE PRECISION Fval,Xval(*),Grad(*),FUTIL;
+   INTEGER NPAR,IFLAG;
+   INTEGER IXYZ(3,2),IDXYZ(3,2);
+   INTEGER I,J,K,ISET,M,N,KLIM;
+   $BOOLEAN LC(MAXTER)/MAXTER*.true./;
+   DOUBLE PRECISION YF, D_XYZVAL(4);
+   DOUBLE PRECISION DY, WEIGHT, FREEN;
+"
+	Input:	NPAR	Number of params
+		XVAL	Vector or params
+		IFLAG	1 Read inut
+			2 CAlculate first deriv.
+			3 Final calculations
+		FUTIL	External function
+	Output:	FVAL	function value
+		GRAD	Vector of first derivitives
+"
+   IF (NPAR .le. 0) GOTO :ERR:;
+   <I=1,MAXTER; LC(I)=LCOFF(I) .or. LFIT(I); >	"Fit or constrain"
+   IF (IFIT .eq. 7) THEN;
+	J=0;					"Put coef back for user"
+	<I=1,NTERMS;
+	    IF (LC(I)) THEN;
+		J=J+1; COFF(J)=XVAL(J);		"So that equations work"
+	    ENDIF;
+	>
+   ENDIF;
+   CHISQR=0;					"Start with zero"
+   IF (IFLAG .eq. 2) THEN;			"Calculate the Gradient ?"
+	<I=1,NPAR; GRAD(I)=0; >
+   ENDIF;
+   DY=1;					"Default DY"
+   <ISET=NS1_FIT,NS2_FIT;
+      CALL T2GDSET(ISET,N1_FIT,N2_FIT,N3_FIT,N4_FIT
+		,ISETD,FIT_LIM,C_SELECT(:N_SELECT));
+      IF ($ERROR) GOTO :ERR:;
+	IF ( IMESH_FIT .ne. IBTYPE) <NEXT>
+      <I=1,3;	IDXYZ(I,1)=NINCR0;
+		IDXYZ(I,2)=NINCR0*NINCR1;
+		IXYZ(MESHN(I),1)=ISETD(NCSIZE*(I-1)+NXDATA); >
+      KLIM=3; IF (DATBUF(I3).eq.HNONE) KLIM=2;
+      IF (IBTYPE.ne.1)  THEN;				"Mesh data ?"
+	IDXYZ(MESH2,1)=0;
+	IDXYZ(MESH1,2)=0;
+      ENDIF;
+      <M=N3_fIT,NL;					"DO all rows"
+       <I=1,KLIM; IXYZ(I,2)=IXYZ(I,1); >		"Save location"
+       <N=N1_FIT,NP;					"Selected data sets"
+	    ICPOIN(1)=IXYZ(IDEP_FIT,1);
+	    IF (LDY_FIT) THEN;
+		DY = DATBUF(IXYZ(IDEP_FIT,1)+1);	"Error"
+	    ENDIF;
+	    <I=1,KLIM;
+		    D_XYZVAL(I)=DATBUF(IXYZ(I,1));	"X,Y,Z value"
+		    IXYZ(I,1)=IXYZ(I,1)+IDXYZ(I,1);	"Next one"
+	    >
+	    IF (DY .le. 0) <NEXT>;			"Dy is bad ?"
+	IF ($TRAP) GOTO :ERR:;
+	IF (N_FIT_LIM.gt.0) THEN;		"Check for selected limits ?"
+	    <I=3,N_FIT_LIM+2,2;
+		<K=1,KLIM;
+		    IF ( D_XYZVAL(K) .lt. FIT_LIM(K,I) .or.
+			 D_XYZVAL(K) .gt. FIT_LIM(K,1+I) )
+			<NEXT>;			"Outside limits ?"
+		>
+		<EXIT>;
+	    >
+	    IF (I .gt. N_FIT_LIM+2) <NEXT>;	"outside all limits ?"
+	ENDIF;
+	D_XYZVAL(1)=D_XYZVAL(1)-XOFF;
+	IF (LXLOG) THEN;			"Take log of X?"
+				"Check for zero data and skip fit if true"
+		IF (D_XYZVAL(1).le.0) <NEXT>;
+		D_XYZVAL(1)=LOG(D_XYZVAL(1));
+	ENDIF;
+	WEIGHT=DY;				"Weighting factor"
+	IF (LYLOG) THEN;			"Take log of Y?"
+		IF (D_XYZVAL(IDEP_FIT).le.0) <NEXT>;
+		IF (LDY_FIT) THEN;
+		     IF (WEIGHT .lt. D_XYZVAL(IDEP_FIT)/2) THEN;
+			WEIGHT=WEIGHT/D_XYZVAL(IDEP_FIT);
+		     ELSEIF (WEIGHT .lt. D_XYZVAL(IDEP_FIT)) THEN;
+			WEIGHT=(LOG(D_XYZVAL(IDEP_FIT)+WEIGHT)-
+				LOG(D_XYZVAL(IDEP_FIT)-WEIGHT))/2;
+		     ELSE;
+			<NEXT>;
+		     ENDIF;
+		ENDIF;
+		D_XYZVAL(IDEP_FIT)=LOG(D_XYZVAL(IDEP_FIT));
+	ENDIF;
+	WEIGHT=1/WEIGHT;
+						"Get function"
+	CALL T2FUNC(XF,NTERMS,D_XYZVAL(1)
+		,IFIT,LFIT,LC,XVAL,YF,SEXPR,NEXPR);
+	IF ($ERROR .or. LSYERR) GOTO :ERR:;	"If Error then kill fit"
+	CHISQR=CHISQR+((YF-D_XYZVAL(IDEP_FIT))*WEIGHT)**2;	"Calc chisqr"
+	IF (LSYERR) GOTO :ERR:;
+	IF (IFLAG .eq. 2) THEN;			"Calculate the Gradient ?"
+		<I=1,NPAR; GRAD(I)=GRAD(I)+
+			2*(YF-D_XYZVAL(IDEP_FIT))*XF(I)*WEIGHT**2; >
+	ENDIF;
+       >
+       <I=1,KLIM; IXYZ(I,1)=IXYZ(I,2)+IDXYZ(I,2); >	"Restore location"
+      >
+   >
+   FREEN=MAX(NPFIT-NFIT,1);			"Freedom"
+   "FREEN=1;"
+   CHISQR=CHISQR/FREEN;
+   IF (IFLAG .eq. 2) THEN;
+	<I=1,NPAR; GRAD(I)=GRAD(I)/FREEN; >
+   ENDIF;
+   FVAL=CHISQR;
+   RETURN;
+:ERR:
+   FVAL=0;
+END;
+%E  SUBROUTINE T2_SAVE_FIT --- Save/restore fit parameters
+SUBROUTINE T2_SAVE_FIT($INFO,$CARD,LGET);
+"
+	Routine to save/restore a fit
+	LGET=.true. if restore
+	This allows file specification, and NAME
+"
+   IMPLICIT NONE;
+   $SPECIFICATION;
+   $SPECIFYFIT;
+   $SELECTSPEC;
+   $BOOLEAN LGET;
+   INTEGER $INFO(10);
+   INTEGER I,J,K,L,M,N,IOSTAT;
+   CHARACTER*(*) $CARD;
+   CHARACTER*80 NAME;
+   CHARACTER*12 OPER(2);
+   DATA OPER/'Written to','Read from'/;
+   NAME='Topdrawer Fit parameters';
+   C_SELECT='tdfit.tfb'; N_SELECT=9;
+   <TOKEN KEY LOOP> <
+      FILE:F,OUTPUT:F,INPUT:F <
+	 C_FILE=STRNG; N_FILE=NSTRNG;
+	 CALL T2_SET_DEFAULT_FILE(C_FILE,N_FILE,'tdfit.tfb');
+      >
+      NAME:T <
+	 IF (NSTRNG.gt.0) NAME=STRNG(1:NSTRNG);
+      >
+      LOG:Y           < LLOG=LTOKEN; >
+   >
+   IF ($ERROR) RETURN;
+   IF (LGET) THEN;
+      OPEN(ERR=:OPERR:,
+	   UNIT=$SCRATCH FILE,
+	   FILE=C_FILE(1:N_FILE),
+	   STATUS='OLD',
+	   $READONLY
+	   IOSTAT=IOSTAT,
+	   FORM='UNFORMATTED');
+      CALL T2_CONCEAL_PASSWORD(C_FILE,N_FILE);
+      READ($SCRATCH FILE,ERR=:ERR:) NAME(1:6),I;
+      IF (I.gt.MAXTER .or. NAME(1:6).ne. 'TDFIT0') THEN;
+	 $ERROR=.true.;
+	 ERROR OUT;('*** ERROR *** Bad format on file:'//C_FILE(1:N_FILE));
+	 GOTO :END:;
+      ENDIF;
+      NTERMS=I;
+      READ($SCRATCH FILE,ERR=:ERR:) NAME;
+      READ($SCRATCH FILE,ERR=:ERR:) FITSTR;
+      READ($SCRATCH FILE,ERR=:ERR:)
+	 IFIT, NCOFF, NFIT, NPFIT, LXLOG, LYLOG, XOFF, RMUL, CHISQR, FTEST;
+      READ($SCRATCH FILE,ERR=:ERR:)
+	 (LCOFF(J), LFIT(J), LCOF1(J), COFF(J), DCOFF(J) ,ACOEF(J),J=1,I);
+      READ($SCRATCH FILE,ERR=:ERR:)
+	 ((EMATRX(K,J), K=1,I ), J=1,I);
+      IF (IFIT.eq.7) READ($SCRATCH FILE,ERR=:ERR:)NEXTER,J,SEXPR(:J)
+	 ,(NEXPR(J),J=1,NEXTER);
+   ELSE;
+      OPEN(ERR=:OPERR:,
+	   UNIT=$SCRATCH FILE,
+	   FILE=C_FILE(1:N_FILE),
+	   STATUS='NEW',
+	   IOSTAT=IOSTAT,
+	   FORM='UNFORMATTED');
+      CALL T2_CONCEAL_PASSWORD(C_FILE,N_FILE);
+      I=NTERMS;
+      WRITE($SCRATCH FILE,ERR=:ERR:) 'TDFIT0',I;
+      WRITE($SCRATCH FILE,ERR=:ERR:) NAME;
+      WRITE($SCRATCH FILE,ERR=:ERR:) FITSTR;
+      WRITE($SCRATCH FILE,ERR=:ERR:)
+	 IFIT, NCOFF, NFIT, NPFIT, LXLOG, LYLOG, XOFF, RMUL, CHISQR, FTEST;
+      WRITE($SCRATCH FILE,ERR=:ERR:)
+	 (LCOFF(J), LFIT(J), LCOF1(J), COFF(J), DCOFF(J) ,ACOEF(J),J=1,I);
+      WRITE($SCRATCH FILE,ERR=:ERR:)
+	 ((EMATRX(K,J), K=1,I ), J=1,I);
+      IF (IFIT.eq.7) WRITE($SCRATCH FILE,ERR=:ERR:)NEXTER,LEN(SEXPR),SEXPR,
+	 (NEXPR(J),J=1,NEXTER);
+   ENDIF;
+   N=INDEX(C_FILE,' ')-1;
+   IF (N.le.0) N=LEN(C_FILE);
+   I=1; IF (LGET) I=2;
+   IF (LLOG) WRITE($TERMINAL OUT,*)'  FIT ',OPER(I),' File:',C_FILE(1:N_FILE);
+   N=1; <I=1,LEN(NAME); IF (NAME(I:I).ne. ' ') N=I; >
+   IF (LLOG) WRITE($TERMINAL OUT,*)'     Name:',NAME(1:N);
+   GOTO :END:;
+:ERR:
+   CALL T2_TYPE_ERROR($INFO,$CARD,' ',IOSTAT);
+:END:
+   CLOSE(UNIT=$SCRATCH FILE,ERR=:CLERR:);
+:CLERR:
+   RETURN;
+:OPERR:
+   CALL T2_TYPE_ERROR($INFO,$CARD,C_FILE(:N_FILE),IOSTAT);
+END;
+%E  SUBROUTINE T2_LIST_FIT --- Produce a listing of fit parameters
+   SUBROUTINE T2_LIST_FIT($INFO,$CARD);
+	IMPLICIT NONE;
+	$SPECIFICATION;
+	$SPECIFYFIT;
+	$BOOLEAN LFULL,LLOG;
+	CHARACTER*(*) $CARD;
+	CHARACTER*10	C_ACCESS/'SEQUENTIAL'/;
+	CHARACTER*3	C_STATUS/'NEW'/;
+	INTEGER $INFO(10);
+	INTEGER IOSTAT/0/;
+	IOSTAT=0;
+	LFULL=.false.;
+	LLOG=$MODE LOG;
+	C_FILE='tfit.lis';
+	N_FILE=8;
+	C_STATUS='NEW';
+	C_ACCESS='SEQUENTIAL';
+	<TOKEN KEY LOOP> <
+	  APPEND:Y <
+		IF (LTOKEN)	THEN; C_ACCESS='APPEND'; C_STATUS='OLD';
+				ELSE; C_ACCESS='SEQUENTIAL'; C_STATUS='NEW';
+				ENDIF;
+		   >
+	  FULL:Y < LFULL=LTOKEN; >
+	  FILE:F < C_FILE=STRNG; N_FILE=NSTRNG;
+			CALL T2_SET_DEFAULT_FILE(C_FILE,N_FILE,'tfit.lis');
+		 >
+	>
+	OPEN(UNIT=$SCRATCH FILE
+		,FILE=C_FILE(1:N_FILE)
+		,STATUS=C_STATUS
+		$ACCESS
+		,IOSTAT=IOSTAT
+		,ERR=:DERR:);
+	CALL T2_SHOW_FIT($SCRATCH FILE,LFULL);
+	IF (LLOG) THEN;
+		N_FILE=0;
+		INQUIRE($SCRATCH FILE ,NAME=C_FILE);
+		CALL T2_CONCEAL_PASSWORD(C_FILE,N_FILE);
+		if (C_ACCESS(1:1) .eq. 'S') C_ACCESS='written';
+		WRITE($TERMINAL OUT,*)'  Fit ',C_ACCESS,' to:'
+			,C_FILE(:N_FILE);
+	ENDIF;
+	CLOSE($SCRATCH FILE);
+	RETURN;
+:DERR:	CALL T2_TYPE_ERROR($INFO,$CARD,C_FILE(:N_FILE),IOSTAT);
+   END;
+%E  SUBROUTINE T2_SHOW_FIT --- Show fit parameters
+SUBROUTINE T2_SHOW_FIT(IUNIT,LFULL);
+"
+	Routine to show a fit
+	Parameters are output on IUNIT
+	If LFULL=.true. then error  is also output
+"
+   IMPLICIT NONE;
+   $SPECIFYFIT;
+   $BOOLEAN LFULL;
+   INTEGER ITERMS(MAXTER),IUNIT;
+   INTEGER I,J,K,L,M,N;
+		"Setup pointers for EMATRX array"
+   IF (NTERMS.le.0) THEN;
+      WRITE(IUNIT,*)"*** No fit";
+      RETURN;
+   ENDIF;
+   K=0; <I=1,NTERMS; IF(LCOF1(I)) THEN; K=K+1; ITERMS(K)=I; ENDIF; >
+   N=1; <I=1,LEN(FITSTR); IF (FITSTR(I:I).ne.' ')N=I; >	"get length of str"
+   WRITE(IUNIT,:OUTF:)FITSTR(1:N),CHISQR,NPFIT,FTEST,XOFF;
+   <I=1,NCOFF;
+	L=ITERMS(I);
+	J=MIN(MAX(NEXPR(L)+1,1),LEN(SEXPR));
+	K=MIN(MAX(NEXPR(L+1)-1,J),LEN(SEXPR));	"Get term string"
+	WRITE(IUNIT,:OUTFC:) L-1,COFF(L),DCOFF(L),SEXPR(J:K);
+   >
+:OUTF:   FORMAT('   ( ',A,' )',
+	   /,'   ( Chi squared/deg-of-freedom = ',1P,G11.3,
+		   ' Points=',0P,I5,')',
+	   /,'   ( Ftest  =                     ',1P,G11.3,')',
+	   /,'   ( Offset =                     ',G11.3,')',
+	   /,'   ( Term  Coefficients	  Errors )');
+:OUTFC: FORMAT('   (',(I5,1P,G14.6,'	',G12.3),'	',A,')');
+   IF (LFULL) THEN;
+	IF (D_CHISQ .gt. 0)
+		WRITE(IUNIT,*)'   Echisq=',D_CHISQ,' Nonlinear';
+	WRITE(IUNIT,*) '  (Error matrix)';
+	<I=1,NCOFF;
+	    WRITE(IUNIT,:OUTF1:)
+	    ITERMS(I)-1,(EMATRX(ITERMS(J),ITERMS(I)),J=1,NCOFF);
+	>
+:OUTF1: FORMAT( '   (',I2,')',1P,(T10,'(',4G15.7,')') );
+   ENDIF;
+END;
+%E  SUBROUTINE T2FUNC --- Defines functions
+SUBROUTINE T2FUNC(XF,NTERMS,D_XV,ITYPE,LFIT,LCOFF,A,YF,SEXPR,NEXPR);
+"
+	This defines functions for fits
+
+	XF(NTERMS) is the output array of derivitives
+	NTERMS is the total number of terms
+	D_XV(2) is the input x,[y] value
+	ITYPE is the type of fit
+	LFIT(NTERMS)  is .true. if term is to be fit and XF is to be returned.
+	    ITERM is the XF index
+	LCOFF is .true. if YF is to be calculated using this coef.
+	A is the array of coefficients
+	YF is the sum over all terms with LCOFF set.
+	SEXPR is a character array containing the expression
+	NEXPR is the number of terms in the SEXPR array
+"
+   IMPLICIT NONE;
+   CHARACTER*(*) SEXPR;
+   INTEGER NEXPR(*);
+
+
+   $SPECIFICATION;
+   CHARACTER*($MAXSTR+8+40+30) SEXPRX ;
+   INTEGER NTERMS,ITERM,ITYPE;
+   INTEGER INFO1(10);
+   $BOOLEAN LFIT(NTERMS),LCOFF(NTERMS);
+   DOUBLE PRECISION XF(NTERMS),A(NTERMS),D_XV(2);
+   DOUBLE PRECISION TEMP,TERM,TERM1,TERM2,TERM3,YF;
+   REAL*4 XVS,TDUFUN;
+   $BOOLEAN LSAVE;
+   INTEGER I,J,K,L,IMIN,ISAVE,ICOEF;
+   ITERM=0;
+   YF=0;				"Start with zero sum"
+   IF (LCOFF(1)) YF=A(1);		"If first coef desired ?"
+   IF (LFIT(1)) THEN;			"The zeroeth term or constant term"
+	ITERM=ITERM+1;
+	XF(1) = 1.0;
+   ENDIF;
+   IF (NTERMS .LE. 1) RETURN;
+   TEMP = D_XV(1);
+   GO TO (:F1:,:F1:,:F2:,:F3:,:F4:,:F5:,:F6:,:F7:,:F8:,:F9:,:F10:,
+	:F11:) ITYPE+1;
+"
+	User fit func
+"
+      XVS=D_XV(1);
+      <J= 2,NTERMS;
+	 IF (LCOFF(J).or.LFIT(J)) THEN;
+	    TEMP = TDUFUN(-ITYPE,J-1,XVS);
+	    IF (LCOFF(J)) YF=YF+TEMP*A(J);
+	    IF (LFIT(J)) THEN;
+	       ITERM=ITERM+1;
+	       XF(ITERM) = TEMP;
+	    ENDIF;
+	 ENDIF;
+      >
+      RETURN;
+"POLYNOMIAL FIT"
+:F1:  TEMP=1.0;
+      <J= 2,NTERMS;
+	 TEMP = TEMP*D_XV(1);			"X**n"
+	 IF (LCOFF(J)) YF=YF+TEMP*A(J);		"Add in terms"
+	 IF (LFIT(J)) THEN;			"Fitted terms"
+	    ITERM=ITERM+1;
+	    XF(ITERM) = TEMP;
+	 ENDIF;
+      >
+      RETURN;
+"SINE FUNCTION"
+:F2:  <J= 2,NTERMS;
+	 IF (LFIT(J).or.LCOFF(J)) THEN;
+	    TEMP = SIN(RADANG*D_XV(1)*(J-1));	"SIN( n x)"
+	    IF (LCOFF(J)) YF=YF+A(J)*TEMP;	"Function"
+	    IF (LFIT(J)) THEN;			"Fitted terms"
+	       ITERM=ITERM+1;
+	       XF(ITERM)  = TEMP;
+	    ENDIF;
+	 ENDIF;
+      >
+      RETURN;
+"COSINE FUNCTION"
+:F3:  <J= 2,NTERMS;
+	 IF (LFIT(J).or.LCOFF(J)) THEN;
+	    TEMP = COS(RADANG*D_XV(1)*(J-1));
+	    IF (LCOFF(J)) YF=YF+A(J)*TEMP;
+	    IF (LFIT(J)) THEN;
+	       ITERM=ITERM+1;
+	       XF(ITERM)  = TEMP;
+	    ENDIF;
+	 ENDIF;
+      >
+      RETURN;
+"LEGENDRE POLYNOMIAL"
+:F4:  TEMP = COS(RADANG*D_XV(1));
+:F5:  TERM = TEMP;
+      TERM1= 1.0; TERM2=TEMP;
+      IF (NTERMS.lt.2) return;
+      IF (LCOFF(2)) YF=YF+TERM2*A(2);
+      IF (LFIT(2)) THEN; ITERM=ITERM+1; XF(ITERM)=TERM2; ENDIF;
+      <J= 3,NTERMS;
+	 TERM =  ( (2*J-3)*TEMP*TERM2 - (J-2)*TERM1 )/(J-1);
+	 TERM1=TERM2; TERM2=TERM;
+	 IF (LCOFF(J)) YF=YF+TERM2*A(J);
+	 IF (LFIT(J)) THEN;
+	    ITERM=ITERM+1; XF(ITERM) = TERM; ENDIF;
+      >
+      RETURN;
+"
+	Inverse polynomial or Laurent expansion
+"
+:F6:  TEMP=1.0;
+      <J= 2,NTERMS;
+	 TEMP = TEMP/D_XV(1);
+	 IF (LCOFF(J)) YF=YF+TEMP*A(J);
+	 IF (LFIT(J)) THEN;
+	    ITERM=ITERM+1;
+	    XF(ITERM) = TEMP;
+	 ENDIF;
+      >
+      RETURN;
+"
+	Arbitrary function
+	The SEXPR character array defines the function
+"
+:F7:  CONTINUE;
+	ISAVE=1;
+	LSAVE=ICHSAVE(ISAVE) .eq. 1;
+	<I=2,NTERMS;
+	    INFO1(3)=NEXPR(I);
+	    INFO1(1)=NEXPR(I+1)-1;
+	    IF (INFO1(3) .gt. INFO1(1)) <EXIT>;
+	    CALL T2EXPR(INFO1,SEXPR,ICHSAVE(ISAVE),NCHSAVE-ISAVE+1);
+	    IF (ICHSAVE(ISAVE) .eq. 2) ISAVE=ICHSAVE(ISAVE+1)+ISAVE "-1";
+	    IF (LSAVE) THEN;
+		IF (INFO1(1) .gt. INFO1(3)) THEN;
+                        SEXPRX = '*** ERROR *** Unprocessed expression:'//
+			SEXPR(INFO1(3)+1:INFO1(1));
+			ERROR STRING;SEXPRX;
+		ENDIF;
+		ICHSAVE(ISAVE)=1;
+	    ENDIF;
+	    TEMP = FLOTNG;
+	    IF (LCOFF(I)) YF=YF+TEMP*A(I);
+	    IF (LFIT(I)) THEN;
+		ITERM=ITERM+1;
+		XF(ITERM) = TEMP;
+	    ENDIF;
+	>
+	RETURN;
+"
+	Gaussian function + Background
+	Must use nonlinear fits
+"
+:F8:  CONTINUE;
+	ITERM=0;
+	TEMP=EXP(-0.5*((D_XV(1)-A(2))/A(3))**2);	"First deriv dYF/dA(1)"
+	YF=A(1)*TEMP;					"Value"
+	IF (LFIT(1)) THEN;
+	    ITERM=ITERM+1;
+	    XF(ITERM)=TEMP;
+	ENDIF;
+	IF (LFIT(2)) THEN;
+	    ITERM=ITERM+1;
+	    XF(ITERM)=YF*(D_XV(1)-A(2))   /A(3)**2;		"dYF/DA(2)"
+	ENDIF;
+	IF (LFIT(3)) THEN;
+	    ITERM=ITERM+1;
+	    XF(ITERM)=YF*(D_XV(1)-A(2))**2/A(3)**3;		"dYF/DA(3)"
+	ENDIF;
+	IMIN=4;
+	GOTO :BACKGROUND:;
+"
+	Exponential function + Background
+	Must use nonlinear fits
+"
+:F9:	CONTINUE;
+	ITERM=0;
+	YF=EXP(A(1)+(D_XV(1))*A(2));				"dYF/dA(1)"
+	IF (LFIT(1)) THEN;
+	    ITERM=ITERM+1;
+	    XF(ITERM)=YF;
+	ENDIF;
+	IF (LFIT(2)) THEN;
+	    ITERM=ITERM+1;
+	    XF(ITERM)=YF*D_XV(1);				"dyf/dA(2)"
+	ENDIF;
+	IMIN=3;
+"
+	Here we add in a polynomial background
+"
+:BACKGROUND:
+	TEMP=1;
+	<I=IMIN,NTERMS;					"Polynomial terms"
+	    IF (lfit(I) .or. lcoff(I)) THEN;
+		IF (LFIT(I)) THEN;
+		    ITERM=ITERM+1;
+		    XF(ITERM)=TEMP;			"dYF/dA(I)"
+		ENDIF;
+		IF (LCOFF(I)) YF=YF+TEMP*A(ITERM);
+	    ENDIF;
+	    TEMP=TEMP*D_XV(1);
+	>
+	RETURN;
+"
+	X,Y Gaussian function + Background
+	Must use nonlinear fits
+"
+:F10:  CONTINUE;
+	ITERM=0;
+	TEMP=EXP(-0.5*(					"Double gaussian"
+		((D_XV(1)-A(2))/A(3))**2+
+		((D_XV(2)-A(4))/A(5))**2
+					));		"deriv dYF/dA(1)"
+	YF=A(1)*TEMP;					"Value"
+	IF (LFIT(1)) THEN;
+	    ITERM=ITERM+1;
+	    XF(1)=TEMP;						"dYF/dA(1)"
+	ENDIF;
+	IF (LFIT(2)) THEN;
+	    ITERM=ITERM+1;
+	    XF(ITERM)=YF*(D_XV(1)-A(2))   /A(3)**2;		"dYF/dA(2)"
+	ENDIF;
+	IF (LFIT(3)) THEN;
+	    ITERM=ITERM+1;
+	    XF(ITERM)=YF*(D_XV(1)-A(2))**2/A(3)**3;		"dYF/dA(3)"
+	ENDIF;
+	IF (LFIT(4)) THEN;
+	    ITERM=ITERM+1;
+	    XF(ITERM)=YF*(D_XV(2)-A(4))   /A(5)**2;		"dYF/dA(4)"
+	ENDIF;
+	IF (LFIT(5)) THEN;
+	    ITERM=ITERM+1;
+	    XF(ITERM)=YF*(D_XV(2)-A(4))**2/A(5)**3;		"dYF/dA(5)"
+	ENDIF;
+	IMIN=6;
+	goto :DPOLY:;
+"
+	Generalized 3-d polynomial
+	Must use nonlinear fits
+"
+:F11:	CONTINUE;
+	ITERM=0;
+	IMIN=1;
+:DPOLY:	continue;
+	ICOEF=IMIN;
+	IF (ICOEF .gt. NTERMS) RETURN;		"Done ?"
+	TEMP=1.0;
+	IF(LCOFF(ICOEF)) YF=YF+A(ICOEF)*TEMP;
+	IF (LFIT(ICOEF)) THEN;
+		ITERM=ITERM+1;
+		XF(ITERM) = TEMP;
+	ENDIF;
+	<I=1,5;						"Do X,Y terms **I"
+	    <J=0,I;					"Do I X*Y terms"
+		ICOEF=ICOEF+1;
+		IF (ICOEF .gt. NTERMS) RETURN;		"Done ?"
+		IF (LCOFF(ICOEF) .or. LFIT(ICOEF)) THEN;	"Coef desired"
+			IF (J .eq. 0) THEN;
+				TEMP=D_XV(1)**(I);
+			ELSEIF (J .eq. I) THEN;
+				TEMP=D_XV(2)**(I);
+			ELSE;
+				TEMP=D_XV(1)**(I-J)*D_XV(2)**(J);
+			ENDIF;
+			IF(LCOFF(ICOEF)) YF=YF+A(ICOEF)*TEMP;
+			IF (LFIT(ICOEF)) THEN;
+			    ITERM=ITERM+1;
+			    XF(ITERM) = TEMP;
+			ENDIF;
+		ENDIF;
+	    >
+	>
+	RETURN;
+   END;
+%E  FUNCTION TDUFUN
+    FUNCTION TDUFUN(ITYPE,IORD,XV);
+       TDUFUN=XV**IORD;
+    END;
+%E  SUBROUTINE T2_MDIV  --- Multiply/divide commands.
+SUBROUTINE T2_MDIV($INFO,$CARD);
+"
+	HANDLES 'Multiply/divide ADD, SUBTRACT' COMMANDs
+"
+   IMPLICIT NONE;
+   INTEGER $INFO(10);
+   CHARACTER*(*) $CARD;
+   $SPECIFICATION;
+   $SELECTSPEC;
+   $SPECIFYFIT;
+   $MAINSPEC;
+   $POINT ARRAYS($NPOINTS);
+   $BOOLEAN LBINOM,LERR,LNERR,LVECT;
+   INTEGER ISET(3),IN(3),IOP,I,J,K,L,M,N,NSET,JSET,IDSET,JUMP,
+      IS1,IS2,IS3,IX1,IX2,IX3,IDX1,IDX2,IDX3,
+      IY1,IY2,IY3,IDY1,IDY2,IDY3,INDY3,IZ1,IZ2,IZ3,
+      IDZ1,IDZ2,IDZ3,
+      IMIN,IMAX,IZERO,IDSETS,
+      JCOFF,JFIT,KCOFF,KFIT;
+   REAL WEIGHT(3),EWEIGHT(3);
+   CHARACTER*1 C_XYZ(3) /'X','Y','Z'/;
+   INTEGER ISETC(NSETD+2,3),II,NXYZ,IXYZ,IXYZMAX,NLIM;
+   REAL DX1,DX2,T1,T2,T,XYZ($MAXCOR,3);
+   REAL       ONE     ;
+   PARAMETER (ONE=1.0);
+   REAL X2,Y1,Y2,DY1,DY2,DT,FAC1,FAC2,TS;		"Should be double"
+   DOUBLE PRECISION D_XV,D_YV,D_ZV;
+   DOUBLE PRECISION D_XYZVAL(4);
+   EQUIVALENCE (D_XYZVAL(1),D_XV),(D_XYZVAL(2),D_YV),(D_XYZVAL(3),D_ZV);
+   $SPECIFYNONE;
+   $EQUIVALENCE;
+   $DATA;
+   CHARACTER*1 COPER(4); DATA COPER/'*','/','+','-'/;
+   INTEGER T2BTRIM, IDEP;
+   EQUIVALENCE
+	(IS1,	ISETC(NSDATA,1)),
+	(IS2,	ISETC(NSDATA,2)),
+	(IS3,	ISETC(NSDATA,3)),		"Symbols"
+	(IX1,	ISETC(NXDATA,1)),
+	(IX2,	ISETC(NXDATA,2)),
+	(IX3,	ISETC(NXDATA,3)),	"X values"
+	(IDX1,	ISETC(NDXDATA,1)),
+	(IDX2,	ISETC(NDXDATA,2)),
+	(IDX3,	ISETC(NDXDATA,3)),	"DX values"
+	(IY1,	ISETC(NYDATA,1)),
+	(IY2,	ISETC(NYDATA,2)),
+	(IY3,	ISETC(NYDATA,3)),	"Y values"
+	(IDY1,	ISETC(NDYDATA,1)),
+	(IDY2,	ISETC(NDYDATA,2)),
+	(IDY3,	ISETC(NDYDATA,3)),	"DY values"
+	(INDY3,	ISETC(NNDYDATA,3)),	"DY values"
+	(IZ1,	ISETC(NZDATA,1)),
+	(IZ2,	ISETC(NZDATA,2)),
+	(IZ3,	ISETC(NZDATA,3)),	"Z values"
+	(IDZ1,	ISETC(NDZDATA,1)),
+	(IDZ2,	ISETC(NDZDATA,2)),
+	(IDZ3,	ISETC(NDZDATA,3));	"DZ values"
+"
+	IOP = 1,2,3,4 for Mul,Divide,Add,Subtract
+"
+   IOP=INTEG;
+   IDEP=0;
+   <I=1,3; ISET(I)=0; WEIGHT(I)=1; EWEIGHT(I)=0; >		"3 Data sets"
+   LBINOM=.false.;				"No binomial errors"
+   LERR=.true.;					"Do error computation for fit"
+   LVECT=.false.;				"No vector operations"
+   N_NAME=1;   C_NAME='%';
+   NSET=0; JSET=3;
+   IDSETS=MAX(1,NDSETS);
+   IF (NPOINT.eq.0) IDSETS=0;
+   <TOKEN LOOP> <
+      STRING:: <
+	NSTRNG=MAX(1,NSTRNG);
+	<I=1,NDSETS; CALL T2GDSET(I,1,$LARGE INTEGER
+			,1,$LARGE INTEGER,ISETC,HNONE,STRNG(:NSTRNG));
+	    IF (ISETC(NPDATA,1) .gt. 1) THEN;
+		INTEG=I;
+		GOTO :SETVAL:;
+	    ENDIF;
+	>
+	ERROR OUT;'*** ERRROR *** No such data set name';
+	RETURN;
+      >
+      NUMBER:: <
+:SETVAL:
+	 IF (INTEG.lt.1 .or. INTEG.gt.IDSETS) THEN;
+:SETERR:
+	    ERROR$MESSAGE
+	       '*** ERROR *** Nonexistant data set (',IDSETS,')';
+	    RETURN;
+	 ENDIF;
+:SETNUM:
+	 IF (NSET.gt.2 .or. ISET(JSET).ne.0) THEN;
+	    ERROR OUT;('*** ERROR *** Redundant options');
+	    RETURN;
+	 ENDIF;
+	 ISET(JSET)=INTEG;
+	 JSET=JSET-1; IF (JSET.le.0) JSET=2;
+	 NSET=NSET+1;
+      >
+      KEY:: <
+	 FROM:1,TO:1,BY:2  < JSET=INTEG; >
+	 APPEND:Y   < LAPPEN=LTOKEN; >
+	 AVERAGE:Y,
+	 CHECK:Y    < LCHECK=LTOKEN; >
+	 ERROR:Y    < LERR=LTOKEN; >
+	 EFFICIENCY:Y < LBINOM=LTOKEN;
+	    IF (LBINOM.and.(IOP.eq.1.or.IOP.eq.4))
+	       ERROR OUT;'*** ERROR *** Illegal for multiply';
+	 >
+	 EWEIGHT::0 < EWEIGHT(JSET)=FLOTNG; >
+	 FIT:-1     < IF (NTERMS.le.0) goto :SETERR:; GOTO :SETNUM:; >
+	 LIMITED    < CALL T2XYZC($INFO,$CARD,TLIM,2,NLIM); >
+	 LINES,ROWS     <CALL T2ROWS($INFO,$CARD,N3,N4); >
+	 LOG:Y      < LLOG=LTOKEN; >
+	 NAME:S      <N_NAME=MAX(1,NSTRNG); C_NAME=STRNG(:N_NAME); >
+	 POINTS,COLUMNS <CALL T2PNTS($INFO,$CARD,N1,N2);>
+	 SET:1::0   < GOTO :SETVAL:; >
+	 Y:2,Z:3    < IDEP=INTEG; >
+	 VECTOR:Y   < LVECT=LTOKEN; >
+	 WEIGHT:::1 < WEIGHT(JSET)=FLOTNG; >
+      >
+   >
+   IF (NSET.lt.2) THEN;
+      ERROR OUT;'*** ERROR *** Missing data set numbers';
+   ENDIF;
+   <I=1,2;					"Get default number"
+      IF (ISET(I).eq.0) THEN;
+	 EWEIGHT(I)=EWEIGHT(3);
+	 WEIGHT(I)=WEIGHT(3);
+	 ISET(I)=ISET(3);
+      ENDIF;
+      IF (WEIGHT(I) .eq. 0) THEN;
+	 EWEIGHT(I)=0;
+      ELSE;
+	 EWEIGHT(I)=(EWEIGHT(I)/WEIGHT(I))**2;	"Calc relative error"
+      ENDIF;
+   >						"Get default number"
+   IF (ISET(1).le.0 ) THEN;
+      ERROR OUT;('*** ERROR *** Fit may not be TO'); RETURN;
+   ENDIF;
+   ISET(3)=ISET(1);
+   IF ($TRAP)  RETURN;				"If kill requested"
+   IF ($ERROR) RETURN;
+   <J=1,3; IN(J)=0; >
+			"Find data sets"
+   <J=1,2;					"Now get 2 input data sets"
+	I=ISET(J);
+	IF (ISET(J).le.0) I=ISET(1);		"Default data set"
+	CALL T2GDSET(I,N1,N2,N3,N4,ISETC(1,J),TLIM,'*');
+	ISETC(NSETD+1,J)=MESH3; ISETC(NSETD+2,J)=MESH2;	"Setup X/Y"
+	IF (MESH3 .ne. 3) THEN;			"3'rd coordinate wrong ?"
+	    ERROR OUT;'*** ERROR *** Mesh Z must be dependent variable';
+	    RETURN;
+	ENDIF;
+	IF (ISETC(NBTYPE,J).eq.1) THEN;		"Normal data?"
+	    ISETC(NINDAT+2,J)=ISETC(NINDAT,J);
+	ELSE;					"Mesh data ?"
+	    ISETC(NINDAT+1,J)=ISETC(NINDAT+1,j)*ISETC(NINDAT,J); "And step"
+	    IF (ISETC(NSETD+2,J).eq.1) THEN;		"Swap X/Y ?"
+		I=ISETC(NINDAT,J);
+		ISETC(NINDAT,J)=ISETC(NINDAT+1,J);
+		ISETC(NINDAT+1,J)=I;
+		I=ISETC(NXDATA,J);
+		ISETC(NXDATA,J)=ISETC(NYDATA,J);
+		ISETC(NYDATA,J)=I;
+		I=ISETC(NDXDATA,J);
+		ISETC(NDXDATA,J)=ISETC(NDYDATA,J);
+		ISETC(NDYDATA,J)=I;
+		I=ISETC(NNDXDATA,J);
+		ISETC(NNDXDATA,J)=ISETC(NNDYDATA,J);
+		ISETC(NNDYDATA,J)=I;
+		I=ISETC(NPDATA,J);
+		ISETC(NPDATA,J)=ISETC(NLDATA,J);
+		ISETC(NLDATA,J)=I;
+	    ENDIF;
+	ENDIF;
+	IF (LVECT .and. IOP .eq. 1) THEN;
+	    <I=NDXDATA,NDXDATA+3*NCSIZE-1,NCSIZE;
+		IF (ISETC(I,J) .eq. 1) THEN;
+		    ERROR OUT;
+		    '*** ERROR Data must have DX,DY,DZ for Vector Multiply';
+		    RETURN;
+		ENDIF;
+	    >
+	ENDIF;
+   >
+   <I=NSETD+1,NSETD+2; ISETC(I,3)=ISETC(I,1); >
+   IF ($ERROR) RETURN;
+   IN(2)=IN(1);					"Fit data ?"
+   IN(3)=IN(1);
+   IF (ISETC(NBTYPE,1) .lt. ISETC(NBTYPE,2).or.
+       ISETC(NSETD+1,1).ne.3 .or.
+       (ISETC(NBTYPE,2) .eq. 2 .and. LVECT)) THEN;
+      ERROR OUT;'*** ERROR *** Data mismatch (Mesh/Regular)';
+      RETURN;
+   ENDIF;
+"
+
+	Check the data set sizes and values
+	May not add mesh to regular data.  May not add when
+	X/Y/Z coordinates disagree.
+
+"
+   IF (ISET(2).gt.0.and.LCHECK) THEN;
+      <I=0,ISETC(NBTYPE,2)-1;			"Check size of data sets"
+	 IF (ISETC(NPDATA+I,1).gt.ISETC(NPDATA+I,2)) THEN;
+	    ERROR OUT;'*** ERROR *** Output set bigger than input';
+	    RETURN;
+	 ENDIF;
+      >
+"
+	Now check if values and errors on the input sets match
+		Do not check errors if either one does not exist
+	For VECTOR data check X/Y/ and Z
+"
+		"If vector add and 3'rd coordinate exists"
+      N=2;					"Jump"
+      IXYZMAX=2;
+      IF (ISETC(NBTYPE,2) .eq. 2) THEN;		"Mesh data ?"
+	 N=1;
+      ELSEIF ( ISETC(NZDATA,2).gt.1 ) THEN;	"Z exists ?"
+	 IXYZMAX=3;				"CHeck X,Z coordinates"
+      ENDIF;
+      IF (LVECT)N=1;				"check X,Y,Z"
+      <IXYZ=1,IXYZMAX,N;			"X,Y,Z = 1,2,3"
+	 J=NCSIZE*(IXYZ-1)+NXDATA;			"Current data point"
+	 DX1=0; DX2=0; NXYZ=1;			"Start with init value"
+	 IF (LVECT .or. ISETC(J+1,1) .eq. 1 .or.
+			ISETC(J+1,2) .eq. 1 ) THEN;
+	    NXYZ=0; ENDIF;			"No errors ?"
+	 IF (ISETC(NBTYPE,2) .eq. 1) THEN;
+	    IMAX=ISETC(NPDATA,1);
+	 ELSE;
+	    IMAX=ISETC(NPDATA+IXYZ-1,1);
+	 ENDIF;
+	 <I=1,IMAX;
+	    IF ($TRAP)  RETURN;			"If kill requested"
+	    T1=DATBUF(ISETC(J,1));		"Get data"
+	    T2=DATBUF(ISETC(J,2));		"And errors if any"
+	    IF (NXYZ .ne. 0) THEN;
+	       DX1=DATBUF(ISETC(J+1,1)); DX2=DATBUF(ISETC(J+1,2));
+	    ENDIF;
+	    T=0.01*MIN(ABS(DX1),ABS(DX2));	"Smallest error"
+	    IF (T.eq.0.0) T=$DELTA*ABS((T1+T2)/2);	"Or delta"
+	    T=MAX(T,$SMALL REAL);		"Now minimum is small real"
+	    IF (ABS(T1-T2).gt.T.or.		"Data too different ?"
+	       ABS(DX1-DX2).gt.T) THEN;		"Or error too different ?"
+		  ERROR OUT;
+		    '*** ERROR *** '//C_XYZ(IXYZ)//
+		    '/D'//C_XYZ(IXYZ)//' values do not match'; RETURN;
+	    ENDIF;
+			"Next point"
+	    <L=1,2;
+		<K=J,J+NXYZ;
+		    ISETC(K,L)=ISETC(K,L)+ISETC(IXYZ+NINDAT-1,L); >  >
+	 >
+      >
+   ENDIF;
+   NP=MIN(ISETC(NPDATA,1),ISETC(NPDATA,2));
+   NL=ISETC(NLDATA,1);
+   IF (ISETC(NBTYPE,2).eq.2) NL=MIN(NL,ISETC(NLDATA,2));
+   IF (LAPPEN) THEN;
+      IF (ISETC(NBTYPE,1).eq.2) THEN;		"Mesh data ???"
+	 CALL T2GDSET(ISET(1),N1,N2,N3,N4,ISETC(1,1),TLIM,'*');
+	 CALL T2NEWM(ISETC(NINDAT,1),ISETC(NINDAT+1,1),ISETC(NINDAT+2,1)
+		,C_NAME(:N_NAME));
+	 CALL T2GDSET(NDSETS,N1,N2,N3,N4,ISETC(1,1),TLIM,'*');
+      ELSE;
+	 CALL T2NEWS(ISETC(NPDATA,1),C_NAME(:N_NAME));
+      ENDIF;
+      IF ($ERROR) RETURN;
+      ISET(3)=NDSETS;
+   ENDIF;
+   <I=1,3; D_XYZVAL(I)=0; >
+   <J=3,1,-1;
+      IF (ISET(J).gt.0) THEN;
+	CALL T2GDSET(ISET(J),N1,N2,N3,N4,ISETC(1,J),TLIM,'*');
+	IF (ISETC(NBTYPE,J).eq.2) THEN;		"Mesh data ???"
+	    ISETC(NSDATA,j)=ISETC(NMDATA,J);	"Symbol =mesh start"
+	    ISETC(NINDAT+1,J)=ISETC(NINDAT+1,j)*ISETC(NINDAT,J);
+	    IF (ISETC(NSETD+2,J).eq.1) THEN;		"Swap X,Y ?"
+		I=ISETC(NINDAT,J);
+		ISETC(NINDAT,J)=ISETC(NINDAT+1,J);
+		ISETC(NINDAT+1,J)=I;
+		I=ISETC(NXDATA,J);
+		ISETC(NXDATA,J)=ISETC(NYDATA,J);
+		ISETC(NYDATA,J)=I;
+		I=ISETC(NDXDATA,J);
+		ISETC(NDXDATA,J)=ISETC(NDYDATA,J);
+		ISETC(NDYDATA,J)=I;
+		I=ISETC(NNDXDATA,J);
+		ISETC(NNDXDATA,J)=ISETC(NNDYDATA,J);
+		ISETC(NNDYDATA,J)=I;
+		I=ISETC(NPDATA,J);
+		ISETC(NPDATA,J)=ISETC(NLDATA,J);
+		ISETC(NLDATA,J)=I;
+	    ENDIF;
+	    ISETC(NINDAT+2,J)=ISETC(NINDAT+1,J)-NP*ISETC(NINDAT,J);
+							"Offset to next row"
+	ELSE;
+	    ISETC(NINDAT+2,J)=-NP*ISETC(NINDAT,J);	"Reset to begin of row"
+	ENDIF;
+	IF (IDEP .eq. 3 .or. ISETC(NBTYPE,J) .eq. 2) THEN; "Z coord selected ?"
+		<K=0,1;				"Swap Y/Z, DY/DZ"
+			I=ISETC(K+NYDATA,j);
+			ISETC(K+NYDATA,j)=ISETC(K+NZDATA,j);
+			ISETC(K+NZDATA,J)=I; >
+	    IF (ISETC(NYDATA,j) .le. 1) THEN;
+		ERROR OUT;'*** ERROR *** Missing Z coordinate';
+		RETURN;
+	    ENDIF;
+	ENDIF;
+      ENDIF;
+   >
+   IF (LAPPEN) THEN;				"Fill in values from original ?"
+      <J=IS1,ISETC(NBGDAT+1,1); DATBUF(IS3)=DATBUF(J); IS3=IS3+1; >
+   ENDIF;
+   FLAGS(28)=.false.;
+   IF (LVECT .or. DATBUF(IDY1).eq.HNONE.or.DATBUF(IDY2).eq.HNONE) THEN;
+      LERR=.false.; ENDIF;
+   IZERO=0;
+   IF (LBINOM) THEN; FAC1=0.5; FAC2=0.5;
+	       ELSE; FAC1=1.0; FAC2=1.0; ENDIF;
+   TS=1; IF (IOP.eq.4) TS=-1;			"Sign of operation"
+   DY2=0; DY1=0;
+   NXYZ=0;					"Max avail coordinate"
+   <K=1,3;
+	<J=1,$MAXCOR; XYZ(J,K)=0;>			"Initialize data"
+   >
+   IF (LVECT) THEN;
+	<K=1,3;
+	    <J=NDXDATA,NDZDATA,NCSIZE;
+		IF (ISETC(J,K) .ne. 1) NXYZ=J;	"Max good data"
+	    >
+	>
+      <I=1,NP;					"Add point/cols of mesh"
+	IF ($TRAP)  GOTO :RET:;		"If kill requested"
+	<K=1,2;
+	    <J=1,3;
+		IF (ISETC(NCSIZE*(J-1)+NDXDATA,K) .gt. 1) THEN;	"Get DX,DY,DZ"
+		    XYZ(J,K)=DATBUF(ISETC(NCSIZE*(J-1)+NDXDATA,K));
+
+		ENDIF;
+	    >
+	>
+	IF ($POLAR) THEN;
+	    IF ($SPHERICAL) THEN;
+		CALL T2SPHCV(XYZ(1,1),XYZ(2,1),XYZ(3,1),
+			XYZ(1,1),XYZ(2,1),XYZ(3,1),-2,$MAXCOR,.false.,RADANG);
+	    ELSE;
+		CALL T2POLCV(XYZ(1,1),XYZ(2,1),
+			XYZ(1,1),XYZ(2,1),-2,$MAXCOR,.false.,RADANG);
+	    ENDIF;
+	ENDIF;
+	<CASE> IOP <OF> :MUL:,:DIV:,:ADD:,:SUB: <;	"Do operations"
+		:DIV: < ERROR OUT;' Undefined operation'; RETURN; >
+		:MUL: <  CALL T2_CROSS(XYZ(1,1),XYZ(1,2),XYZ(1,3)); >
+		:ADD: <  <J=1,3;
+				XYZ(J,3)=XYZ(J,1)+XYZ(J,2); > >
+		:SUB: <  <J=1,3;
+				XYZ(J,3)=XYZ(J,1)-XYZ(J,2); > >
+	>
+	IF ($POLAR) THEN;
+	    IF ($SPHERICAL) THEN;
+		CALL T2SPHCV(XYZ(1,3),XYZ(2,3),XYZ(3,3),
+			XYZ(1,3),XYZ(2,3),XYZ(3,3),1,$MAXCOR,.false.,RADANG);
+	    ELSE;
+		CALL T2POLCV(XYZ(1,3),XYZ(2,3),
+			XYZ(1,3),XYZ(2,3),1,$MAXCOR,.false.,RADANG);
+	    ENDIF;
+	ENDIF;
+	<J=1,3;
+	    IF (ISETC(NCSIZE*(J-1)+NDXDATA,3) .gt. 1) THEN;	"Save result"
+		DATBUF(ISETC(NCSIZE*(J-1)+NDXDATA,3))=XYZ(J,3);
+	    ENDIF;
+	>
+			"Now get next point"
+	<K=1,3; <J=NDXDATA,NXYZ,NCSIZE;
+		IF (ISETC(J,K) .gt. 1)
+		ISETC(J,K)=ISETC(J,K)+ISETC(NINDAT,K); >  >
+      >
+   ELSE;
+   LNERR=LERR .and. DATBUF(INDY3) .ne. HNONE;
+   <II=1,NL;					"Add all rows of mesh"
+      <I=1,NP;					"Add point/cols of mesh"
+	 IF ($TRAP)  GOTO :RET:;		"If kill requested"
+	 ICPOIN(1)=IY1; ICPOIN(2)=IY2;		"Save from data set locations"
+	 Y1=DATBUF(IY1)*WEIGHT(1);
+	 IF (ISET(2).gt.0) THEN;		"Normal data set ?"
+	    Y2=DATBUF(IY2)*WEIGHT(2);
+	 ELSE;
+	    X2=DATBUF(IX1)-XOFF;
+	    IF (LXLOG) X2=LOG(X2);
+	    D_XV=X2;
+			"D_YV=DATBUF(IZ1);"
+	    CALL T2FUNC(XF,NTERMS,D_XV,IFIT,LCOF1,LCOF1,ACOEF,D_YV,SEXPR,NEXPR);
+			"Find the error ?"
+	    Y2=D_YV;
+	    IF (LYLOG) Y2=EXP(Y2);
+	    IF (LERR) THEN;
+		DY2=0;
+			"Use error  matrix for calculating errors"
+		<J=1,NCOFF;
+		  <K=1,NCOFF;
+		     DY2=DY2+EMATRX(K,J)*XF(K)*XF(J);
+		  >
+		>
+		DY2=SQRT(ABS(DY2));
+		IF (LYLOG) DY2=DY2*Y2;
+	    ENDIF;
+	 ENDIF;
+	 IF (IOP.eq.1) THEN;			"Multiply ?"
+	    T=Y2;
+	 ELSEIF (IOP.eq.2) THEN;		"Divide ?"
+	    IF (Y2.ne.0) THEN; T=1./Y2;
+			 ELSE; T=0; IF (Y1.ne.0) IZERO=IZERO+1;
+			 ENDIF;
+	 ENDIF;
+	 IF (LERR) THEN;			"Now get errors"
+	       DY1=DATBUF(IDY1)*WEIGHT(1);
+	       IF (ISET(2).gt.0) then;
+			DY2=DATBUF(IDY2);
+	       ENDIF;
+		DY2=DY2*WEIGHT(2);
+	       IF ( EWEIGHT(1) .ne. 0 .and. Y1 .ne. 0) THEN;
+		  DY1=SQRT((DY1/Y1)**2+EWEIGHT(1));
+		  DY1=DY1*Y1;
+	       ENDIF;
+	       IF ( EWEIGHT(2) .ne. 0 .and. Y2 .ne. 0) THEN;
+		  DY2=SQRT((DY2/Y2)**2+EWEIGHT(2));
+		  DY2=DY2*Y2;
+	       ENDIF;
+	       DY1=ABS(DY1);
+	       DY2=ABS(DY2);
+	 ENDIF;
+	 IF (IOP.eq.3.or.IOP.eq.4) THEN;		"Add or subtract ?"
+	    IF (LERR) THEN;
+	       DY1=DY1**2;
+	       DY2=DY2**2;
+	       IF (LBINOM) THEN;
+		  IF (DY1.eq.0.and.Y1.ne.0) DY1=1;
+		  IF (DY2.eq.0.and.Y2.ne.0) DY2=1;
+		  T=DY1+DY2;
+		  IF (T.gt.0) THEN;
+		     IF     (DY1 .eq. 0) THEN; DATBUF(IDY3)=SQRT(DY2); FAC2=1;
+		     ELSEIF (DY2 .eq. 0) THEN; DATBUF(IDY3)=SQRT(DY1); FAC1=1;
+		     ELSE; DATBUF(IDY3)=SQRT(1/(1/DY1+1/DY2));
+			   FAC1=DY2/T; FAC2=DY1/T; ENDIF;
+		  ENDIF;
+	       ELSE;
+		    DT=FAC1*DY1+FAC2*DY2;
+		    DATBUF(IDY3)=SQRT(DT);
+	       ENDIF;
+	    ENDIF;
+	    DATBUF(IY3)=FAC1*Y1+TS*FAC2*Y2;
+	 ELSE;					"Multiply or divide ?"
+	    DATBUF(IY3)=Y1*T;
+	    IF (LERR) THEN;
+	       IF (LBINOM) THEN;
+		  DATBUF(IDY3)=SQRT( MAX(ONE,Y1)*MAX(ONE,Y2-Y1)*T)*T;
+	       ELSE;
+		  IF (Y1.eq.0.or.Y2.eq.0) THEN;
+		     DATBUF(IDY3)=DY1*T;
+		  ELSE;
+		     DATBUF(IDY3)=DATBUF(IY1)*
+			SQRT((DY1/Y1)**2+
+			     (DY2/Y2)**2);
+		  ENDIF;
+	       ENDIF;
+	    ENDIF;
+	 ENDIF;
+	 IF (LNERR) DATBUF(INDY3)=DATBUF(IDY3);
+			"Increment pointers X to DY"
+	 <K=1,3; <J=NXDATA,NNDYDATA;
+		ISETC(J,K)=ISETC(J,K)+ISETC(NINDAT,K); >  >
+      >
+			"Do this to access next row"
+      IX1=IX1-ISETC(NINDAT,1)*NP;
+      <K=1,3; <J=NYDATA,NNDYDATA;
+	ISETC(J,K)=ISETC(J,K)+ISETC(NINDAT+2,K); >  >
+   >
+   ENDIF;
+:RET:
+   LLOG=LLOG .or. $TRAP;
+   IF (IZERO.gt.0) THEN;
+      ERROR$MESSAGE
+	 '*** WARNING *** ',IZERO,' attempts to divide by 0.0';
+   ENDIF;
+   IF (NP*NL .ne. 0) DATDAT(1,1)=HNONE;
+   IF (LLOG) THEN;
+      I=ISET(1); IF (LAPPEN)I=NDSETS;
+      IF (ISET(2).gt.0) THEN;
+	 WRITE(OUTSTR,*)'  Data set( ',I,' ) ( '
+	 ,NP*NL,' points) =set( ',ISET(1),' ) '
+	 ,'*',WEIGHT(1),' +-',EWEIGHT(1),' '
+	 ,COPER(IOP),' set(',ISET(2),' )'
+	 ,'*',WEIGHT(2),' +-',EWEIGHT(2);
+      ELSE;
+	 WRITE(OUTSTR,*)'  Data set( ',I,' ) ( '
+	 ,NP*NL,' points) =set( ',ISET(1),' ) '
+	 ,'*',WEIGHT(1),' +-',EWEIGHT(1),' '
+	 ,COPER(IOP),' FIT'
+	 ,'*',WEIGHT(2),' +-',EWEIGHT(2);
+      ENDIF;
+      IF (LVECT) OUTSTR(:T2BTRIM(OUTSTR)+1)='Vector';
+      IF (LBINOM)OUTSTR(:T2BTRIM(OUTSTR)+1)='Binomial';
+      CALL T2WRSQ(OUTSTR,.true.,$TERMINAL OUT,3);
+   ENDIF;
+END;
+%E  SUBROUTINE T2VFTB --- Parse FROM,TO,BY,N=
+SUBROUTINE T2VFTB($INFO,$CARD,VALUE,ISTAT,LGET);
+   IMPLICIT NONE;
+   INTEGER $INFO(10);
+   CHARACTER *(*) $CARD;
+   $SPECIFICATION;
+   INTEGER ISTAT,ICOUNT,LGET,NCOUNT;
+   REAL PARM(4),VALUE;
+   SAVE ICOUNT,NCOUNT,PARM;
+   IF (ISTAT .eq. 0) THEN;
+      NCOUNT=0; ICOUNT=0;
+   ELSEIF (NCOUNT.gt.0) THEN;
+      NCOUNT=NCOUNT-1; ICOUNT=ICOUNT+1;
+      VALUE=PARM(1)+ICOUNT*PARM(3);
+      ISTAT=ISTAT+1;
+      RETURN;
+   ENDIF;
+   <TOKEN> <
+      KEY:: <
+	 FROM,TO,BY,WIDTH,STEP,N,NUMBER <
+	    <READ SAME TOKEN>;
+	    CALL T2FTBY($INFO,$CARD,PARM,0);
+	    IF ($ERROR) THEN; ISTAT=-1; RETURN; ENDIF;
+	    NCOUNT=NINT(PARM(4))-1;
+	    ICOUNT=0;
+	    VALUE=PARM(1);
+	    ISTAT=ISTAT+1;
+	 >
+      >
+      NUMBER:: < VALUE=FLOTNG; ISTAT=ISTAT+1; >
+      ELSE::   < <READ SAME TOKEN>; ISTAT=-1; >
+   >
+END;
+%E  SUBROUTINE T2FTBY --- Parse FROM,TO,BY,N=
+SUBROUTINE T2FTBY($INFO,$CARD,PARM,LGET);
+"
+	Get from to, BY values
+"
+   IMPLICIT NONE;
+   INTEGER $INFO(10);
+   CHARACTER *(*) $CARD;
+   $SPECIFICATION;
+   $SPECIFYNONE;
+   REAL PARM(4);
+   INTEGER I,ITSAVE,IVALS,J,LGET,NBINS;
+   INTEGER T2BTRIM;
+   $BOOLEAN LSET(5);
+   J=1;
+   <I=1,4; LSET(I)=.false.; IF (IAND(J,LGET).eq.0) PARM(I)=0; J=J*2; >
+   IVALS=0;
+   ITSAVE=0;
+   <TOKEN LOOP> <
+      KEY:: <
+	 FROM:1,
+	 TO:2,
+	 BY:3,STEP:3,WIDTH:3,
+	 N:4,NUMBER:4 <
+	    IF (ITSAVE.eq.0) ITSAVE=$INFO(5);
+	    I=INTEG;
+	    <TOKEN NUMBER> <
+:NUM:          IF (LSET(I)) THEN;
+:ERR:             ERROR OUT; ('*** ERROR *** Redundant value');
+	       ELSEIF (I.le.2 .or.
+		     (FLOTNG.ge.1) .or.
+		     (I.eq.3.and.FLOTNG.ne.0)) THEN;
+		    PARM(I)=FLOTNG; LSET(I)=.true.; IVALS=IVALS+1;
+		    IF (IVALS.ge.3) GOTO :DONE:;
+	       ELSE;
+		  ERROR OUT; ('*** ERROR *** Value too small');
+	       ENDIF;
+	    >
+	 >
+      >
+      NUMBER:: <
+	 IF (ITSAVE.eq.0) ITSAVE=$INFO(5);
+	 I=1; IF (LSET(1)) I=2;
+	 IF (.not. LSET(2)) PARM(2)=FLOTNG;
+	 GOTO :NUM:;
+      >
+      ELSE:: < <READ SAME TOKEN>; <EXIT>; >
+   >
+:DONE:
+			"Check some values"
+   IF ($ERROR) RETURN;
+   IF (IVALS.lt.3 .and. IAND(15,LGET).ne.0) THEN;
+      J=1;
+      <I=1,4;
+	 IF (.not. LSET(I) .and. IAND(J,LGET).ne.0) THEN;
+	    LSET(I)=.TRUE.; IVALS=IVALS+1;
+	    IF (IVALS .ge. 3) <EXIT>;
+	 ENDIF;
+	 J=J*2;
+      >
+   ENDIF;
+   IF (IVALS.lt.3) THEN;
+      IF (ITSAVE.ne.0) $INFO(5)=ITSAVE;
+   ENDIF;
+   CALL T2FPAR1($INFO,$CARD,PARM,LSET,(IAND(16,LGET).NE.0));
+END;
+SUBROUTINE T2FPAR1($INFO,$CARD,PARM,LSET,LBINS);
+   IMPLICIT NONE;
+   $SPECIFICATION;
+   INTEGER $INFO(10);
+   CHARACTER*(*) $CARD;
+   CHARACTER*6	CFRTO(4)/'FROM,','TO,','BY,','N,'/;
+   $BOOLEAN LSET(4),LBINS;
+   INTEGER NBINS,I,IVALS;
+   INTEGER T2BTRIM;
+   REAL	PARM(4),T;
+   IVALS=0;
+   <I=1,4; IF (LSET(I)) IVALS=IVALS+1; >
+   IF (IVALS.lt.3) THEN;
+	OUTSTR=' ';
+	<I=1,4;
+	    IF (.not. LSET(I)) THEN;
+		OUTSTR(T2BTRIM(OUTSTR)+1:)=CFRTO(I);
+	    ENDIF;
+	>
+	ERROR OUT;'*** ERROR *** Missing either'//OUTSTR(:T2BTRIM(OUTSTR)-1);
+	RETURN;
+   ENDIF;
+   NBINS=0;
+   IF (LSET(4)) THEN;
+      NBINS = NINT(PARM(4))-1;
+      IF (LBINS) NBINS=NBINS+1;
+      PARM(4)=NBINS+1;
+   ENDIF;
+			"Put in the 4'th parm"
+   IF     (.not.LSET(1))THEN;
+      PARM(1)=PARM(2)-PARM(3)*NBINS;
+   ELSEIF (.not.LSET(2)) THEN;
+      PARM(2)=PARM(1)+PARM(3)*NBINS;
+   ELSEIF (.not.LSET(3)) THEN;
+      PARM(3)=(PARM(2)-PARM(1))/MAX(1,NBINS);
+   ELSEIF (.not.LSET(4)) THEN;
+	T=PARM(3);
+	IF (T .eq. 0) THEN;
+	    IF (PARM(2) .ne. PARM(1)) THEN;
+		ERROR OUT;'*** ERROR *** TO = 0.0';
+	    ENDIF;	  
+	    PARM(4)=0;
+	ELSE;
+	    PARM(4)=(PARM(2)-PARM(1))/T;
+	ENDIF;
+	IF (PARM(4).lt.0) THEN;
+	    PARM(3)=-PARM(3);
+	    PARM(4)=-PARM(4);
+	ENDIF;
+	IF (LBINS) THEN;
+	    NBINS=PARM(4)+1.0-.0001;
+	ELSE;
+	    NBINS=PARM(4)+.0001;
+	    PARM(2)=PARM(1)+PARM(3)*NBINS;
+	ENDIF;
+   ENDIF;
+   IF (LBINS)	THEN;  PARM(4)=NBINS;
+		ELSE;  PARM(4)=NBINS+1; ENDIF;
+END;
+%E  SUBROUTINE T2_SYMBOL  --- SYMBOL command
+SUBROUTINE T2_SYMBOL($INFO,$CARD);
+"
+	SYMBOL = COMMAND
+"
+   IMPLICIT NONE;
+   INTEGER $INFO(10);
+   CHARACTER*(*) $CARD;
+   $SPECIFYNONE;
+   $MAINSPEC;
+   $SPECIFICATION;
+   $SELECTSPEC;
+   $POINT ARRAYS($NPOINTS);
+   $EQUIVALENCE;
+   $DATA;
+   INTEGER I,J,K,ISET,MAXD,NSYM,JLIM,KLIM;
+   REAL T,TSYM,TXSYM;
+   CHARACTER*6 SYM;
+   NSYM=0;
+   JLIM=0;
+   <TOKEN LOOP> <
+      KEY:: <
+	 LIMITED   <CALL T2XYZC($INFO,$CARD,TLIM,2,JLIM); >
+	 POINTS    <CALL T2PNTS($INFO,$CARD,N1,N2);>
+	 SETS      <CALL T2NSET($INFO,$CARD,NS1,NS2);>
+	 SELECT:S  <C_SELECT=STRNG; N_SELECT=MAX(1,NSTRNG); >
+      >
+      ELSE:: <IF (NSTRNG.gt.0) SYM=STRNG(1:NSTRNG); NSYM=NSTRNG; >
+   >
+   IF ($ERROR.and.$ABORT) RETURN;		"no errors"
+   IF (NSYM .eq. 0) THEN;
+      ERROR OUT; ('*** ERROR *** Missing symbol');
+   ELSE;
+      TSYM=TXSYM(SYM(1:NSYM));
+      FLAGS(28)=.FALSE.;
+      <ISET=NS1,NS2;
+	CALL T2GDSET(NS1,N1,N2,N3,N4,ISETD,TLIM,C_SELECT(:N_SELECT));
+	IF (I7 .eq. 1) <NEXT>;			"Symbols ??"
+	KLIM=3; IF (i3 .eq. 1) KLIM=2;	"Number of values X,Y or X,Y,Z ?"
+	I7=I7-NINCR0;				"Start one down"
+	<I=N1,NP;				"For all values"
+	  I7=I7+NINCR0;
+	  IF (JLIM.gt.0) THEN;			"Check for selected limits ?"
+	    <J=1,JLIM,2;			"Check all limits"
+		<K=1,KLIM;			"And all values"
+		    T=DATBUF(ISETD(NCSIZE*(K-1)+NXDATA));	"X,Y, Z value"
+		    IF ( T .lt. TLIM(K,J) .or.
+			 T .gt. TLIM(K,J+1) )
+			<NEXT>;			"Outside limits ?"
+		>
+		<K=NXDATA,NXDATA+NCSIZE*(KLIM-1),NCSIZE;
+		    ISETD(K)=ISETD(K)+NINCR0; >
+		<EXIT>;
+	    >
+	    IF (J .gt. JLIM) <NEXT>;		"outside all limits ?"
+	  ENDIF;
+	  DATBUF(I7)=TSYM;
+	>
+      >
+   ENDIF;
+END;
+%E  SUBROUTINE T2_SWAP  --- SWAP command
+SUBROUTINE T2_SWAP($INFO,$CARD);
+"
+	Swap 2 data coordinates
+	Options are:	LOG, POINTS, SELECT, SETS, X,DX,Y,DY....  [WITH]
+"
+   IMPLICIT NONE;
+   INTEGER $INFO(10);
+   CHARACTER*(*) $CARD;
+   $SPECIFICATION;
+   $SELECTSPEC;
+   $POINT ARRAYS($NPOINTS);
+   $MAINSPEC;
+   $BOOLEAN LERR,LDEFERR,LEXIST1,LEXIST2;
+   CHARACTER*7 CORD1,CORD2;
+   INTEGER IXYZ1,IXYZ2, IXYZ(2),I,J,K,IMAX;
+   INTEGER IPOINT,JSET,ISET;
+   REAL TEMP;
+   $EQUIVALENCE;
+   $DATA;
+   $SPECIFYNONE;
+   IXYZ(1)=0;  IXYZ(2)=0;
+   IF (NPOINT+NMESH1.le.0) THEN;
+      ERROR OUT;('*** Warning *** No data available'); RETURN;
+   ENDIF;
+   J=0;
+   LERR=REVLEV .ge. 5.0;		"Swap errors ?"
+   LDEFERR=.true.;
+   <TOKEN KEY LOOP> <
+      ERROR:Y		< LERR=LTOKEN; LDEFERR=.false.; >
+      LOG:Y		< LLOG=LTOKEN; >
+      X:2,DX:3,Y:4,DY:5,Z:6,DZ:7,
+      NDX:8,NDY:9,NDZ:10,
+      U:11,DU:12,NDU:13,V:14,DV:15,NDV:16,W:17,DW:18,NDW:19,
+      THETA:2,DTHETA:3,RADIUS:4,DRADIUS:5,PHI:6,DPHI:7,
+      NDTHETA:8,NDRADIUS:9,NDPHI:10 <
+	J=J+1;
+	IF (J.le.2) THEN;
+	    IXYZ(J)=I_VORDER(INTEG,1);
+		"Error coord + Default set ???"
+	    IF (MOD(IXYZ(J)-N_XDATA,NCSIZE) .ne. 0 .and. LDEFERR)
+		LERR=.false.;		"Set no errors"
+	ELSE;
+	    ERROR OUT;'*** ERROR *** Too many coordinates';
+	ENDIF;
+      >
+      WITH        < CONTINUE; >
+      POINTS      < CALL T2PNTS($INFO,$CARD,N1,N2);>
+      SETS        < CALL T2NSET($INFO,$CARD,NS1,NS2);>
+      SELECT:S    < C_SELECT=STRNG; N_SELECT=MAX(1,NSTRNG); >
+   >
+   IF ($ERROR) RETURN;				"Missing input ?"
+   IF (J.lt.2) THEN;
+	ERROR OUT;('*** ERROR *** Missing option(s)');
+	RETURN;
+   ENDIF;
+   IF (LERR .and.
+	MOD(IXYZ(1)-N_XDATA,NCSIZE)+MOD(IXYZ(2)-N_XDATA,NCSIZE) .gt. 0) THEN;
+	ERROR OUT;'*** ERROR *** ERROR=ON illegal with DX,DY,...';
+	RETURN;
+   ENDIF;
+   IPOINT=0;
+   JSET=0;
+   <ISET=NS1,NS2;
+      CALL T2GDSET(ISET,N1,N2,N3,N4,ISETD,HNONE,C_SELECT(:N_SELECT));
+      IF ($ERROR) RETURN;
+      IF (NP .LT. N1) <NEXT>			"No data ?"
+      <J=1,2;
+	 IF (IBTYPE.eq.2) THEN;
+	    I=(IXYZ(J)-N_XDATA)/NCSIZE+1;
+	    IF (I.eq.MESH3 .or.
+		MOD(IXYZ(J)-N_XDATA,NCSIZE) .ne.0) THEN; "Non swappable ?"
+		CALL T2GVNM(IXYZ(J),CORD1);	"Get coordinate names"
+		ERROR OUT;'*** ERROR *** Illegal mesh coordinate:'//CORD1;
+		RETURN;
+	    ENDIF;
+	 ENDIF;
+	 I=ISETD(IXYZ(J)+NXDATA-N_XDATA);
+	 IF (DATBUF(I).eq.HNONE) THEN;
+	    CALL T2GVNM(IXYZ(J),CORD1);		"Get coordinate names"
+	    ERROR OUT;'*** ERROR *** Data type not in storage:'//CORD1;
+	    RETURN;
+	 ENDIF;
+      >
+   >
+   <ISET=NS1,NS2;
+      CALL T2GDSET(ISET,N1,N2,N3,N4,ISETD,HNONE,C_SELECT(:N_SELECT));
+      IF (NP .lt. N1 .or. NL .lt. N3) <NEXT>;
+	JSET=JSET+1;
+      IF (IBTYPE.eq.2) THEN;
+	 IPOINT=IPOINT+(NINCR1-1)*(NINCR2-2);
+	 IXYZ1=(IXYZ(1)-N_XDATA)/NCSIZE+1;
+	 IXYZ2=(IXYZ(2)-N_XDATA)/NCSIZE+1;
+	 I=MESHN(IXYZ1); MESHN(IXYZ1)=MESHN(IXYZ2); MESHN(IXYZ2)=I;
+	 DATBUF($IMSPTR)=MESH1+MESH2*4;
+      ELSE;
+	 IMAX=0;
+	 IF (LERR) THEN;
+	    <J=0,NCSIZE-1;
+		LEXIST2=ISETD(NXDATA-N_XDATA+IXYZ(2)+J).ne.1;
+		LEXIST1=ISETD(NXDATA-N_XDATA+IXYZ(1)+J).ne.1;
+		IF( LEXIST1 .XOR. LEXIST2) THEN;
+		   ERROR OUT;'*** ERROR Missing error coordinates';
+		   RETURN;
+		ELSEIF (LEXIST1) THEN;		"Coordinate exists ?"
+		   IMAX=J;
+		ELSE;
+		   <EXIT>;
+		ENDIF;
+	    >
+	 ENDIF;
+	 IXYZ1=ISETD(NXDATA-N_XDATA+IXYZ(1));
+	 IXYZ2=ISETD(NXDATA-N_XDATA+IXYZ(2));
+	 IF (DATBUF(IXYZ1).ne.HNONE .and. DATBUF(IXYZ2).ne.HNONE) THEN;
+	    <I=N1,NP;				"Swap arrays"
+		IPOINT=IPOINT+1;
+		<J=0,IMAX;
+		    TEMP=DATBUF(J+IXYZ1);
+		    DATBUF(J+IXYZ1)=DATBUF(J+IXYZ2);
+		    DATBUF(J+IXYZ2)=TEMP;
+		>
+		IXYZ1=IXYZ1+NINCR0; IXYZ2=IXYZ2+NINCR0; IM=IM+NINCR0;
+	    >
+	 ENDIF;
+      ENDIF;
+   >
+   IF (IPOINT .ne. 0) DATDAT(1,1)=HNONE;
+   IF (LLOG .or. IPOINT .le. 0) THEN;
+	CALL T2GVNM(IXYZ(1),CORD1);		"Get coordinate names"
+	CALL T2GVNM(IXYZ(2),CORD2);
+	WRITE(OUTSTR,*)'  Swapped ',IPOINT,' points ',CORD1,' with ',CORD2,
+		' in ',JSET,' sets Error=',LERR;
+	CALL T2WRSQ(OUTSTR,.true.,$TERMINAL OUT,3);
+   ENDIF;
+END;
+%E  Fortran routines
+%FORTRAN
+%E  SUBROUTINE T2DSUM --- Get sums for fit
+	SUBROUTINE	T2DSUM(X,NORDER,Y,DY,XSUM,YSUM,Y2SUM)
+C
+C	SUBROUTINE TO ACCUMULATE SUMS FOR A LEAST SQUARES FIT TO:
+C
+C		Y= A(1)*X(1) + A(2)*X(2) . . . + A(NORDER)*X(NORDER)
+C			WHERE X,Y ARE GIVEN A'S ARE TO BE FOUND
+C
+C	X	IS THE ARRAY OF LINEAR FUNCIONS.  THE FIRST VALUE OF X MUST BE
+C		1.0.  X(1)	= 1.0
+C
+C	Y	IS THE ACTUAL Y VALUE CORRESPONDING TO THE X'S
+C
+C	WEIGHT	IS THE WEIGHTING FACTOR = 1./SIGY**2
+C		WHERE SIGY	= THE Y STANDARD DEVIATION
+C
+C	XSUM,YSUM	ARE ARRAYS ACCUMULATED FOR THE LATER FIT.
+C		XSUM IS A 2 DIM. ARRAY, AND YSUM 1 DIMENSION.
+C
+C	THE FINAL ANSWER IS EVALUATED BY SUBROUTINE T2DVAL
+C
+	IMPLICIT	REAL*8(A-H,O-Z)
+	INTEGER	I,J,K
+	REAL*8	X(NORDER),YSUM(NORDER),XSUM(NORDER,NORDER),XA,WEIGHT
+	REAL*8	DY
+	IF (DY .eq. 0) RETURN
+	WEIGHT	= 1/DY**2
+	Y2SUM	= Y2SUM + Y*Y*WEIGHT
+	DO 100 I	= 1,NORDER
+	  XA	= WEIGHT*X(I)
+	  YSUM(I)	= YSUM(I)  + Y*XA
+	  DO 100 J	= 1,I
+	    XSUM(I,J)	= XSUM(I,J) + XA*X(J)
+100	CONTINUE
+	END
+%E  SUBROUTINE T2DVAL --- Get final fit
+	SUBROUTINE   T2DVAL(NORDER,NPTS,XSUM,YSUM,Y2SUM,
+     1                         A,DA,CHISQR,FTEST,RMUL,B,EMATRX)
+C
+C	THIS SUBROUTINE TAKES THE ARRAYS XSUM,YSUM GENERATED BY REGSUM
+C	AND THE NUMBER OF DATA POINTS (NPTS) AND FINISHES THE LEAST
+C	SQUARE FIT TO A LINEAR COMBINATION OF FUNCTIONS. IT CALCULATES THE
+C	COEFFICIENTS (ARRAY A(NORDER) ), THE ERRORS
+C	ON THESE COEFFICIENTS(DA), THE REDUCED CHI SQUARED/DEGREE-OF-FREEDOM
+C	AND FTEST (SEE BEVINGTON pp 164-177).
+C		THE SCRATCH 2 DIMENSIONAL ARRAY B IS USED BY THIS PROGRAM.
+C
+	IMPLICIT	REAL*8(A-H,O-Z)
+	INTEGER	I,J,K,NORDER,NPTS
+	LOGICAL	LTEST
+	REAL*8     ZERO
+	PARAMETER (ZERO=0.0D0)
+	REAL*8	XSUM(NORDER,NORDER),YSUM(NORDER),B(NORDER,NORDER)
+	REAL*8	A(NORDER),DA(NORDER),Y2SUM,CHISQR,FTEST,RMUL
+	REAL*8	SUM,FREEN,EMATRX(NORDER,NORDER)
+C
+C	SYMMETRIZE THE ARRAY A
+C
+	CHISQR	= -1.
+	IF (NORDER .LT. 1) RETURN
+	FTEST	= 0.
+	RMUL	= 0.
+	DO 5 I	= 1,NORDER
+	  A(I)	= 0
+5	  DA(I)	= 0
+C		Now fill in missing rows and columns
+	DO 10 I	= 1,NORDER-1
+	  DO 10 J	= I+1,NORDER
+10	XSUM(I,J)	= XSUM(J,I)
+	DO 12 J	= 1,NORDER
+	  DO 12 I	= 1,NORDER
+12	B(I,J)	= XSUM(I,J)
+	CALL	DMATNV(B,NORDER,LTEST)
+	IF (.not.LTEST) RETURN				! Bad matrix inversion
+	CALL	DMATML(NORDER,B,NORDER,YSUM,1,A)	! The result
+C
+C	CALCULATE THE REDUCED CHI SQUARED/POINT AND THE ERROR
+C
+	FREEN	= NPTS - NORDER				! Freedom
+	SUM	= Y2SUM
+	RSUM	= SUM
+	CHISQR	= -1
+	IF (FREEN .LT. .5) RETURN			! Too few points
+	DO 30 I	= 1,NORDER
+	  SUM	= SUM - 2.*A(I)*YSUM(I)
+	  IF (I.eq.1) RSUM=RSUM-2.*A(I)*YSUM(I)
+	  DO 30 J	= 1,NORDER
+	    SUM	= SUM + A(I)*A(J)*XSUM(J,I)
+	    IF (I.eq.1.and.J.eq.1) RSUM=RSUM+A(I)*A(J)*XSUM(J,I)
+30	CONTINUE
+	IF (SUM.eq.0) RETURN
+	CHISQR	= MAX(ZERO,SUM/FREEN)
+	DO 36 I	= 1,NORDER
+	  DO 35 J	= 1,NORDER
+	    DO 35 K	= 1,NORDER
+35	      DA(I)	= DA(I) + B(J,I)*B(K,I)*XSUM(K,J)
+	  DA(I)	= SQRT(ABS(DA(I)))				! The error
+36	CONTINUE
+	RSUM=RSUM/SUM
+	DO 42 I	= 1,NORDER
+	  DO 42 J	= 1,NORDER
+	    SUM=0
+	    DO 41 K	= 1,NORDER
+	      DO 41 L	= 1,NORDER
+41	      SUM	= SUM+B(K,I)*B(L,J)*XSUM(L,K)
+	  EMATRX(J,I)	= SUM
+42	CONTINUE
+	IF (1-RSUM .EQ. 0.) RETURN
+	FTEST	= (RSUM/NORDER)/((1.-RSUM)/FREEN)
+	RMUL	= SQRT(ABS(RSUM))
+	END
+%E  SUBROUTINE DMATML --- Double precision Matrix multiply
+	SUBROUTINE	DMATML(IX,A,IY,B,IZ,C)
+C
+C	THIS SUBROUTINE MULTIPLIES 2 MATRICES A,B TOGETHER TO FORM C
+C
+	IMPLICIT	REAL*8(A-H,O-Z)
+	DIMENSION	A(IX,IY),B(IY,IZ),C(IX,IZ)
+	DO 10 I	= 1,IX
+	  DO 10 J	= 1,IZ
+	  C(I,J)	= 0.
+	    DO 10 K	= 1,IY
+10		C(I,J)	= C(I,J) + A(I,K)*B(K,J)
+	END
+%E  SUBROUTINE DMATNV --- Double precision Matrix inversion
+	SUBROUTINE DMATNV(ARRAY,N,LTEST)
+C
+C  MATRIX INVERSION ROUTINE--BEVINGTON,P.302 - Modified
+C
+C INPUT:
+C	ARRAY is the square,symmetric matrix to be inverted
+C	N is the order
+C OUTPUT:
+C	THE INVERTED MATRIX REPLACES THE ORIGINAL ONE
+c	LTEST=.true. if the inversion was successful
+C
+C
+c	This routine has been optimized for virtual memory
+c
+	IMPLICIT	REAL*8 (A-H, O-Z)
+	INTEGER    NMAX       ! Max terms
+	PARAMETER (NMAX=50)   ! Max terms
+	LOGICAL	LTEST
+	REAL*8	ARRAY(N,N)
+	INTEGER IK(NMAX),JK(NMAX)
+	LTEST =.false.
+	IF (N .gt. NMAX) RETURN			! N too large ??
+	DO 1 I=1,NMAX
+	  IK(I)=0
+1	  JK(I)=0
+	DO 100 K	= 1,N
+C
+C  FIND LARGEST ELEMENT,REORDER SO IT IS ON THE DIAGONAL
+C  PARTIAL PIVOTING
+C
+	AMAX	= 0.0
+	DO 30 J	= K,N
+	DO 30 I	= K,N
+	  IF (ABS(AMAX).le.ABS(ARRAY(I,J))) THEN
+	    AMAX	= ARRAY(I,J)
+	    IK(K)	= I
+	    JK(K)	= J
+	  ENDIF
+30	CONTINUE
+	IF (AMAX .eq. 0.) RETURN		! Matrix element too small ?
+	I	= IK(K)
+	IF (I.ne.K) THEN			! Not Current col ?
+	  DO 50 J	= 1,N			! Reorder columns
+	    SAVE	= ARRAY(K,J)
+	    ARRAY(K,J)	= ARRAY(I,J)
+50	    ARRAY(I,J)	= -SAVE
+	ENDIF
+	J	= JK(K)
+	IF (J.ne.K) THEN			! Not Current row ?
+	  DO 60 I	= 1,N			! Reorder rows
+	    SAVE	= ARRAY(I,K)
+	    ARRAY(I,K)	= ARRAY(I,J)
+60	    ARRAY(I,J)	= -SAVE
+	ENDIF
+C
+C  DIAGONALIZE MATRIX
+C
+	DO 80 J	= 1,N
+	IF (J .ne. K) THEN
+	  ARRAY(K,J)	= -ARRAY(K,J)/AMAX
+	  SAVE	= ARRAY(K,J)
+	  DO 70 I	= 1,N
+	    IF (I.ne.K)ARRAY(I,J)	= ARRAY(I,J)+SAVE*ARRAY(I,K)
+70	  CONTINUE
+	ENDIF
+80	CONTINUE
+	ARRAY(K,K)	= 1.
+	DO 90 I	= 1,N
+	ARRAY(I,K)	= ARRAY(I,K)/AMAX
+90	CONTINUE
+
+100	CONTINUE
+C
+C  RESTORE ORDERING OF MATRIX
+C
+	DO 130 L	= 1,N
+	K	= N-L+1
+	J	= IK(K)
+	IF (J.gt.K)THEN				! reorder ?
+	  DO 110 I	= 1,N
+	    SAVE	= ARRAY(I,K)
+	    ARRAY(I,K)	= -ARRAY(I,J)
+	    ARRAY(I,J)	= SAVE
+110	  CONTINUE
+	ENDIF
+	I	= JK(K)
+	IF (I.gt.K)THEN				! reorder ?
+	  DO 120 J	= 1,N
+	    SAVE	= ARRAY(K,J)
+	    ARRAY(K,J)	= -ARRAY(I,J)
+	    ARRAY(I,J)	= SAVE
+120	  CONTINUE
+	ENDIF
+130	CONTINUE
+	LTEST=.true.
+	END
+	integer function t2btrim (string)
+
+c   Integer function to determine the length of a character string with
+c   trailing blanks and tabs removed.
+c   Routine written at CMU PSYA::
+
+	implicit integer*4 (a-z)
+	integer countr
+	character*(*) string
+	character*1 tab, NUL, space
+	data tab/'	'/
+	data space/' '/
+	NUL = char(0)
+
+	do 10 countr = len (string), 1, -1
+		if (string (countr : countr) .ne. NUL .and.
+     *			string (countr:countr) .ne. space .and.
+     *			string (countr:countr) .ne. tab) then
+			t2btrim = countr
+			return
+		endif
+10	continue
+
+	t2btrim = 1
+	end

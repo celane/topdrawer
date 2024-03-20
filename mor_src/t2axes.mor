@@ -1,0 +1,2009 @@
+%N
+%U+ TDMACROS.MOR
+%L
+%'$MAXMAJOR$'='6';
+%'$MAXMINOR$'='5';
+%';SUBROUTINE'=';<RESET> <SET> ;"SUBROUTINE"'
+<SET>;			"Ready for reset"
+" --------- START OF AXIS     PACKAGE 'T2AXES' --------- "
+"
+	Rewritten by J. Clement.
+The problem was with proper justification of labels.
+Also label generation was slow since each label was generated
+twice.  This is solved by saving the first n labels.
+"
+%E  SUBROUTINE T2AXES --- Draw outline
+SUBROUTINE T2AXES;
+"
+	Set up axes, coordinate system, etc for PLOT/HIST/JOIN,
+	and draw the outline
+"
+   IMPLICIT NONE;
+   $SPECIFICATION;
+      INTEGER IAXSAV,IDUM;
+      REAL XYTXT(2,5),XYDEV(2,5);
+   $EQUIVALENCE;
+   $DATA;
+   INTEGER I;
+   IF (.NOT.$DEF DATA) CALL TXDEF2;
+   IF (.NOT.FLAGS(2)) THEN;		"DRAW THE OUTLINE"
+      IF (FLAGS(122).or.FLAGS(125)) CALL TXXMT;	"Dump segments ?"
+      CALL T2CWTS(IAXTEX,IAXSAV);	"set color width texture"
+      CALL T2CWTS(OUTTEX,IDUM);
+      CALL TXSDEF;
+      <I=1,5; XYTXT(1,I)=WINDOW(1); XYTXT(2,I)=WINDOW(4);>
+      <I=2,3; XYTXT(1,I+1)=WINDOW(3); XYTXT(2,I)=WINDOW(2);>
+      CALL T2_SET_EXTENT(XYTXT,5);
+      CALL T2XFRM(2,5,XYTXT,LINEAR,XFRM34,2,XYDEV);
+      <I=1,4;				"LEFT,BOT,RIGHT,TOP"
+	 IF (FLAGS(I+18).AND.FLAGS(I+39))
+	       CALL TXLINX(XYDEV(1,I),2,LINTEX);
+	 IF (FLAGS(122)) CALL TXXMT;	"Dump segments ?"
+      >
+      IF (FLAGS(125)) CALL TXXMT;	"Dump segments ?"
+      CALL T2CWTS(IAXSAV,IDUM);
+      FLAGS(2)=.true.;
+   ENDIF;
+   FLAGS(3)=FLAGS(3) .or. $POLAR .or. ($3D .and. .not. FLAGS(134));
+END;
+%E  SUBROUTINE T2_SET_EXTENT(XY,N);
+SUBROUTINE T2_SET_EXTENT(XY,N);
+   IMPLICIT NONE;
+   $SPECIFICATION;
+   INTEGER N;
+   REAL XY(2,N);
+   INTEGER I,J,K;
+   <I=1,N;
+      <J=1,2;  PLOT_EXTENT(J,1)=MIN(PLOT_EXTENT(J,1),XY(J,I));
+	       PLOT_EXTENT(J,2)=MAX(PLOT_EXTENT(J,2),XY(J,I));
+      >
+   >
+END;
+%E  SUBROUTINE T2AXIS --- Draw 1 axis
+SUBROUTINE T2AXIS(XYZ,IXYZ,VALUES,SCRTCH,NB,NUM,ITICKS,IAXIS,ITICK,ILABEL);
+"
+	This draws a single axis
+ INPUT:
+   XYZ(3,2)	- Endpoints of axis
+   IXYZ		- 1,2,3 for X,Y,Z
+		- Add 4 for hidden line removal
+   VALUES(NUM)	- Values along the axis
+   NB		- ???
+   NUM		- Number of ticks/labels
+   ITICKS(NUM)	- Format of tick/label
+      ITICK - 1	- No label
+	      2	- Decimal label nn.nnn (F format)
+	      3	- Base**n
+	      4	- n (Single digit)
+	      5	- 3 Char month
+	      6	- Year
+	      7	- 1 Char month
+	      8	- n.nn*10**ee (E format)
+	      9	- Format 8 or 2 Depending on number. (G format)
+	      10-14	- year/month/day/hour/date
+	      Negative for short ticks/+ for long
+   IAXIS	- 0/1 Omit/draw the axis
+   ITICK	- 0/1 Omit/draw ticks
+   ILABEL	- 1,2,3,4 for left,bottom,right,top
+		- 0 Omit labels
+ OUTPUT:
+   SCRTCH(NUM)	- The screen loction of the ticks
+"
+   IMPLICIT NONE;
+   $SPECIFICATION;
+   INTEGER IXYZ,NB,ITICKS(*),ITICK,IAXIS,ILABEL,NUM;
+   REAL XYZ(3,2),VALUES(*),SCRTCH(*);
+   INTEGER MAXLAB;
+   PARAMETER (MAXLAB=10);
+   CHARACTER*20 TEX(2,MAXLAB);
+   CHARACTER*20 TEXT,CASE;
+   EQUIVALENCE (TEXT,TEX(1,1)),(CASE,TEX(2,1));
+   INTEGER LEFT(MAXLAB),IHIDE;
+   REAL    SIZLBL(MAXLAB);
+   REAL T,TEMP,TICK,COSTX,SINTX,VM,SCHSIZ,CHSIZ,STRLEN,POSX2;
+   REAL TXXCSZ;			"Get size of text array"
+   INTEGER II,I,J,K,L,IPLACE,IW,IWID,ITIK,IOFF,IFIRST,LAST,IAXSAV;
+   INTEGER LSAVTX,IDUM;
+   INTEGER LFTADJ,NCHAR,NTEXT,NCASE,IFIR,IC1,IC2;
+
+   REAL XY(2,4),TVAL(8),PNT(3,4),POSLBL(3),ALONG(3),UPDIR(3),
+      XYZWRL(3,2),XYTXT(2,2),XYPNT(2,2);
+   INTEGER IAX1,IAX2,IAX3,IAX(4);
+"
+		IAX1 IS THE AXIS TO PLOT
+		IAX2 IS THE NORMAL AXIS WITH THE LONGER
+		PROJECTION ONTO THE SCREEN, AND IAX3 IS THE LAST
+"
+   DATA IAX/2,3,1,2/
+   $EQUIVALENCE;
+
+   IAX1=IAND(3,IXYZ);
+
+   IHIDE=IAND(IXYZ,4);			"Hidden ?"
+   IF (FLAGS(122)) CALL TXXMT;		"Dump segments ?"
+   CALL T2CWTS(IAXTEX,IAXSAV);		"set color width texture"
+   TICK=ABS(TIKSIZ(1));
+   <I=1,3; POSLBL(I)=XYZ(I,1);>
+	"LABEL PARAMETERS"
+   VM= AMAX1(ABS(XYZ(IAX1,1)),ABS(XYZ(IAX1,2)));
+   IPLACE=ALOG10(VM); IWID=$DIGITS-1-IPLACE;
+   IWID=MIN(MAX(IWID,0),9);
+   IF ($3D) THEN;	"3D"
+	"Find ends of axis in world system"
+      CALL T2XFRM(3,2,XYZ,NONLIN,XFRM12,3,XYZWRL);
+	"Check projection lengths"
+      COSTX=1.0; SINTX=0.0;		"Automatic axes"
+      CALL T2AXST(XYZWRL,IAX1,IAX2,IAX3,COSTX);
+      IF (IAX2.GT.0) THEN;		"IXYZ is not normal to screen?"
+	 IF (ABS(AXANG(IAX1)) .le. 360.) THEN;	"Angle defined ?"
+	    IAX2=IAX(IAX1);		"Permuted axes"
+	    IAX3=IAX(IAX1+1);
+	    COSTX=COSD(AXANG(IAX1));
+	    SINTX=SIND(AXANG(IAX1));
+	 ENDIF;
+					"FIND TICK POSITIONS IN WORLD SYSTEM"
+	 <I=1,NUM;
+	    POSLBL(IAX1)=VALUES(I);
+	    CALL T2XFRM(3,1,POSLBL,NONLIN,XFRM12,3,ALONG);
+	    SCRTCH(I)=ALONG(IAX1);
+	 >
+	 CALL TXSCIS(2);		"SCISSOR AT WINDOW"
+	 IF (IAXIS.NE.0) THEN;		"MAKE AN AXIS"
+	    CALL TXSDEF;
+	    CALL T2XFRM(3,2,XYZWRL,LINEAR,XFRM24,2,XY);
+	    CALL T2_MESH_DRAW(XY,2,2+IHIDE);
+	 ENDIF;
+	 IF (ITICK.NE.0) THEN;		"MAKE THE TICKS"
+	    IF (FLAGS(124)) CALL TXXMT;	"Dump segments ?"
+	    CALL T2CWTS(TICTEX,LSAVTX);	"set color width texture"
+	    CALL TXSDEF;
+					"MAKE POSITIONS FOR SHORT + LONG TICKS"
+	    TEMP=TICK*COSTX;
+	    TVAL(1)=XYZWRL(IAX2,1)+TEMP;
+	    TVAL(2)=XYZWRL(IAX2,1)-TEMP;
+	    TVAL(3)=XYZWRL(IAX2,1)+TIKFAC*TEMP;
+	    TVAL(4)=XYZWRL(IAX2,1)-TIKFAC*TEMP;
+	    TEMP=TICK*SINTX;
+	    TVAL(5)=XYZWRL(IAX3,1)+TEMP;
+	    TVAL(6)=XYZWRL(IAX3,1)-TEMP;
+	    TVAL(7)=XYZWRL(IAX3,1)+TIKFAC*TEMP;
+	    TVAL(8)=XYZWRL(IAX3,1)-TIKFAC*TEMP;
+	    <I=1,NUM;
+	       IF ((IABS(ITICKS(I)).LT.5 .AND. ITICKS(I).NE.0)
+		 .or. IABS(ITICKS(I)).eq.8.or.IABS(ITICKS(I)).eq.9
+		 .or.ITICKS(I).gt.0) THEN;
+		  J=2+ISIGN(1,ITICKS(I));	"1 FOR SMALL, 3 FOR LARGE"
+		  PNT(IAX2,1)=TVAL(J);
+		  PNT(IAX2,2)=TVAL(J+1);
+		  PNT(IAX3,1)=TVAL(J+4);
+		  PNT(IAX3,2)=TVAL(J+5);
+		  PNT(IAX1,1)=SCRTCH(I); PNT(IAX1,2)=PNT(IAX1,1);
+		  CALL T2XFRM(3,2,PNT,LINEAR,XFRM24,2,XY);
+		  CALL T2_MESH_DRAW(XY,2,2+IHIDE);
+	       ENDIF;
+	    >
+	    IF (FLAGS(124)) CALL TXXMT;	"Dump segments ?"
+	    CALL T2CWTS(LSAVTX,IDUM);	"restore color width texture"
+	 ENDIF;
+	 IF (ILABEL.GT.0) THEN;		"Need labels"
+	    IF (FLAGS(123)) CALL TXXMT;	"Dump segments ?"
+	    CALL T2CWTS(LABTEX,IDUM);	"set color width texture"
+	    CALL TXSDEF;
+	    POSLBL(IAX2)=XYZWRL(IAX2,1)
+		     -(0.1*ABS(LBLSIZ)+TIKFAC*TICK)*COSTX;
+	    POSLBL(IAX3)=XYZWRL(IAX3,1)
+		     -(0.1*ABS(LBLSIZ)+TIKFAC*TICK)*SINTX;
+	    <I=1,3; ALONG(I)=0.; UPDIR(I)=0.;>
+	    ALONG(IAX1)=ABS(LBLSIZ);	"DIRECTION/SIZE"
+	    UPDIR(IAX2)=1.*ABS(COSTX);	"UP"
+	    UPDIR(IAX3)=1.*ABS(SINTX);	"UP"
+	    <ITIK=1,NUM;
+	       II=IABS(ITICKS(ITIK));
+	       IF (II.GT.1) THEN;
+		  IF (II.eq.2) THEN; IW=IWID; ELSE; IW=6;
+	       ENDIF;
+					"Get the text labels"
+		  CALL T2TLAB(II,VALUES(ITIK),SCLPRM(1,IAX1),IW,1,
+		     TEXT,NTEXT,CASE,NCASE,IFIRST);
+		  POSLBL(IAX1)= SCRTCH(ITIK);	"POS IN WORLD SYS"
+		  CALL TX3TXT(POSLBL,ALONG,UPDIR,
+		     TEXT(1:NTEXT),CASE(1:NCASE),1+IHIDE);
+	       ENDIF;
+	    >
+	    IF (FLAGS(124)) CALL TXXMT;	"Dump segments ?"
+	 ENDIF;
+	 CALL TXSCIS(1);		"RESET SCALING TO FULL SCREEN"
+      ENDIF;
+   ELSEIF (IAX1.NE.3) THEN;	"2D"
+      IAX2=3-IAX1;
+					"FIND ENDS OF AXIS IN TEXT SYSTEM"
+	 CALL T2XFRM(3,2,XYZ,NONLIN,XFRM13,2,XYTXT);
+					"FIND TICK POSITIONS IN TEXT SYSTEM"
+	 <I=1,NUM;
+	    POSLBL(IAX1)=VALUES(I);
+	    CALL T2XFRM(3,1,POSLBL,NONLIN,XFRM13,2,ALONG);
+	    SCRTCH(I)=ALONG(IAX1);
+	 >
+
+      CALL TXSCIS(2);				"SCISSOR AT WINDOW"
+      <I=1,2; <J=1,2; XYPNT(J,I)=XYTXT(J,I); >  >
+      IF (IAXIS.NE.0) THEN;			"MAKE AN AXIS"
+	 CALL T2_SET_EXTENT(XYPNT,2);
+	 CALL T2XFRM(2,2,XYTXT,LINEAR,XFRM34,2,XY);
+	 CALL T2_MESH_DRAW(XY,2,2+IHIDE);
+      ENDIF;
+      IF (ITICK.NE.0 .AND. NUM.GT.0) THEN;	"MAKE THE TICKS"
+	 CALL T2CWTS(TICTEX,LSAVTX);		"set color width texture"
+	 CALL TXSDEF;
+					"MAKE POSITIONS FOR SHORT + LONG TICKS"
+	 <I=1,4; TVAL(I)=XYTXT(IAX2,1); >
+	 IF (ABS(ILABEL) .le. 2) THEN;
+	    TVAL(1)=XYTXT(IAX2,1)+TICK;
+	    TVAL(3)=XYTXT(IAX2,1)+TIKFAC*TICK;
+	 ELSE;
+	    TVAL(2)=XYTXT(IAX2,1)-TICK;
+	    TVAL(4)=XYTXT(IAX2,1)-TIKFAC*TICK;
+	 ENDIF;
+	 <I=1,NUM;
+	    IF ((IABS(ITICKS(I)).LT.5 .AND. ITICKS(I).NE.0)
+		 .or. IABS(ITICKS(I)).eq.8.or.IABS(ITICKS(I)).eq.9
+		 .or. ITICKS(I).gt.0) THEN;
+	       J=2+ISIGN(1,ITICKS(I));	"1= SMALL TICK, 3= LARGE"
+					"Alternate directions to optimize"
+	       IOFF=MOD(I,2);
+	       XYPNT(IAX2,1)=TVAL(J+IOFF);
+	       XYPNT(IAX2,2)=TVAL(J+1-IOFF);
+	       XYPNT(IAX1,1)=SCRTCH(I); XYPNT(IAX1,2)=XYPNT(IAX1,1);
+	       CALL T2XFRM(2,2,XYPNT,LINEAR,XFRM34,2,XY);
+	       CALL T2_MESH_DRAW(XY,2,2+IHIDE);
+	    ENDIF;
+	 >
+	 CALL T2CWTS(LSAVTX,IDUM);	"restore color width texture"
+      ENDIF;
+      CALL TXSCIS(1);			"FULL SCREEN"
+      IF (ILABEL.GT.0 .AND. NUM.GT.0) THEN;	"NEED LABELS"
+	 IF (FLAGS(124)) CALL TXXMT;	"Dump segments ?"
+	 CALL T2CWTS(LABTEX,IDUM);		"set color width texture"
+	 CALL TXSDEF;
+	 SCHSIZ=0.1*REDUCE(2)*LBLSIZ;	"Signed character size"
+				"FIND OUT FIRST AND LAST NON-TRIVIAL CHARACTER"
+	 IFIRST=20; LAST=1;
+	 K=0;
+	 <ITIK=1,NUM;
+	    II=IABS(ITICKS(ITIK));
+	    IF (II.gt.1) THEN;
+	       K=MIN(K+1,MAXLAB);		"Limit to range"
+	       IF (II.eq.2) THEN; LFTADJ=0; ELSE; LFTADJ=1; ENDIF;
+	       CALL T2TLAB(II,VALUES(ITIK),SCLPRM(1,IAX1),IWID,LFTADJ,
+		  TEX(1,K),NTEXT,TEX(2,K),NCASE,IFIR);
+	       IF (II.EQ.2) THEN;		"NORMAL LABEL"
+		  LEFT(K)=IFIR;
+		  IFIRST=MIN(IFIR,IFIRST);
+		  LAST=MAX(NTEXT,LAST);
+	       ELSE;
+		  LEFT(K)=NTEXT;
+	       ENDIF;
+	    ENDIF;
+	 >
+	 NCHAR=LAST-IFIRST+1;
+		"IFIRST, LAST, and NCHAR now have the relevant
+	     numbers for 'normal' labels (if any)
+		"
+		"Now some things specific to particular axes"
+	 CHSIZ=ABS(SCHSIZ);
+	 STRLEN=0;
+	 IF (ILABEL.EQ.1)  THEN;		"LEFT"
+	    POSX2=XYTXT(1,1)-FRELBL(1)*CHSIZ;
+	 ELSEIF (ILABEL.EQ.2) THEN;		"BOTTOM"
+	    POSLBL(2)=XYTXT(2,1)-(FRELBL(2)+0.2)*CHSIZ;
+	 ELSEIF (ILABEL.EQ.3) THEN;		"RIGHT"
+	    POSX2=XYTXT(1,2)+FRELBL(3)*CHSIZ;
+	    STRLEN=(NCHAR-1)*CHSIZ;
+	 ELSE;					"TOP, ILABEL=4"
+	    POSLBL(2)=XYTXT(2,2)+FRELBL(4)*CHSIZ;
+	 ENDIF;
+	 K=0;
+	 <ITIK=1,NUM;
+	    II=IABS(ITICKS(ITIK));
+	    IF (II.GT.1) THEN;
+	       K=MIN(K+1,MAXLAB);
+"
+	If too many labels, then must get label twice
+	This slows down the label generation!!!!
+"
+	       IF (K.ge.MAXLAB) THEN;
+		  IF (II.EQ.2) THEN; J=0; "Normal left&right fill the field"
+			       ELSE; J=1; "All others to left of field"
+			       ENDIF;
+		  CALL T2TLAB(II,VALUES(ITIK),SCLPRM(1,IAX1),IWID,J,
+			TEX(1,K),LEFT(K),TEX(2,K),NCASE,IFIR);
+		  IF (II.EQ.2) THEN;		"NORMAL LABEL"
+		     LEFT(K)=IFIR;
+		  ENDIF;
+	       ENDIF;
+	       IF (II.ne.2) THEN;		"Not normal?"
+		  IC1=1; IC2=LEFT(K);		"Use whole thing"
+	       ELSEIF (IAX1.eq.2) THEN;	"Y label ?"
+		  IC1=IFIRST; IC2=LAST;	"Limit right part"
+	       ELSE;				"X label ?"
+		  IC1=LEFT(K); IC2=LAST;	"Limit both sides"
+	       ENDIF;
+	       POSLBL(IAX1)=SCRTCH(ITIK);	"Pos in text sys"
+						"Get the actual size"
+	       T=TXXCSZ(TEX(1,K)(IC1:IC2),TEX(2,K)(IC1:IC2),SCHSIZ);
+	       STRLEN=MAX(T,STRLEN);
+	       IF (ILABEL.eq.1) THEN;		"Left ?"
+		  POSLBL(1)=POSX2-T;
+	       ELSEIF (ILABEL.eq.3) THEN;	"Right ?"
+		  POSLBL(1)=POSX2;
+			"Normal labels are right justified"
+		  IF (II.eq.2) POSLBL(1)=POSLBL(1)+(NCHAR-1)*CHSIZ-T;
+	       ELSE;
+		  POSLBL(1)=POSLBL(1)-T/2;	"Center adjust"
+	       ENDIF;
+						"Get phys coordinates"
+	       CALL T2XFRM(2,1,POSLBL,LINEAR,XFRM34,2,XY);
+						"Output label"
+	       CALL TXTEXT(XY(1,1),XY(2,1),LBLSIZ,0.,
+		       TEX(1,K)(IC1:IC2),
+		       TEX(2,K)(IC1:IC2));
+	       <I=2,3; <J=1,2; XY(J,I)=POSLBL(J)-SCHSIZ; > SCHSIZ=-SCHSIZ; >
+	       J=2-MOD(ILABEL,2);		"X,Y direction"
+	       I=(ILABEL+6)/4;			"Add to min,max"
+	       XY(J,I)=XY(J,I)+(2*I-3)*T;	"Add on length"
+	       CALL T2_SET_EXTENT(XY(1,2),2);	"Location of lables"
+	    ENDIF;
+	 >
+	 IF (IAX1.eq.2 .and. LBLCHR(2).lt.0) THEN;
+	    T= STRLEN/CHSIZ+1;		"Current length"
+	    T= MAX(0.0,CHSIZ*(ABS(LBLCHR(2))-T));"Modified length"
+	    <J=1,3,2;			"Left, Right"
+	       IF (FLAGS(18+J) .and. FLAGS(35+J).and.TITLOC(J).gt.0) "labels?"
+		  TITLOC(J)=-(TITLOC(J)+T);
+	       T=-T;
+	    >
+	 ENDIF;
+	 IF (FLAGS(124)) CALL TXXMT;	"Dump segments ?"
+      ENDIF;
+   ENDIF;
+   CALL T2_MESH_FLUSH;
+   IF (FLAGS(122)) CALL TXXMT;	"Dump segments ?"
+   CALL T2CWTS(IAXSAV,IDUM);	"reset color width texture"
+END;
+%E  INTEGER FUNCTION T2_GET_AXIS_SIDE - Get index to back side of space
+INTEGER FUNCTION T2_GET_AXIS_SIDE(IXYZ);
+"
+	Input:	IXYZ - Axis to test.
+		>0	Return front (closest to eye) side
+		<0	Return back
+	Output:	1,2  -	Limit on axis which is in selected location.
+"
+    IMPLICIT NONE;
+    INTEGER IXYZ,IXYZ1,I,J;
+    $SPECIFICATION;
+    REAL XYZ(3,2),XYZ2(3,2),XY(2);
+    IF (.not. $3D) THEN;
+	T2_GET_AXIS_SIDE=1;
+	RETURN;
+    ENDIF;
+    IXYZ1=MIN(MAX(ABS(IXYZ),1),3);
+    <J=1,2;
+	<I=1,2;
+	      XYZ(I,J)=(XYZLIM(I,1)+XYZLIM(I,2))/2;
+	>
+	XYZ(3,J)=XYZLIM(3,1);
+	XYZ(IXYZ1,J)=XYZLIM(IXYZ1,J);
+    >
+    CALL T2XFRM(3,2,XYZ,NONLIN,XFRM12,3,XYZ2);
+    IF (IXYZ .eq. 3) THEN;
+	XY(1)=EYEPNT(3);
+	XY(2)=XYZ2(3,1);
+    ELSE;
+      <J=1,2; XY(J)=0;
+	<I=1,3; XY(J)=XY(J)+(EYEPNT(I)-XYZ2(I,J))**2; >  >
+    ENDIF;
+    IF ((XY(1)-XY(2))*IXYZ .gt. 0) THEN;
+	T2_GET_AXIS_SIDE=2;
+    ELSE;
+	T2_GET_AXIS_SIDE=1;
+    ENDIF;
+END;
+%E  SUBROUTINE T2GRID --- Draw grid
+SUBROUTINE T2GRID(IGRIDS,BUFFR,JTYPE);
+"
+	Put on the grid lines/symbols etc
+"
+   IMPLICIT NONE;
+   REAL BUFFR(*);
+   INTEGER IGRIDS(3,2),JTYPE;
+   INTEGER IHIDE,IXYZ,IXYZ1,IXYZ2,IXYZ3,I,J,IMIN,IMAX,ITXSAV,IDUM,
+	MINX,MAXX,MINY,MAXY,MINZ,MAXZ,IX,IY,IZ;
+   INTEGER MXYZ,IGRDTYP;
+   INTEGER T2_GET_AXIS_SIDE;
+   $SPECIFICATION;
+   REAL XYZ(3,4),XYZ2(3,4),XY(2,2),XUP(3,2);
+   INTEGER NXYZ(3,2);
+   CHARACTER*2 TEXT;
+   $BOOLEAN LCYCLE;
+   $EQUIVALENCE;
+   $DATA;
+		"Set up line width, texture, color"
+   IF (FLAGS(128)) CALL TXXMT;	"Dump segments ?"
+   IHIDE=IAND(JTYPE,4);
+   CALL T2CWTS(GRDTEX,ITXSAV);
+   CALL TXSDEF;
+   <J=1,2; <I=1,3; NXYZ(I,J)=IGRIDS(I,J); > >
+   MINX=IGRIDS(1,1); MAXX=IGRIDS(1,2);
+   MINY=IGRIDS(2,1); MAXY=IGRIDS(2,2);
+   MINZ=IGRIDS(3,1); MAXZ=IGRIDS(3,2);
+   IF (.NOT.$3D) THEN;
+	NXYZ(3,2)=NXYZ(3,1);
+	MAXZ=MINZ;
+	MXYZ=3;
+   ELSE;
+	MXYZ=1;
+   ENDIF;
+   CALL TXSCIS(2);
+   IGRDTYP=IAND(GRDTYP/16,7);
+   IF (IGRDTYP .eq. 0 .or. .not. $3D) IGRDTYP=7;
+   <IXYZ1=MXYZ,3;
+     IF (IAND(IGRDTYP,2**(IXYZ1-1)) .ne. 0) THEN;
+	    IF (FLAGS(82)) THEN;
+		XYZ(IXYZ1,1)=ORAXES(IXYZ1);
+	    ELSE;
+		XYZ(IXYZ1,1)=XYZLIM(IXYZ1,T2_GET_AXIS_SIDE(-IXYZ1));
+	    ENDIF;
+     XYZ(IXYZ1,2)=XYZ(IXYZ1,1);
+     <IXYZ=IXYZ1+1,IXYZ1+2;
+	IXYZ2=MOD(IXYZ-1,3)+1;
+	IXYZ3=6-IXYZ1-IXYZ2;
+	<I=1,2; XYZ(IXYZ3,I)=XYZLIM(IXYZ3,I); >
+	IMIN=IGRIDS(IXYZ2,1);
+	IMAX=IGRIDS(IXYZ2,2);
+	IF (IAND(GRDTYP,2**(IXYZ2-1)).ne.0	"Requested direction ?"
+		.and. IMAX .ge. IMIN) THEN;	"And ticks available"
+	  LCYCLE=IXYZ2 .eq. 3 .and. IAND(GRDTYP,256) .ne. 0;
+	  <IY=IMIN,IMAX;
+	    IF (LCYCLE) THEN;
+		CALL T2_MESH_FLUSH;
+		CALL T2CWTS(ITX_CYCLE(MOD(IY-IMIN,N_CYCLE)+1),IDUM);
+		CALL TXSDEF;
+	    ENDIF;
+	    XYZ(IXYZ2,1)=BUFFR(IY);
+	    XYZ(IXYZ2,2)=BUFFR(IY);
+	    CALL T2XFRM(3,2,XYZ,NONLIN,XFRM14,2,XY);
+	    CALL T2_MESH_DRAW(XY,2,2+IHIDE);
+	  >
+	  IF (LCYCLE) THEN;
+		CALL T2_MESH_FLUSH;
+		CALL T2CWTS(GRDTEX,IDUM);
+		CALL TXSDEF;
+	  ENDIF;
+	ENDIF;
+	IF ($3D .and. IAND(GRDTYP,128) .ne. 0) THEN;	"Outline ?"
+	  CALL T2_MESH_FLUSH;
+	  CALL T2CWTS(OUTTEX,IDUM);
+	  CALL TXSDEF;
+	  <I=1,2; <J=1,2; XYZ(IXYZ2,J)=XYZLIM(IXYZ2,I); >
+	    CALL T2XFRM(3,2,XYZ,NONLIN,XFRM14,2,XY);
+	    CALL T2_MESH_DRAW(XY,2,2+IHIDE);
+	  >
+	  CALL T2_MESH_FLUSH;
+	  CALL T2CWTS(GRDTEX,IDUM);
+	  CALL TXSDEF;
+       ENDIF;
+     >
+     ENDIF;
+   >
+   IF (IAND(GRDTYP,8).ne.0) THEN;			"SYMBOL GRID"
+      IF ($3D) THEN;
+	 CALL T2GTDR(GRDSIZ,GRDIR,XUP);			"Get up directions"
+	 <IZ=MINZ,MAXZ; XYZ(3,1)=BUFFR(IZ);
+	    <IY=MINY,MAXY; XYZ(2,1)=BUFFR(IY);
+	       <IX=MINX,MAXX; XYZ(1,1)=BUFFR(IX);
+		  CALL T2XFRM(3,1,XYZ,NONLIN,XFRM12,3,XY);
+		  CALL SYMTXT(GRDSYM,TEXT);
+		  CALL TX3TXT(XY,XUP,XUP(1,2),TEXT(1:1),TEXT(2:2),IHIDE);
+	 >  >  >
+      ELSE;
+	 XYZ(3,1)=XYZLIM(3,1);
+	 <IY=MINY,MAXY; XYZ(2,1)=BUFFR(IY);
+	    <IX=MINX,MAXX; XYZ(1,1)=BUFFR(IX);
+	       CALL T2XFRM(3,1,XYZ,NONLIN,XFRM14,2,XY);
+	       CALL TXTSYM(XY(1,1),XY(2,1),GRDSYM,GRDSIZ);
+	 >  >
+      ENDIF;
+   ENDIF;
+   CALL T2_MESH_FLUSH;
+   IF (FLAGS(128)) CALL TXXMT;	"Dump segments ?"
+   CALL TXSCIS(1);
+   CALL T2CWTS(ITXSAV,IDUM);
+END;
+%E  SUBROUTINE T2STCK --- Set up ticks
+SUBROUTINE T2STCK(MSCAL,VMIN,VMAX,IN1,IN2,PARMS,MAXN,NUMBER,VALS,TYPE);
+"
+		Makes tick arrays for tick subroutine.
+
+   INPUT:
+	MSCAL=	>0 - User defined
+		-1 - Linear
+		-2 - Log
+		-3 - Negative Log
+		-4 - Month
+		-5 - Year
+		-6 - Normal function
+		-7 - Time
+	VMIN,VMAX= Range of values
+	IN1,IN2	= Primary, Secondary ticks
+	PARMS	= BASE, params for normal function
+	MAXN	= Maximum number of ticks
+   OUTPUT:
+	NUMBER	= Number of ticks generated
+	VALS	= Values
+	TYPE	= Type of value
+"
+   INTEGER MAXN,MSCAL,IN1,IN2,NUMBER,TYPE(MAXN);
+   REAL VMIN,VMAX,PARMS(10),VALS(MAXN);
+	"Local variables"
+   $BOOLEAN LTEST;
+   INTEGER I,J;
+   REAL BUFFR(10),V,VP,VM,SN,FAC,VMMX;
+   $SPECIFICATION;
+   $EQUIVALENCE;
+   $DATA;
+
+   NUMBER=-1;		"Error flag"
+   IF (MSCAL.LT.0) THEN;
+      <CASE> -MSCAL <OF>
+	    :LINEAR:,:LOG:,:NEG LOG:,:MONTH:,:YEAR:,:NORMAL:,:SECONDS:,
+	    :POWER: <
+	 :LINEAR:,:POWER: <
+	    CALL TDSLIN(VMIN,VMAX,IN1,IN2,PARMS,MAXN,NUMBER,VALS,TYPE);>
+	 :LOG: <
+	    CALL TDSLOG(VMIN,VMAX,IN1,IN2,PARMS,MAXN,NUMBER,VALS,TYPE);>
+	 :NEG LOG: <			"LOG OF A NEGATIVE NUMBER"
+	    CALL TDSLOG(-VMAX,-VMIN,IN1,IN2,PARMS,MAXN,
+	       NUMBER,VALS,TYPE);
+	    <I=1,MIN(NUMBER,MAXN); VALS(I)=-VALS(I);>
+	 >
+	 :YEAR: <
+	    CALL TDSYR(VMIN,VMAX,IN1,IN2,PARMS,MAXN,NUMBER,VALS,TYPE);>
+	 :MONTH: <
+	    CALL TDSMON(VMIN,VMAX,IN1,IN2,PARMS,MAXN,NUMBER,VALS,TYPE);>
+	 :NORMAL: <
+	    CALL TDSNRM(VMIN,VMAX,IN1,IN2,PARMS,MAXN,NUMBER,VALS,TYPE);>
+	 :SECONDS: <
+	    CALL TDSNDS(VMIN,VMAX,IN1,IN2,PARMS,MAXN,NUMBER,VALS,TYPE);>
+      >
+      IF (NUMBER.LT.0)			"DIDN'T DO IT"
+	 CALL TDSLIN(VMIN,VMAX,0,0,PARMS,MAXN,NUMBER,VALS,TYPE);
+   ELSE;		"USER SCALING"
+	"Set up defaults first in case of lazy user"
+      CALL TDSLIN(VMIN,VMAX,IN1,IN2,PARMS,MAXN,NUMBER,VALS,TYPE);
+	"Protect input vars from user output"
+      IA1=MSCAL; A2=VMIN; A3=VMAX; IA4=IN1; IA5=IN2;
+      <I=1,10; BUFFR(I)=PARMS(I);>
+      CALL TDTICK(IA1,A2,A3,IA4,IA5,BUFFR,NUMBER,VALS,TYPE);
+   ENDIF;
+   IF (NUMBER.le.0)  THEN;
+      ERROR STRING; ('*** ERROR *** Can not generate ticks');
+      NUMBER=0;
+   ELSEIF (NUMBER.gt.MAXN+1) THEN;
+      CALL T2STOP('*** FATAL *** Tick overflow');
+   ELSEIF (NUMBER.gt.MAXN) THEN;
+      NUMBER=MAXN;
+      ERROR STRING; ('*** ERROR *** Too many ticks, truncated');
+   ENDIF;
+END;
+%E  SUBROUTINE T2STLM --- Set data limits
+SUBROUTINE T2STLM;
+	"T2STLM determines XYZLIM from the argument arrays"
+   IMPLICIT NONE;
+   $SPECIFICATION;
+   $SPECIFYD
+   $POINT ARRAYS($NPOINTS);
+   $SPECIFYNONE;
+   $MAINSPEC;
+   $BOOLEAN LFLAG(2),LTEST;
+   INTEGER I,J,K,L,M,IFLAG(2),JXYLIM(3,2);	"FOR CALL TO T2STL1"
+   INTEGER IXYZ,IXYZ1,ISET,IV,IE,INE,IS;
+   INTEGER IVRSAV($MAXVPTR);
+   REAL EXTREM(2),RAD;
+   $DATA;
+   INTEGER IXYZO(3); DATA IXYZO/2,1,3/;
+
+
+   LTEST=.true.;
+   <I=5,10; FLAGS(I)=FLAGS(I).OR.FLAGS(I+60).or.DFLAGS(I+60);
+	    LTEST=LTEST.and.FLAGS(I);
+	    FLAGS(I+60)=.false.;>
+   IF (LTEST) GOTO :RET:;			"Already all set ????"
+   <I=1,$MAXVPTR; IVRSAV(I)=IVRPTR(I); >
+				"set up limites to search over"
+   <I=1,3;  JXYLIM(I,1)=1; JXYLIM(I,2)=$LARGE INTEGER;
+	 <J=1,2; IF (NXYLIM(I,J) .gt.0) JXYLIM(I,J)=NXYLIM(I,J); >
+   >
+				"Limit to actual number of data sets"
+   JXYLIM(3,2)=MIN(JXYLIM(3,2),NDSETS);
+   <IXYZ1=1,3;
+      IXYZ=IXYZO(IXYZ1);	"Do coordinates in correct order"
+      LTEST=.true.;
+      <M=1,2;					"FOR MIN,MAX"
+	    I=2*IXYZ+M+2;
+	    IF (FLAGS(I)) THEN;
+	       LFLAG(M)=.false.; IFLAG(M)=1;	"ALREADY SET"
+	    ELSE; LFLAG(M)=.true.; IFLAG(M)=-1;  ENDIF;
+	    EXTREM(M)=XYZLIM(IXYZ,M);
+	    LTEST=LTEST.and.FLAGS(I);
+	    FLAGS(I)=.TRUE.;
+      >
+      IF (LTEST) <NEXT>;		"This coordinate all set ?"
+      <ISET=JXYLIM(3,1),JXYLIM(3,2);	"Search over data sets"
+			"Get data set parameters"
+	 CALL T2GDSET(ISET,JXYLIM(1,1),JXYLIM(1,2)
+			     ,JXYLIM(2,1),JXYLIM(2,2),ISETD,EXYZLIM,'*');
+	IF (NP .lt. JXYLIM(1,1)) <NEXT>;
+	 IF (IBTYPE.eq.2) THEN;
+	    IF (MESH1.eq.IXYZ) THEN;
+	       NL=JXYLIM(2,1);
+	    ELSEIF (MESH2.eq.IXYZ) THEN;
+	       NINCR0=NINCR1*NINCR0;
+	       NP=NL-JXYLIM(2,1)+1;
+	       NL=JXYLIM(2,1);
+	    ELSEIF (MESH3.eq.IXYZ) THEN;
+	    ENDIF;
+	 ENDIF;
+	 IV=ISETD(NCSIZE*(IXYZ-1)+NXDATA);
+	 IE=ISETD(NCSIZE*(IXYZ-1)+NDXDATA);
+	 INE=ISETD(NCSIZE*(IXYZ-1)+NNDXDATA);
+	 IS=I7;
+	 NP=NP-JXYLIM(1,1)+1;
+	 IF (DATBUF(IV).EQ.HNONE) THEN;	"No data ???"
+	    CALL T2STL1(0.0,HNONE,HNONE,HNONE,1,NONLIN(IXYZ),
+		     IFLAG,EXTREM,NINCR0,1,1,1);
+	 ELSE;
+	    <I=JXYLIM(2,1),NL;
+	       CALL T2STL1(DATBUF(IV),DATBUF(IE),DATBUF(INE),DATBUF(IS),
+		     NP,NONLIN(IXYZ),
+		     IFLAG,EXTREM,NINCR0,1,1,1);
+	       IF (DATBUF(IS).ne.HNONE) IS=IS+NINCR0*NINCR1;
+	       IF (DATBUF(IV).ne.HNONE) IV=IV+NINCR0*NINCR1;
+	       IF (DATBUF(IE).ne.HNONE) IE=IE+NINCR0*NINCR1;
+	    >
+	 ENDIF;
+	 <I=1,2; IF (LFLAG(I)) IFLAG(I)=0; >
+      >
+      IF ($POLAR) THEN;				"Polar or spherical coord?"
+	    IF (IXYZ1.eq.1)			"Radius ??"
+	       RAD=MAX(ABS(EXTREM(1)),ABS(EXTREM(2)));
+	    IF (IXYZ.lt.3 .or. FLAGS(91)) THEN;	"Polar or sph"
+	       IF (LFLAG(1)) EXTREM(1)=-RAD;	"Set other coord to extrem"
+	       IF (LFLAG(2)) EXTREM(2)=RAD;	"Of absolute radius"
+	    ENDIF;
+      ENDIF;
+      <M=1,2;
+	    IF (LFLAG(M)) XYZLIM(IXYZ,M)=EXTREM(M);
+      >
+   >
+		"Reset limits"
+   <I=1,$MAXVPTR; IVRPTR(I)=IVRSAV(I); >
+:RET:
+   <I=1,2; <J=1,3; NXYLIM(J,I)=0; EXYZLIM(J,I)=HNONE; > >
+END;
+%E  SUBROUTINE T2STL1 --- Set 1 pair of limits
+SUBROUTINE T2STL1(VALS,ERRS,NERRS,SEPS,NP,ISCAL,IFLAG,EXTREM,INCRMT,
+      MINPNT,MAXPNT,INCPNT);
+   IMPLICIT NONE;
+   INTEGER ISCAL,NP,IFLAG(2);
+   INTEGER INCRMT,MINPNT,MAXPNT,INCPNT;
+   REAL VALS(INCPNT,INCRMT,*),
+   ERRS(INCPNT,INCRMT,*),
+   NERRS(INCPNT,INCRMT,*),
+   SEPS(INCPNT,INCRMT,*),
+   EXTREM(2);
+"
+	This routine finds EXTREM=(MIN,MAX) as the limits for the
+	axis.  input values are
+	VALS	Array of input values
+		to accommodate 3d (MESH) input, VALS is
+		dimensioned INCRMT,NP, and I use only the values
+		VALS(J,I), for J=MINPNT,MAXPNT and I=1,NP
+	ERRS	Array of input errors, or NONE
+		dimension and range is same as VALS
+	NP	Number of input values
+	ISCAL	Usual scaling indicator
+		*** ISCAL MAY BE CHANGED FROM -2 TO -3 IF NECESSARY
+	IFLAG	Indicator for values
+		 1--Value is fixed
+		 0--Value exists but can be changed
+		-1--Value does not (yet) exist
+		-2--Value does not (yet) exist (must be exact)
+		-3--Value exists but can be changed
+	EXTREM    (MIN,MAX) VALUES.  Status is provided in IFLAG
+"
+
+   REAL VMIN, VMAX, ERR(2), SEP, VPMN, VMMX, V, VP, VM, SN, FAC;
+   $BOOLEAN LE, LNE, LS, LF1, LF2, LTEST;
+   INTEGER IE, I, J;
+   $SPECIFICATION;
+   $EQUIVALENCE;
+   $DATA;
+   $SPECIFYNONE;
+
+   LF1=MOD(IFLAG(1),2).ne.0;			"Expand scale on min ?"
+   LF2=MOD(IFLAG(2),2).ne.0;			"Expand scale on max ?"
+   IF ((IFLAG(1).NE.1 .OR. IFLAG(2).NE.1) .and.	"One not fixed ?"
+       VALS(1,1,1).NE.HNONE) THEN;		"Data array ?"
+      ERR(1)=0.; ERR(2)=0.;
+      LE=ERRS(1,1,1).NE.HNONE;			"Error array ?"
+      SEP=0.; LS=SEPS(1,1,1).NE.HNONE;		"Separator array ?"
+      LNE=NERRS(1,1,1).NE.HNONE;             
+      IF (LNE) THEN; IE=2; ELSE; IE=1; ENDIF;	"Points to correct error"
+
+      IF (ISCAL.EQ.(-2) .OR. ISCAL.EQ.(-3)) THEN;	"LOG SCALING ?"
+"
+	VMAX AND VPMN ARE MAX AND MIN OVER ALL POSITIVE VALUES.
+	     VMMX AND VMIN ARE MAX AND MIN FOR NEGATIVE VALUES.
+	     (VMAX ENDS UP AT LARGEST VALUE.  VMIN ENDS AT
+	     SMALLEST VALUE.  IF ANY VALUE WAS POSITIVE, VPMN
+	     ENDS SMALL AND POSITIVE.  IF ANY VALUE WAS NEGATIVE,
+	     VMMX ENDS NEAR ZERO AND NEGATIVE.
+"
+	 VPMN=$LARGE REAL; VMMX=-$LARGE REAL;
+	 VMIN= 0.;  VMAX= 0.;
+	 LTEST=  .FALSE.;
+	 <I=1,NP;
+	    IF (LS) V=SEPS(1,1,I);
+	    IF (V .lt. $SEPARATOR) THEN;	"Not skip ?"
+	       <J=MINPNT,MAXPNT;
+		  V= VALS(1,J,I);
+		  LTEST=.TRUE.;
+		  IF (LNE) ERR(2)= ABS(NERRS(1,J,I));
+		  IF (LE) ERR(1)= ABS(ERRS(1,J,I));
+		  VP= V+ERR(1); VM= V-ERR(IE);
+		  IF (VMAX.LT.VP) VMAX= VP;
+		  IF (VMIN.GT.VM) VMIN= VM;
+		  IF (V) :NEG:,:ZERO:,:POS:;
+		  :NEG: IF (VP.GE.0.) VP= V*0.25;
+		     IF (VMMX.LT.VP) VMMX=VP;
+		     <NEXT>;
+		  :POS: IF (VM.LE.0.) VM= V*0.25;
+		     IF (VPMN.GT.VM) VPMN=VM;
+		  :ZERO:
+	       >
+	    ENDIF;
+	 >
+"
+	SET UP LIMITS, USING ARRAY LIMITS AND PROVIDED LIMITS
+	  LIMS ARE POSITIVE IF
+	     1--EITHER LIM IS POSITIVE AND REQUIRED
+	     2--NO LIM IS REQUIRED AND THERE ARE ANY POSITIVE VALUES
+	  LIMS ARE NEGATIVE IF
+	     1--EITHER LIM IS NEGATIVE AND REQUIRED
+	     2--NO LIM IS REQUIRED AND THERE ARE NO POSITIVE VALUES
+	  LIMS ARE ARBITRARY IF
+	     1--NO LIMS REQUIRED AND NO NON-ZERO VALUES
+	  ERROR IF
+	     1--BOTH LIMS REQUIRED AND RANGE CONTAINS ZERO
+"
+		"WHICH SIGN?"
+	 SN= 0.;			"NONE YET"
+	 IF (IFLAG(1).GT.0) THEN;	"1 REQUIRED"
+	    VMIN= EXTREM(1);
+	    SN= SIGN(1.,VMIN);
+	 ENDIF;
+	 IF (IFLAG(2).GT.0) THEN;	"2 REQUIRED"
+	    IF (SN*EXTREM(2).LT.0.) THEN;
+	       ERROR STRING;('SN*EXTREM(2)<0');
+	       CALL TRACE;
+	       RETURN;
+	    ENDIF;
+	    VMAX= EXTREM(2);
+	    SN= SIGN(1.,VMAX);
+	 ENDIF;
+	 IF (SN.EQ.0) THEN;		"NO SIGN YET ?"
+	    IF (IFLAG(1).EQ.0 .and.	"MIN EXISTS ALREADY"
+		EXTREM(1).GT.0.
+	    .or.IFLAG(2).EQ.0 .and.	"MAX EXISTS ALREADY"
+		EXTREM(2).GT.0.
+	    .or.VMAX.GE.VPMN)		"DATA HAS POSITIVE VALUES"
+	       SN= 1.;
+	 ENDIF;
+	 IF (SN.EQ.0.) THEN;		"NO SIGN YET"
+	    IF (IFLAG(1).EQ.0 .and.	"MIN EXISTS ALREADY"
+		EXTREM(1).LT.0.
+	    .or.IFLAG(2).EQ.0 .and.	"MAX EXISTS ALREADY"
+		EXTREM(2).LT.0.
+	    .or.VMIN.LE.VMMX)		"DATA HAS NEGATIVE VALUES"
+	       SN= -1.;
+	 ENDIF;
+	 IF (SN.EQ.0.) THEN;		"ALL POINTS ARE ZERO?"
+	    ISCAL= -2;			"ARBITRARY SCALE"
+	    VMIN= 1.0;
+	    VMAX= 10.0;
+	 ELSE;				"SIGN IS KNOWN"
+	    IF (.not.LTEST) THEN; VPMN=EXTREM(1); VMMX=EXTREM(2); ENDIF;
+	    IF (SN.GT.0.)  THEN;	"POSITIVE. IGNORE VMIN,VMMX"
+	       VMIN= VPMN;
+	       ISCAL= -2;
+	    ELSE;			"NEGATIVE. IGNORE VPMN,VMAX"
+	       VMAX= VMMX;
+	       ISCAL= -3;
+	    ENDIF;
+		"Expand scale a little, to move points off edge"
+	    IF (VMIN.eq.0) VMIN=1.0; VMAX=MAX(VMAX,VMIN);
+	    FAC= (VMAX/VMIN)**0.1;
+	    IF (FAC.eq.0) FAC=1.;
+	    IF (FAC.EQ.1.) FAC= 2.;
+	    VMAX=VMAX*FAC; VMIN=VMIN/FAC;
+		"FOLD IN GIVEN EXTREMA"
+	    IF (IFLAG(1).GT.0) VMIN= EXTREM(1);
+	    IF ((IFLAG(1).EQ.0 .or. IFLAG(1).eq.-3) .and.
+		SN*EXTREM(1).GT.0.) VMIN= AMIN1(VMIN,EXTREM(1));
+	    IF (IFLAG(2).GT.0) VMAX= EXTREM(2);
+	    IF ((IFLAG(2).EQ.0 .or.IFLAG(2).eq.-3).and.
+		SN*EXTREM(2).GT.0.) VMAX= AMAX1(VMAX,EXTREM(2));
+	 ENDIF;
+		"END OF LOG SCALE TREATMENT"
+      ELSE;	"NOT LOG SCALING"
+	 VMIN=$LARGE REAL; VMAX=-$LARGE REAL;
+	 <I=1,NP;
+	    IF (LS) V=SEPS(1,1,I);
+	    IF (V .lt. $SEPARATOR) THEN;	"Not skip ?"
+	       <J=MINPNT,MAXPNT;
+		  V=VALS(1,J,I);
+		  IF (LNE) ERR(2)= ABS(NERRS(1,J,I));
+		  IF (LE) ERR(1)= ABS(ERRS(1,J,I));
+		  VP= V+ERR(1); VM= V-ERR(IE);
+		  IF (VP.GT.VMAX) VMAX= VP;
+		  IF (VM.LT.VMIN) VMIN= VM;
+	       >
+	    endif;
+	 >
+	 VMAX=MIN(MAX(VMAX,-$LARGE REAL),$LARGE REAL);
+	 VMIN=MIN(MAX(VMIN,-$LARGE REAL),$LARGE REAL);
+	 IF (VMIN .gt. VMAX) THEN;
+	    VMIN=0; VMAX=0;
+	 ENDIF;
+	 IF (ISCAL.EQ.(-1).or.ISCAL.le.-7) THEN;
+		"LINEAR (but not user,month,year)"
+		"Expand scale a little, to move points off edge"
+	    FAC= (VMAX-VMIN)*0.1;
+	    IF (FAC .le. 10.**(1-$DIGITS)*ABS(VMAX+VMIN))
+	       FAC=10.**(1-$DIGITS)*ABS(VMAX+VMIN);
+	    IF (LF1) VMIN=VMIN-FAC;
+	    IF (LF2) VMAX=VMAX+FAC;
+		"Home on zero"
+	    IF (LF1 .AND. ABS(VMIN) .LE. FAC) VMIN= 0.;
+	    IF (LF2 .AND. ABS(VMAX) .LE. FAC) VMAX= 0.;
+		"Check for bad limits"
+	    IF     (VMAX.eq.0 .and. VMIN.eq.0) THEN; VMAX=1;
+		   IF (LF1) VMIN=-1;
+	    ELSEIF (VMAX.eq.VMIN) THEN; VMAX=VMAX+0.5; VMIN=VMIN-0.5;
+	    ELSEIF (VMAX.lt.VMIN) THEN; VMAX=1; VMIN=-1; ENDIF;
+	 ENDIF;
+		"FOLD IN GIVEN EXTREMA"
+	 IF (IFLAG(1).GT.0) VMIN= EXTREM(1);
+	 IF (IFLAG(1).EQ.0.or.IFLAG(1).eq.-3) VMIN= AMIN1(VMIN,EXTREM(1));
+	 IF (IFLAG(2).GT.0) VMAX= EXTREM(2);
+	 IF (IFLAG(2).EQ.0.or.IFLAG(2).eq.-3) VMAX= AMAX1(VMAX,EXTREM(2));
+      ENDIF;		"END OF LINEAR BLOCK"
+			"RESULTS"
+      EXTREM(1)= MIN(MAX(VMIN,-$LARGE REAL),$LARGE REAL); IFLAG(1)=1;
+      EXTREM(2)= MIN(MAX(VMAX,-$LARGE REAL),$LARGE REAL); IFLAG(2)=1;
+   ENDIF;
+						"check validity of scales"
+   IF (ISCAL.LE.-4 .AND. ISCAL.GE.-5) THEN;	"SPECIAL FOR MONTH|YEAR"
+      EXTREM(1)=AINT(EXTREM(1));
+      IF (EXTREM(2).GT.AINT(EXTREM(2))+0.006) EXTREM(2)=AINT(EXTREM(2))+1.005;
+      IF (EXTREM(2).eq.EXTREM(1)) EXTREM(2)=EXTREM(1)+1.005;
+      IF (EXTREM(1).LT.0.0 .OR. EXTREM(2).LT.0) THEN;
+	 ERROR STRING;
+    ('*** WARNING *** Negative values meaningless for calendar/normal scale');
+      ENDIF;
+   ELSEIF (ISCAL.EQ.(-2) .OR. ISCAL.EQ.(-3)) THEN;	"LOG SCALE"
+      IF (EXTREM(1).EQ.0.0 .OR. EXTREM(2).EQ.0.0
+	    .OR. SIGN(1.,EXTREM(1)).NE.SIGN(1.,EXTREM(2)) ) THEN;
+	 ERROR STRING;
+	    ('*** WARNING *** log scale may not include zero. Linear used.');
+	 ISCAL=-1;
+      ENDIF;
+   ENDIF;
+END;
+%E  SUBROUTINE T2TCKS --- Draw ticks,labels
+SUBROUTINE T2TCKS(INFLAGS);
+"
+	INFLAGS=1	To draw axis outline
+		4	To hide the axis
+		8	Draw outine + hide if 3-d
+"
+   IMPLICIT NONE;
+   $SPECIFICATION;
+   INTEGER INFLAGS,INFLAG,IAX;
+   REAL XYZ(3,2);
+   INTEGER IGRIDS(3,2);
+   INTEGER IXYZ,IXYZMX,IXYZS(3,2,3);
+   INTEGER IB,IBCON,IB1,IB2,NB,NUMBER;
+   INTEGER I,J,K,IAXSAV,IMAX,IAXIS,ITICK,ILABEL,IPNT,IDUM;
+   INTEGER T2_GET_AXIS_SIDE;
+   $EQUIVALENCE;
+   $DATA;
+   IF (FLAGS(3)) RETURN;
+   FLAGS(3)=.TRUE.;
+   INFLAG=IAND(INFLAGS,4);		"If not zero draw axis (outline)"
+   IAX=IAND(INFLAGS,1);
+   IF (IAND(INFLAGS,8) .ne. 0 .and. $3D) THEN;
+	IAX=1;
+	INFLAG=IOR(INFLAG,4);		"Set if 3-d on ?"
+   ENDIF;
+   IF (.NOT.$DEF DATA) CALL TXDEF2;	"Set up the coordinate systems"
+   NONLIN(4)=0;				"Disable polar"
+   IF (.NOT.$DEF DATA) THEN;		"Couldnt do it ?"
+      ERROR STRING;
+	 ('*** ERROR *** Data coordinate system not defined');
+	 CALL TRACE;
+   ELSE;				"WE'RE OK"
+      CALL T2CWTS(IAXTEX,IAXSAV);
+					"RESERVE BUFFER SPACE"
+      NB=$BUFSIZ/3;
+      IF (GRDTYP.eq.0) NB=$BUFSIZ/2;	"No values for grid ?"
+      IB1=$BUFSIZ-NB+1;		"Tick values go at the end"
+      IB2=IB1-NB;		"Scratch array next to it"
+      IBCON=1;			"Condensed values (major ticks) next
+			with twice the space, at end, because it may have to
+			hold both X- and Y- VALUES. (and Z? ARRGH)"
+      NB= NB-1;		"Reserve one place for overflow"
+			"Make outline if not already done"
+      IF (.NOT.FLAGS(2)) CALL T2AXES;
+      IXYZMX=2; IF ($3D) IXYZMX=3;
+      <K=1,3; <J=1,2; <I=1,3;  IXYZS(I,J,K)=1; >  >  >
+      IF ($3D .and. FLAGS(132)) THEN;
+	IXYZ=2*T2_GET_AXIS_SIDE(3)-3;		"1 if phi > 90"
+	<I=1,2;  J=T2_GET_AXIS_SIDE(I*IXYZ);
+		 <K=1,2; IXYZS(I,1,K)=J; >
+	>
+	IF ((SIND(45.)-ABS(SIND(TTHETA)))*IXYZ .gt.0) THEN;	"X along vue ?"
+		"Now Y is visibly the 'long' axis"
+	    IXYZS(1,1,3)=3-IXYZS(1,1,1);	"Free end of X axis"
+	    IXYZS(2,1,3)=IXYZS(2,1,1);
+	ELSE;
+		"Now X is visibly the 'long' axis"
+	    IXYZS(1,1,3)=IXYZS(1,1,1);
+	    IXYZS(2,1,3)=3-IXYZS(2,1,1);	"Free end of Y axis"
+	ENDIF;
+      ENDIF;
+      <K=1,3; <I=1,3; J=IXYZS(I,1,K);
+		IF (LSCREV(K))	IXYZS(I,1,K)=3-J;
+		IXYZS(I,2,K)=3-IXYZS(I,1,K);
+      >  >
+      <IXYZ=1,IXYZMX;
+	 IGRIDS(IXYZ,1)=IBCON;			"Start of condensed values"
+	 IF (XYZLIM(IXYZ,1).NE.XYZLIM(IXYZ,2)) THEN;
+						"Get values for tick positions"
+	    CALL T2STCK(NONLIN(IXYZ),			"Scale type"
+		  XYZLIM(IXYZ,1),XYZLIM(IXYZ,2),   	"MIN,MAX"
+		  NXYZ1(IXYZ),NXYZ2(IXYZ),		"N1,N2 ticks"
+		  SCLPRM(1,IXYZ),			"BASE, ETC."
+		  NB,					"ARRAY SIZ"
+		  NUMBER,BUFFER(IB1),IBUFFR(IB1));	"OUTPUT"
+	    IF (NUMBER.le.0)              THEN;
+		IMAX=0;					"No numbers ?"
+	    ELSEIF (($3D.and. .not.FLAGS(133)).OR.(FLAGS(82))) THEN;
+		IMAX=1;					"1 AXIS ONLY ?"
+	    ELSE;
+		IMAX=2;					"2 FOR 2D ?"
+	    ENDIF;
+	    <I=1,IMAX;					"LEFT, RIGHT, ETC"
+	       <J=1,3;
+		  IF (.NOT.FLAGS(82)) THEN;
+			XYZ(J,1)=XYZLIM(J,IXYZS(J,I,IXYZ));
+		  ELSE; XYZ(J,1)=ORAXES(J); ENDIF;
+		  XYZ(J,2)=XYZ(J,1);
+	       >
+	       XYZ(IXYZ,1)=XYZLIM(IXYZ,1);
+	       XYZ(IXYZ,2)=XYZLIM(IXYZ,2);
+	       IAXIS=0; ITICK=0; ILABEL=0;
+	       IF ($3D) THEN;				"3D ?"
+		  IF (FLAGS(IXYZ+49)) THEN;
+		     IAXIS=1;
+		     IF (FLAGS(IXYZ+43)) ITICK=1;
+		     IF (FLAGS(IXYZ+46)) ILABEL=1;
+		  ENDIF;
+	       ELSE;					"2D ?"
+							"Pointer in flags array"
+		  IPNT=2*I-IXYZ+1;			"1,2,3,4 FOR L,B,R,T"
+		  IF (FLAGS(IPNT+18)			"Axis exist ?"
+		       .AND. FLAGS(IXYZ+49)) THEN;
+		     IF (FLAGS(82)) IAXIS=1;		"Origin ?"
+		     IF (FLAGS(IXYZ+43).AND.
+			    FLAGS(IPNT+31)) ITICK=1;	"Ticks ?"
+		     ILABEL=-IPNT;
+		     IF (FLAGS(IXYZ+46) .AND.
+			 FLAGS(IPNT+35) .and.		"Labels ?"
+			(FLAGS(94).or.OUTSID(IPNT)))	"Outside ??"
+			   ILABEL=IPNT;
+		     IF (.not. FLAGS(94) .and.
+			       ILABEL.gt.0 .and.
+			  .not.OUTSID(IXYZ+2)) THEN;
+			      IBUFFR(IB1+NUMBER-1)=
+			      MIN(MAX(IBUFFR(IB1+NUMBER-1),-1),1);
+		     ENDIF;
+		  ENDIF;
+	       ENDIF;
+	       IF ((IAXIS.ne.0 .or.
+		       ITICK.ne.0 .or.
+		       ILABEL.GT.0) .and.
+		   NUMBER.gt.0)			"Do axis ?"
+		   CALL T2AXIS(XYZ,		"Limits of the Axis"
+			IOR(INFLAG,IXYZ),	"Hide + X/Y/Z direction"
+			BUFFER(IB1),		"Contains tick locations"
+			BUFFER(IB2),		"Scratch"
+			NB,			"?"
+			NUMBER,			"Array sizes"
+			IBUFFR(IB1),		"TICK/LABEL DESCR"
+			IAX,			"Draw axis if not 0"
+			ITICK,			"Draw ticks if not 0"
+			ILABEL);		"Draw labels if not 0"
+	    >
+	    IF (GRDTYP.GT.0) THEN;		"Save values for grid"
+	       IB=IB1;
+	       IF (IXYZ.eq.IXYZMX) IB2=$BUFSIZ-2;
+	       <I=1,NUMBER;
+		  IF (IBUFFR(IB).GT.0) THEN;	"Big tick here"
+		     IF (IBCON.GE.IB2-3) <EXIT>;
+		     BUFFER(IBCON)=BUFFER(IB);
+		     IBCON=IBCON+1;
+		  ENDIF;
+		  IB=IB+1;
+	       >
+	    ENDIF;
+	 ENDIF;
+	 IF (GRDTYP.gt.0 .and.			"Plot grid ?"
+	     IBCON.EQ.IGRIDS(IXYZ,1)) THEN;	"and Didnt get any con val"
+	    IF (IBCON.LT.IB2) THEN;		"Just to keep things clean"
+	       IF (FLAGS(82)) THEN; BUFFER(IBCON)=ORAXES(IXYZ);
+			      ELSE; BUFFER(IBCON)=XYZLIM(IXYZ,1); ENDIF;
+	       IBCON=IBCON+1;
+	    ENDIF;
+	 ENDIF;
+	 IGRIDS(IXYZ,2)=IBCON-1;
+      >
+      IF (.not.$3D) THEN;
+	 IGRIDS(3,1)=IBCON; IGRIDS(3,2)=IBCON; BUFFER(IBCON)=0; ENDIF;
+      IF (GRDTYP.NE.0) CALL T2GRID(IGRIDS,BUFFER,IOR(INFLAGS,INFLAG));
+      CALL T2CWTS(IAXSAV,IDUM);
+   ENDIF;
+   NONLIN(4)=1;					"Enable polar"
+END;
+%E  SUBROUTINE T2TLAB --- Set up labels
+SUBROUTINE T2TLAB(ITICK,VAL,PARM,IWID,LFTADJ,TEXT,NTEXT,CASE,NCASE,NFIRST);
+   INTEGER ITICK,IWID,LFTADJ,NTEXT,NCASE;
+   REAL VAL,PARM(10),HOUR(3);
+   CHARACTER*(*) TEXT,CASE;
+"
+   INPUT:
+      ITICK - 1 - No label
+	      2 - Decimal label nn.nnn (F format)
+	      3 - Base**n
+	      4 - n (Single digit)
+	      5 - 3 Char month
+	      6 - Year
+	      7 - 1 Char month
+	      8 - n.nn*10**ee (E format)
+	      9 - Format 8 or 2 Depending on number. (G format)
+	      10-14 - year/month/day/hour/date
+       VAL=   Input value to convert
+       IWID=  Number of digits to right of decimal
+       LFTADJ=1 for left adjust, 0 for no adjust
+
+   OUTPUT:
+      TEXT    Text string
+      NTEXT   Number of characters in TEXT
+      CASE    Case string
+      NCASE   Number of chars in CASE
+      NFIRST  First significant digit
+"
+   $SPECIFICATION;
+      CHARACTER*10 MONTHS(13);
+      CHARACTER*12 DIGITS;
+      CHARACTER*12 SCHAR,BASCHR;
+      INTEGER IHATH(13);
+   DOUBLE PRECISION DT;
+   $EQUIVALENCE;
+   $DATA;
+		"Jan,Feb,Mar,Apr,May,Jun,Jul,Aug,Sep,Oct,Nov,Dec"
+   DATA IHATH/000,031,059,090,120,151,181,212,243,273,304,334,365/;
+   DATA BASEXX/10./,BASFAC/1./;
+   DATA MONTHS		"Dec first, for amod function"
+	 /'December','January','February','March','April','May',
+	  'June','July','August','September','October','November',
+	  'December'/;
+   DATA BASCHR/'101'/;	"3RD char gives letter pair 1v"
+   DATA LASBAS/3/;
+   DATA DIGITS/'0123456789**'/;
+
+   BASE=PARM(1);
+   OFFSET=PARM(2);
+   IF (PARM(4).ne.0) THEN; T=PARM(4)*VAL;
+		     ELSE; T=VAL; ENDIF;
+   CASE=' ';
+   LEFT=LFTADJ;
+   NTEXT=LEN(TEXT);
+   NFIRST=1;
+   IF (ITICK.GT.1) THEN;
+      JWID=IWID;
+      <CASE> ITICK-1 <OF> :NORMAL:,:EXPONENT:,
+	    :ONE DIGIT:,:MONTH3:,:YEAR:,:MONTH1:,:EFORM:,:GFORM:,
+	    :YEAR2:,:MONTH:,:DAY:,:HOUR:,:DATE: <
+"         :GFORM:  < $$$ GOTO :EF:; >"
+	 :GFORM:,:EFORM:  <
+":EF:"      LEFT=1;
+	    IF (VAL.eq.0) GOTO :NOR:;
+	    T=ALOG10(ABS(VAL))+1;
+	    IEXP=T;
+	    JWID=MIN(MAX(0,IWID-IEXP),$DIGITS);
+	    IF (ITICK.gt.8.and.IEXP.le.IWID.and.T.ge.0) GOTO :NOR:;
+	    JWID=MIN(MAX(IWID,2),$DIGITS);
+	    IF (NTEXT.lt.JWID+10) GOTO :ERR:;
+	    T=VAL/10.**IEXP;
+	    <I=1,2;
+	       IF (ABS(T).lt. 1) THEN; T=T*10.; IEXP=IEXP-1; ENDIF;
+	    >
+	    IF (ABS(T).ge.10) THEN; T=T/10; IEXP=IEXP+1; ENDIF;
+	    CALL T2CRMF(T,10,JWID-1,SCHAR,IFIRST,ILAST);
+	    TEXT=SCHAR(IFIRST:10);		"Compress it"
+	    ILAST=ILAST-IFIRST+1;
+	    I=INDEX(TEXT(1:5),'0.');
+	    IF (I.gt.0) THEN;		"Bad conversion ?"
+	       IF (T.gt.5) THEN;
+		  IEXP=IEXP+1;
+		  TEXT(I:I+1)='.0';	"Put into range"
+		  IF (I.eq.ILAST) ILAST=ILAST+1;
+	       ELSE;
+		  IEXT=IEXP-1;
+		  TEXT(I:9)=TEXT(I+2:I+2)//'.'//TEXT(I+3:10);
+		  TEXT(10:10)='0';
+		  IF (ILAST.GT.I) ILAST=ILAST-1;
+	       ENDIF;
+	    ENDIF;
+	    NTEXT=ILAST+1;
+	    IF (TEXT(NTEXT:NTEXT).eq.'.') NTEXT=NTEXT+2;
+	    TEXT(NTEXT:NTEXT+3)='.101';
+	    CASE(NTEXT:NTEXT+3)='M  V';
+	    NTEXT=NTEXT+4;
+	    T=IEXP;
+	    CALL T2CRMF(T,4,0,SCHAR,IFIRST,ILAST);
+	    TEXT(NTEXT:LEN(TEXT))=SCHAR(IFIRST:ILAST);
+	    NTEXT=NTEXT+ILAST-IFIRST+2;
+	    TEXT(NTEXT:NTEXT)='2';
+	    CASE(NTEXT:NTEXT)='V';
+	 >
+	 :NORMAL: <
+:NOR:        IF (LEFT.gt.0) NTEXT=-IABS(NTEXT);
+	     CALL T2CRMF(VAL,NTEXT,JWID,TEXT,IFIRST,ILAST);
+	     NTEXT=ILAST; NFIRST=IFIRST;
+	 >
+	 :EXPONENT: <
+	    IF (NTEXT.lt.8) GOTO :ERR:;
+	    IF (VAL.EQ.0.)	"CHECK FOR PROBLEM"
+	    THEN; ITICK=ISIGN(2,ITICK); TEXT='0'; NTEXT=1;
+	    ELSE;
+	       IF (BASEXX.NE.BASE) THEN;
+		  IF (ABS(BASE-2.71828).lt.0.001) THEN;	"e**n ?"
+		     BASCHR='e1'; LASBAS=2;
+		  ELSE;
+		     BASEXX=BASE; BASFAC=1./ALOG10(BASE);
+		     CALL T2CRMF(BASEXX,11,4,SCHAR,IFIRST,ILAST);
+		     BASCHR=SCHAR(IFIRST:ILAST);
+		     LASBAS=ILAST-IFIRST+2;
+		     BASCHR(LASBAS:LASBAS)='1';	"THE CALL SET THIS TO '.'"
+		  ENDIF;
+	       ENDIF;
+	       TEXT=BASCHR;
+	       CASE(LASBAS:LASBAS)='V';
+	       LEFT=LASBAS+1;
+	       X=BASFAC*ALOG10(ABS(VAL));
+	       CALL T2CRMF(X,12,3,SCHAR,IFIRST,ILAST);
+	       TEXT(LEFT:NTEXT)=SCHAR(IFIRST:ILAST);
+	       NTEXT=LEFT+ILAST-IFIRST+2;
+	       TEXT(NTEXT:NTEXT)='2';
+	       CASE(NTEXT:NTEXT)='V';
+	    ENDIF;
+	 >
+	 :ONE DIGIT: <		"BETWEEN 1 AND 10, NO EXPONENT"
+	    V=ABS(VAL);  POWER=ALOG10(V);
+	    IPOWER=INT(300.+POWER)-300;		"DONT TRUNCATE NEGATIVES"
+	    I=V*10.**(-IPOWER)+0.5;		"NOW BETWEEN 1 AND 10"
+	    IF (I.LE.0 .OR. I.GT.9) I=11;
+	    TEXT=DIGITS(I+1:I+1);
+	    NTEXT=1;
+	 >
+	 :MONTH3: <
+	    IF (NTEXT.lt.3) GOTO :ERR:;
+	    J= MOD(INT(VAL),12) + 1;
+	    TEXT= MONTHS(J);
+	    NTEXT=3;
+	 >
+	 :MONTH1: <
+	    J= MOD(INT(VAL),12) + 1;
+	    TEXT= MONTHS(J)(1:1);
+	    NTEXT=1;
+	 >
+	 :YEAR: <
+	    YEAR=VAL;
+	    IF (YEAR.lt.0 .or. NTEXT.lt.4) GOTO :ERR:;
+	    IF (YEAR.LT.100.) YEAR= YEAR+1900.;
+	    CALL T2CRMF(YEAR,-5,0,SCHAR,IFIRST,ILAST);
+	    TEXT=SCHAR(1:ILAST);
+	    NTEXT=ILAST;	"DECIMAL PT WILL BE SUPPRESSED BELOW"
+	 >
+	 :YEAR2: <
+	    DT=T+864*3600.;	"Add 36 days for 10% round off"
+	    CALL T2NTIM(DT,YEAR,FMON,DAY,HOUR,FMIN,SEC);
+	    CALL T2CRMF(YEAR,-5,0,TEXT,IFIRST,ILAST);
+	    NTEXT=ILAST;
+	 >
+	 :MONTH: <
+	    DT=T+36*3600.;	"Add 3 days for 10% round off"
+	    CALL T2NTIM(DT,YEAR,FMON,DAY,HOUR(1),HOUR(2),HOUR(3));
+	    J=NINT(FMON)+1;
+	    TEXT= MONTHS(J);
+	    NTEXT=MIN(NTEXT,3);
+	 >
+	 :DAY: <
+	    DT=T+2*3600.;	"Add 2 hours for 10% round off"
+	    CALL T2NTIM(DT,YEAR,FMON,DAY,HOUR(1),HOUR(2),HOUR(3));
+	    CALL T2CRMF(DAY,-4,0,TEXT,IFIRST,ILAST);
+	    NTEXT=ILAST;
+	 >
+	 :HOUR: <
+	    DT=T;
+	    CALL T2NTIM(DT,YEAR,FMON,DAY,HOUR(1),HOUR(2),HOUR(3));
+	    IMAX=1; <I=1,3; IF (HOUR(I).gt.0.005) IMAX=I; >
+	    NTEXT=0;
+	    K=-5;
+	    TEXT=' ';
+	    <I=1,IMAX;
+	       T=HOUR(I);
+	       IF (NTEXT+5.gt.LEN(TEXT)) GOTO :ERR:;
+	       CALL T2CRMF(T,K,2,TEXT(NTEXT+1:NTEXT+5),IFIRST,ILAST);
+	       K=5;
+			"Turn leading blanks into zero"
+	       IF (TEXT(NTEXT+1:NTEXT+1).eq.' ') TEXT(NTEXT+1:NTEXT+1)='0';
+	       NTEXT=NTEXT+ILAST;
+			"Time must have colon hh:mm:ss.ss"
+	       IF (I.lt.MAX(2,IMAX)) THEN;
+		  NTEXT=NTEXT+1; TEXT(NTEXT:NTEXT)=':';
+	       ENDIF;
+	    >
+	 >
+	 :DATE: <
+	    IF (NTEXT.lt.11) GOTO :ERR:;
+	    DT=T+2*3600.;	"Add 2 hours for 10% round off"
+	    CALL T2NTIM(DT,YEAR,FMON,DAY,HOUR,FMIN,SEC);
+	    CALL T2CRMF(DAY,-4,0,TEXT,IFIRST,ILAST);
+	    NTEXT=ILAST;
+	    NTEXT=NTEXT+1; TEXT(NTEXT:NTEXT)='-';
+	    J=NINT(FMON)+1;
+	    TEXT(NTEXT+1:NTEXT+3)= MONTHS(J);
+	    NTEXT=NTEXT+4; TEXT(NTEXT:NTEXT)='-';
+	    CALL T2CRMF(YEAR,-5,0,SCHAR,IFIRST,ILAST);
+	    TEXT(NTEXT+1:NTEXT+4)=SCHAR(1:ILAST);
+	    NTEXT=NTEXT+ILAST;
+	 >
+      >
+   ELSE;
+      TEXT='****'; NTEXT=1;
+   ENDIF;
+   IF (NTEXT.LE.0) THEN; NTEXT=1; ENDIF;
+   NCASE=NTEXT;
+   RETURN;
+:ERR: TEXT='********';
+   NTEXT=MIN(LEN(TEXT),8);
+END;
+%E  SUBROUTINE TDSLIN --- Make arrays for axis labels/ticks
+SUBROUTINE TDSLIN(VMIN,VMAX,IN1,IN2,PARMS,MAXN,NUMBER,VALS,TYPE);
+   INTEGER NUMBER,N1,N2,TYPE(MAXN);
+   REAL VMIN,VMAX,PARMS(10),VALS(MAXN);
+"
+	ROUTINE TO MAKE VALUE AND TYPE ARRAYS FOR AXIS LABELS
+    INPUT:
+	VMIN,VMAX are input limits.
+	N1 is number of major intervals between (rounded) limits
+	N2 is intervals in 1 major interval (small ticks)
+    OUTPUT:
+     NUMBER counts output values ( (N1+1)*N2+1, or fewer)
+     VALS is output value array
+     TYPE is type array.  TYPE NEGATIVE -- SMALL TICK
+			       POSITIVE -- LARGE TICK
+			 /TYPE/ 0 -- NO LABEL,NO TICK
+				1 -- NO LABEL
+				2 -- NORMAL LABEL
+				3 -- EXPONENT
+"
+   $SPECIFICATION;
+      DOUBLE PRECISION DONE,DTEN,DBASE,DROUND,DX2,DSTEP2;
+      REAL ROUND(7);
+      $LONG INTEGER I2;
+   $EQUIVALENCE;
+   $DATA;
+      DATA NROUND/7/;DATA ROUND/1.,2.,2.5,5.,10.,20.,1000000./;
+	"LAST-2 AND LAST-1 VALUES OF ROUND MUST BE 10*THE FIRST 2
+	LAST VALUE MUST BE RIDICULOUSLY LARGE, FOR ERROR TRAP"
+
+	"SET PARAMETERS"
+      JERR=0;					"Number of errors"
+      DONE= 1.; DTEN= 10.;			"GET THE PROPER PRECISION"
+      BASE= PARMS(1); IF (BASE.LE.0.) BASE=10.;
+      OFFSET=PARMS(2);
+      VDIF= VMAX-VMIN;
+      NUMBER=0;
+      IF (VDIF.eq.0) RETURN;
+      SMALL= 5.0E-4 * VDIF;
+      XVMIN= VMIN-SMALL; XVMAX= VMAX+SMALL;	"LIMITS WITH ROUNDING"
+      S= SIGN(1.,VDIF);				"FOR TESTING LIMITS"
+						"USE INPUT PARAMETERS"
+   :SET TICK TYPES:
+      N1=IAND(2**16-1,IABS(IN1));
+      N2=IAND(2**16-1,IABS(IN2));
+      IF (N1.EQ.0) N1= $MAXMAJOR$;		"Major ticks"
+      IF (N2.EQ.0) N2= $MAXMINOR$;		"Minor ticks"
+      ITYPE1=ISIGN(2,IN1);
+      ITYPE2=ISIGN(1,IN2-1);
+	"FIGURE OUT A ROUND VALUE FOR STEP SIZE"
+      PSTEP= ABS(VDIF)/(FLOAT(N1)*BASE);
+      JORDER= ALOG10(PSTEP); IF (PSTEP.LT.1.0) JORDER=JORDER-1;
+      PSTEP= PSTEP/10.**JORDER;
+      I=0; <LOOP> <I=I+1;> <UNTIL>(ROUND(I).GE.PSTEP);
+      IF (I.EQ.NROUND) RETURN;		"OOPS"
+      DBASE= BASE; DROUND= ROUND(I); DX2= N2;
+      DSTEP2= DBASE*DROUND*(DTEN**JORDER)/DX2;
+      IF (VDIF.LT.0.) DSTEP2= -DSTEP2;
+	"FIND FIRST TICK"
+      I2= XVMIN/DSTEP2;
+      <LOOP> <
+	 DX2=I2; VAL=DX2*DSTEP2;
+	 IF (SIGN(1.,VAL-XVMIN).EQ.S) <EXIT>;
+	 I2=I2+1;
+      >
+      VAL=MAX(ABS(VMAX),ABS(VMIN));
+      IF (IABS(I2).GE.10**$DIGITS ) THEN;
+       ERROR STRING;
+       ('*** WARNING *** Data range may be too small for available precision');
+      ENDIF;
+      I2= N2-MOD(I2,N2); IF (I2.GE.N2) I2= I2-N2;
+	"MAKE THE TICKS"
+      IF (VAL.lt.10.**(2-$DIGITS) .or. VAL.gt.1.E8)
+	 ITYPE1=ISIGN(8,N1);
+      NUMBER= 0;	"COUNT THEM"
+      <LOOP> <
+	 VAL= DX2*DSTEP2;
+	 IF (SIGN(1.,VAL-XVMAX).EQ.S) <EXIT>;
+	 NUMBER=NUMBER+1;
+	 IF (NUMBER.GT.MAXN) THEN;	"OOPS"
+	    IF (JERR.gt.0.or.MAXN.le.2) RETURN;
+	    JERR=JERR+1;
+	    ERROR STRING;
+	     ('*** ERROR *** Too many ticks. default labels=6,ticks=5 used.');
+	    N1=0; N2=0;
+	    GOTO :SET TICK TYPES:;
+	 ENDIF;
+	 VALS(NUMBER)= VAL;
+	 IF (I2.EQ.0) THEN;	"MAJOR TICK"
+	    I2= N2;
+	    TYPE(NUMBER)= ITYPE1;
+	 ELSE; TYPE(NUMBER)= ITYPE2; ENDIF;
+	 DX2= DX2+DONE; I2= I2-1;
+      >
+END;
+%E  SUBROUTINE TDSNDS --- Make time arrays for axis labels/ticks
+SUBROUTINE TDSNDS(VMIN,VMAX,IN1,IN2,PARMS,MAXN,NUMBER,VALS,TYPE);
+   INTEGER NUMBER,N1,N2,TYPE(MAXN);
+   REAL VMIN,VMAX,PARMS(10),VALS(MAXN);
+"
+	Routine to make value and type arrays for axis labels
+
+   INPUT:
+      VMIN,VMAX are input limits.
+      N1 is number of major intervals between (rounded) limits
+      N2 is intervals in 1 major interval (small ticks)
+   OUTPUT:
+      NUMBER counts output values ( (N1+1)*N2+1, or fewer)
+      VALS is output value array
+      TYPE is type array.  TYPE NEGATIVE -- SMALL TICK
+				POSITIVE -- LARGE TICK
+			 /TYPE/ 0 -- NO LABEL,NO TICK
+				1 -- NO LABEL
+			       12 -- HOURS LABEL
+"
+   $SPECIFICATION;
+      REAL VM(6,2);
+      DOUBLE PRECISION DT(5),T2TIMF;
+      PARAMETER (NROUN=7);
+      REAL ROUND(NROUN,6),FLIM(6,2),FSCAL(6);
+      INTEGER ILAB(6);
+   $EQUIVALENCE;
+   $DATA;
+   DATA ILAB/10,11,12,13,13,13/;
+   DATA FSCAL/3.1536E7,2.628E6,86400.,3600.,60.,1./;
+   DATA FLIM/ 0., 1., 1., 0., 0., 0.,
+	      1.,12.,31.,24.,60.,60./;
+   DATA ROUND/1.,2.,5.,10.,20.,25.,50.,
+	      1.,2.,4., 4., 6.,12.,13.,
+	      1.,2.,5.,10.,31.,31.,32.,
+	      1.,2.,5.,10.,20.,30.,61.,
+	      1.,2.,5.,10.,20.,30.,61.,
+	      1.,2.,5.,10.,20.,30.,61./;
+	"Set parameters"
+   FAC=PARMS(4);
+   IF (FAC.eq.0) FAC=1;
+   VMN=MIN(VMIN,VMAX); VMX=MAX(VMIN,VMAX);
+   DT(1)=FAC*VMN; DT(2)=FAC*VMX;
+   VDF=FAC*(VMX-VMN);
+	"Get limits on values"
+   <I=1,2; CALL T2NTIM(DT(I),VM(1,I),VM(2,I),VM(3,I),VM(4,I),VM(5,I),VM(6,I));>
+   N1=IAND(2**16-1,IABS(IN1));
+   N2=IAND(2**16-1,IABS(IN2));
+   IF (N1.eq.0) N1=$MAXMAJOR$;
+   IF (N2.eq.0) N2=$MAXMINOR$;
+   ITYPE1=ISIGN(2,IN1);
+   ITYPE2=ISIGN(1,IN2-1);
+   IF (VM(1,2)-VM(1,1) .GT. 99 .or.
+      VDF.lt.59) THEN;	"Large number of years ?"
+      J=1; IF (VDF.lt.60)J=6;
+      VM(6,2)=VM(6,1)+VDF;
+      CALL TDSLIN(VM(J,1),VM(J,2),N1,IN2,PARMS,MAXN,NUMBER,VALS,TYPE);
+      NUM=MIN(NUMBER,MAXN);
+      NUMBER=0;
+      <I=J,6; VM(I,1)=FLIM(I,1); >
+      <I=1,NUM;
+	 VM(J,1)=VALS(I);
+	 T=T2TIMF(VM(1,1),VM(2,1),VM(3,1),VM(4,1),VM(5,1),VM(6,1))/FAC;
+	 IF (T.ge.VMN.and.T.le.VMX) THEN;
+	    NUMBER=NUMBER+1;
+	    TYPE(NUMBER)=TYPE(I);
+	    IF (TYPE(NUMBER).eq.2) TYPE(NUMBER)=ILAB(J);
+	    VALS(NUMBER)=T;
+	 ENDIF;
+      >
+      RETURN;
+   ENDIF;
+   <I=1,6;
+      VDIF=VDF/FSCAL(I);
+      IF (VDIF.gt.N1.or.I.eq.6.or.VDIF.gt.4) THEN;
+	 I1=I;
+	 IF (NUMBER.le.0) NUMBER=0;
+	 V1DIF=AMAX1(1.0,VDIF/(N1+1));
+	 <J=1,NROUN-1;
+	    IF (V1DIF.gt.ROUND(J,I1).and.V1DIF.le.ROUND(J+1,I1))
+	       V1DIF=ROUND(J+1,I1);
+	 >
+	 IF (V1DIF.gt.1.0.or.I.eq.6) THEN;
+	    I2=I1; V2DIF=AMAX1(1.0,V1DIF/(N2+1));
+	 ELSE;
+	    I2=I+1;
+	    V2DIF=AMAX1(1.0,(FLIM(I2,2)-FLIM(I2,1))/(N2+1));
+	 ENDIF;
+	 <J=1,NROUN-1;
+	    IF (V2DIF.gt.ROUND(J,I2).and.V2DIF.le.ROUND(J+1,I2)) THEN;
+	       V2DIF=ROUND(J+1,I2);
+	       IF (I1.eq.I2) THEN;
+		 IF (AMOD(V1DIF,V2DIF).gt.0.1) V2DIF=ROUND(J+1,I2)+0.5;
+	       ENDIF;
+	    ENDIF;
+	 >
+	 <J=MAX(2,I2),6; VM(J,1)=FLIM(J,1); >
+	 DT(3)=DT(1);			"Starting point"
+	 <UNTIL> (DT(3).gt.DT(2)) <
+	    DT(3)=T2TIMF(VM(1,1),VM(2,1),VM(3,1),VM(4,1),VM(5,1),VM(6,1));
+	    CALL T2NTIM(DT(3),VM(1,2),VM(2,2),VM(3,2),VM(4,2),VM(5,2),VM(6,2));
+	    IF (DT(3).ge.DT(1) .and. DT(3).le.DT(2)) THEN;
+	       IF (VM(I1,2) .eq. FLIM(I1,1) .and.
+		   VM(I2,2) .eq. FLIM(I2,1)  ) THEN;
+		  <J=I1,1,-1;
+		     IF (VM(J,2).ne.FLIM(J,1).or.J.eq.1) THEN;
+			NUMBER=NUMBER+1;
+			IF (NUMBER.gt.MAXN) RETURN;
+			VALS(NUMBER)=DT(3)/FAC;
+			TYPE(NUMBER)=ILAB(J);
+			<EXIT>;
+		     ENDIF;
+		  >
+	       ELSEIF (AMOD(VM(I1,2),V1DIF) .eq. 0.0 .and.
+		  (VM(I2,2).eq.FLIM(I2,1) .or. I1.eq.I2)) THEN;
+		  NUMBER=NUMBER+1;
+		  IF (NUMBER.gt.MAXN) RETURN;
+		  VALS(NUMBER)=DT(3)/FAC;
+		  TYPE(NUMBER)=ILAB(I);
+	       ELSEIF (AMOD(VM(I2,2),V2DIF) .lt. 0.1) THEN;
+		  NUMBER=NUMBER+1;
+		  IF (NUMBER.gt.MAXN) RETURN;
+		  TYPE(NUMBER)=-1;
+		  VALS(NUMBER)=DT(3)/FAC;
+	       ENDIF;
+	    ENDIF;
+	    VM(I2,1)=VM(I2,1)+1;
+	 >
+	 RETURN;
+      ENDIF;
+   >
+END;
+%E  SUBROUTINE TDSLOG --- Make log labels
+SUBROUTINE TDSLOG(VMIN,VMAX,IN1,IN2,PARM,MAXN,NUMBER,VALS,TYPE);
+"
+	Sets up labels/ticks for Log plots
+	VMIN/VMAX	are limits for the ticks
+	IN1	= sum(2**leading digit)+2**10*decades for labels
+		< 0 generate exponential labels
+	IN2	= sum(2**leading digit)+2**10(sum 2**leading digit) for ticks
+		< 0 generate long ticks
+		For default ticks (N1=0 OR N2=0)
+		N1 and N2 lists are keyed by number of decades spanned.
+		eg, if 2 decades are spanned, N1=N1LIST(2)
+	PARM(1)	= Base of scale
+	MAXN	= Max number of ticks/labels
+	NUMBER	= Final number of ticks generated
+	VALS	= Values
+	TYPE	= Integer type of tick/label
+		= Negative -- small tick
+		= Positive -- long tick
+		= 1       -- no label
+		= 2       -- normal label
+		= 3       -- exponent
+		= 4       -- number between 1 and 10
+"
+   IMPLICIT NONE;
+   $SPECIFICATION;
+   INTEGER MAXN;
+   REAL VMIN,VMAX,VALS(MAXN),PARM(10);
+   INTEGER IN1,IN2,TYPE(MAXN),IDEC,ILABEL,NUMBER;
+   INTEGER I,J,IJ,JORDER,IT;
+   INTEGER N1,N2,N3,ITYPE1,ITYPE2,ITYPE3,ITDEC,MINORD,MAXORD,MOVORD,IMAX;
+   INTEGER LIST1(9),LIST2(9);
+   REAL WMIN,WMAX,FAC,BASE,BFAC,POWER,ORDER,VAL,VALUE;
+   $BOOLEAN LEXP,LZERO1;
+   $EQUIVALENCE;
+   $DATA;
+
+   INTEGER IHALF, ITWO, IFOUR, NIHALF;
+   PARAMETER ( IHALF  = 2**5 );
+   PARAMETER ( NIHALF = -IHALF ) ;
+   PARAMETER ( ITWO   = 2**2+2**5 ) ;
+   PARAMETER ( IFOUR  = 2**2+2**3+2**5+2**7) ;
+
+   INTEGER N1LIST(8)/2,IFOUR,ITWO,NIHALF,-1,-1,-1,-1/;
+   INTEGER N2LIST(8)/-2,-2,-2,-2,-2,-2,NIHALF,NIHALF/;
+   INTEGER N3LIST(8)/4,7*0/;
+"
+
+      N1 POSITIVE -- normal labels at indicated positions
+	 NEGATIVE -- EXPONENTIAL.  Type 3 if at decade edge, for
+		     exponent, type 4 between, for value from 1/10
+      N2 POSITIVE -- large tick at position, small at all integers
+	 NEGATIVE -- small tick at indicated position
+      /N1/=3 is undefined in the normal order of things, and is
+       used to handle plots of many decades.
+
+"
+   IF (SIGN(1.,VMIN).NE.SIGN(1.,VMAX)) GOTO :LINEAR:;	"Bad range ??"
+   IF (IAND(2**16,ABS(IN1)).ne.0)      GOTO :LINEAR:;	"Select linear ?"
+   N1=IAND(2**16-1,ABS(IN1));		"Labeled ticks"
+   LZERO1=N1.EQ.0;			"Was it zero ?"
+   N2=IAND(2**16-1,ABS(IN2));		"Unlabeled ticks"
+   N3=IABS(N2)/2**10;			"Subticks"
+   BASE=PARM(1);
+   IF (BASE.eq.0) BASE=10;
+   BFAC=1./ALOG10(BASE);
+   WMAX=ABS(VMAX); WMIN=ABS(VMIN);	"Abs value of limits"
+   IF (WMIN.GT.WMAX) THEN; WMIN=WMAX; WMAX=ABS(VMIN); ENDIF;
+   IF (WMIN.EQ.0.) GOTO :LINEAR:;
+	"Expand scale a little, to move points off edge"
+   FAC= (WMAX/WMIN)**0.001;
+   WMAX=WMAX*FAC; WMIN=WMIN/FAC;
+   IF (LZERO1 .OR. N2.EQ.0) THEN;		"Choose limits ?"
+      IDEC= INT(0.5 + ALOG10(WMAX/WMIN)*BFAC);	"Number of decades"
+      IF (IDEC.LE.0 .and. N2.eq.0 .and. LZERO1) GOTO :LINEAR:;	"Give up ?"
+      IDEC=MAX(IDEC,1);
+      IF (IDEC.GT.8) THEN;		"Too many decades to label each ?"
+	 IF (LZERO1)			"Skip decades ?"
+	    N1=-2**10*(($MAXMAJOR$+IDEC-2)/$MAXMAJOR$);
+      ELSE;	"Label each decade, at least"
+	 IF (LZERO1)  N1=N1LIST(IDEC);	"Default labels ?"
+	 IF (N2.EQ.0) THEN;			"Default ticks ?"
+	    N2=N2LIST(IDEC);		"Ticks"
+	    N3=N3LIST(IDEC);		"Subticks"
+	 ENDIF;
+      ENDIF;
+   ENDIF;
+:REPEAT:
+   LEXP=IN1.lt.0;				"Exp notation requested ?"
+   IF ( IAND(ABS(IN1),2**17).eq.0 .and.
+	(N1.lt.0 .or. (WMAX.GE.1.E6 .OR. WMIN.LT.1.E-5))) LEXP=.true.;
+   N1=ABS(N1);
+   ILABEL=0;
+
+"Find minimum and maximum powers of 'BASE' for AXIS"
+   ORDER=ALOG10(WMIN)*BFAC;
+   MINORD=INT(ORDER); IF (FLOAT(MINORD).GT.ORDER) MINORD=MINORD-1;
+   ORDER=ALOG10(WMAX)*BFAC;
+   MAXORD=INT(ORDER); IF (FLOAT(MAXORD).LT.ORDER) MAXORD=MAXORD+1;
+
+"
+	Do type values for tick (ITYPE2) and label (ITYPE1) positions
+	ITYPE1 is type for labelled ticks (except at decade).
+	ITDEC is used at decade.
+	ITYPE2 is used at unlabelled ticks.
+	TYPE=	NEGATIVE	-- SMALL TICK
+		POSITIVE	-- LONG TICK
+	/TYPE/=	1		-- NO LABEL
+		2		-- NORMAL LABEL
+		3		-- EXPONENT
+		4		-- NUMBER BETWEEN 1 AND 10
+"
+   ITYPE1=2;			"Label"
+   ITYPE2=-1;			"Small tick, no label"
+   ITYPE3=-1;			"Small tick, no label"
+   IF (LEXP) THEN;		"Exponentials ?"
+      ITDEC=3;			"Exp'l label"
+      ITYPE1=4;	"One-digit notation (for all labels except the"
+		"first of the decade, which will get type 3"
+   ELSE;
+      ITDEC=2;			"Normal label"
+   ENDIF;
+   ITYPE1=ISIGN(ITYPE1,IN2);	"Same size ticks with labels as without"
+   ITYPE2=ISIGN(ITYPE2,IN2-1);
+	"Length of normal ticks"
+   IF (N3.gt.0) THEN;		"Subticks ?"
+      ITYPE2=ISIGN(ITYPE2,IN2);
+   ENDIF;
+   IMAX=MIN(MAX(INT(BASE)-1,1),9);
+	"Set type for first point of each decade"
+
+   MOVORD=N1/2**10;	"How many to skip?"
+   IF (MOVORD.gt.1) THEN;	"Many decades"
+	"ROUND TO MULTIPLES OF MOVORD"
+      IF (MINORD.LT.0) MINORD= MINORD - (MOVORD-1);
+      MINORD= MOVORD*(MINORD/MOVORD);
+      IF (MAXORD.GT.0) MAXORD= MAXORD + (MOVORD-1);
+      MAXORD= MOVORD*(MAXORD/MOVORD);
+      IF (IN2.eq.0)N2=0;
+   ELSE; MOVORD=1; ENDIF;	"Each decade same ?"
+"Set up LIST1 and LIST2 to the arrays specified by N1 and N2"
+	"E.G. LIST1(I) IS 1 IF I NEED A LABEL AT I*10**N, ELSE 0"
+   CALL TDSLG1(N1,LIST1);
+   CALL TDSLG1(N2,LIST2);
+   LIST1(1)=ITYPE2;
+   <I=2,IMAX;
+      IF (LIST1(I).ne.0) THEN;
+	 LIST1(I)=LIST1(I)*ITYPE1;	"Labels ?"
+      ELSE;
+	 LIST1(I)=LIST2(I)*ITYPE2;	"Ticks  ?"
+      ENDIF;
+      IF (LIST1(I).ne.0) LIST1(1)=1;	"Either ?"
+   >
+	"If subinterval defined, then all decades have long ticks"
+   NUMBER=0;				"COUNT OUTPUT POINTS"
+   <JORDER=MINORD,MAXORD,MOVORD;
+      <IJ=1,MOVORD;
+	 POWER=BASE**(JORDER+IJ-1);
+	 IF (POWER.gt.WMAX) <EXIT>;
+	 <I=1,IMAX;
+	    VALUE= POWER*FLOAT(I);
+	    IF (VALUE.gt.WMAX) <EXIT>;
+	    IF (WMIN.le.VALUE) THEN;
+	       IF     (I+IJ.eq.2) THEN;
+		  IT=ITDEC;
+	       ELSE;
+		  IT= LIST1(I);
+	       ENDIF;
+	       IF (IT.NE.0) THEN;
+		  IF (ABS(IT).gt.1) ILABEL=ILABEL+1;
+		  NUMBER=NUMBER+1;
+		  IF (NUMBER.GT.MAXN) GOTO :TOO MANY TICKS:;
+		  VALS(NUMBER)=VALUE;TYPE(NUMBER)=IT;
+	       ENDIF;
+	    ENDIF;
+	    <J=1,N3;
+	       VAL=VALUE+J*POWER/(N3+1);
+	       IF (VAL.gt.WMAX) <EXIT>;
+	       IF (BETWEEN(WMIN,VAL,WMAX)) THEN;
+		  NUMBER=NUMBER+1;
+		  IF (NUMBER.GT.MAXN) GOTO :TOO MANY TICKS:;
+		  VALS(NUMBER)=VAL; TYPE(NUMBER)=ITYPE3;
+	       ENDIF;
+	    >
+	 >
+      >
+   >
+"
+	If too many labels adjust them
+"
+   IF (ILABEL.gt.$MAXMAJOR$ .and. LZERO1) THEN;
+      LZERO1=.false.;
+      IF (N1.eq.2)      THEN; N1=IFOUR; GOTO :REPEAT:; ENDIF;
+      IF (N1.eq.IFOUR)  THEN; N1=ITWO;  GOTO :REPEAT:; ENDIF;
+      IF (N1.eq.ITWO)   THEN; N1=IHALF; GOTO :REPEAT:; ENDIF;
+      IF (N1.eq.IHALF)  THEN; N1=-1;    GOTO :REPEAT:; ENDIF;
+      IF (N1.eq.1)      THEN; N1=-2**10*(1+(ILABEL-1)/$MAXMAJOR$);
+	 GOTO :REPEAT:; ENDIF;
+   ENDIF;
+:TOO MANY TICKS:
+   IF (WMAX.LT.0.) THEN; <I=1,MIN(NUMBER,MAXN); VALS(I)=-VALS(I);> ENDIF;
+:LINEAR:
+END;
+	"-------------------------------------------------"
+SUBROUTINE TDSLG1(N,LIST);
+
+"Translates tick or label flag (N) to LIST"
+
+   INTEGER LIST(9),N,NA,I,J;
+   NA=IABS(N);
+   IF (NA.EQ.2) NA=1023;		"2 MEANS ALL"
+   J=NA/4;				"Skip first 2 bits"
+   <I=2,9; LIST(I)=IAND(J,1); J=J/2;>	"1 IF BIT WAS ON,ELSE 0"
+   LIST(1)=1;
+END;
+%E  SUBROUTINE TDSMON --- Make month/year labels
+SUBROUTINE TDSMON(VMIN,VMAX,IN1,IN2,BASE,MAXN,NUMBER,VALS,TYPE);
+"
+	Month axes.
+"
+   REAL VMIN,VMAX,VALS(MAXN);
+   INTEGER IN1,IN2,TYPE(MAXN);
+   NUMBER= 0;
+   VMX= AMAX1(VMAX,VMIN);
+   IVMX=VMX;
+   IVMN= MIN1(VMAX,VMIN);
+   N1=IAND(2**16-1,IABS(IN1));
+   N2=IAND(2**16-1,IABS(IN2));
+   IF (N1.eq.0) N1=$MAXMAJOR$;
+   IF (N2.eq.0) N2=6;
+   ITYPE1=6-ISIGN(1,IN1);			"5 FOR >0, 7 FOR <0"
+   ITYPE2=ISIGN(1,IN2-1);
+   J1=MIN(MAX((IVMX-IVMN+1)/N1,1),12);
+   IF (J1.eq.5) J1=4;
+   IF (J1.gt.6.and.J1.lt.12) J1=6;
+   J2= MIN(MAX(J1/N2,1),12);
+   IF (J2.eq.5) J2=4;
+   IF (J2.gt.6.and.J2.lt.12) J2=6;
+   IVST= 1;
+   <IV= IVMN,IVMX,IVST;
+      IM=MOD(IV-1,12)+1; IF (IM.le.0) IM=IM+1;
+      I1=MOD(IV-1,J1); I2= MOD(IV-1,J2);
+      IF (I1*I2.EQ.0) THEN;			"JANUARY MOD J1"
+	 V= FLOAT(IV)+0.005;
+	 IF (V.gt.VMX) <NEXT>;
+	 NUMBER=NUMBER+1;
+	 IF (NUMBER.GT.MAXN) RETURN;
+	 VALS(NUMBER)= V;
+	 TYPE(NUMBER)= ITYPE2;			"Small tick"
+	 IF (I1.EQ.0) THEN;			"JANUARY MOD J2"
+	    IF (J1.eq.1) THEN;
+	       IF (V+0.155.gt.VMX) <NEXT>;
+	       NUMBER=NUMBER+1;
+	       IF (NUMBER.GT.MAXN) RETURN;
+	       VALS(NUMBER)= V+0.155;		"LABEL AT THE 15TH"
+	       TYPE(NUMBER)= -ITYPE1;
+	    ELSE;
+	       TYPE(NUMBER)= ITYPE1;
+	    ENDIF;
+	 ENDIF;
+      ENDIF;
+   >
+END;
+%E  SUBROUTINE TDSNRM --- Make numeric labels
+SUBROUTINE TDSNRM(VMIN,VMAX,IN1,IN2,PARMS,MAXN,NUMBER,VALS,TYPE);
+"
+	Handle normal scales
+"
+   REAL VMIN,VMAX,PARMS(10),VALS(*);
+   INTEGER MAXN,NUMBER,TYPE(*);
+   INTEGER I,IN1,IN2,ITYPE1,ITYPE2;
+   PARAMETER (NTABLE=10);
+   REAL TABLE(NTABLE);
+   REAL VMN,VMX,MEAN,SIGMA,T;
+   DOUBLE PRECISION DTEMP,DPOWER,DTEN,DTENTH,DVAL;
+   DATA DTEN/10.D0/,DTENTH/0.1D0/;
+   DATA TABLE /0.,.125,.25,.38,.52,.67,.84,1.04,1.28,1.64/;
+
+   N1=IAND(2**16-1,IABS(IN1));
+   IF (N1.EQ.0) N1=$MAXMAJOR$;
+   ITYPE1=ISIGN(2,IN1);
+   ITYPE2=ISIGN(1,IN2-1);
+   MEAN=PARMS(2); SIGMA=ABS(PARMS(3)); IF (SIGMA.EQ.0.) SIGMA=1.;
+   VMN=(VMIN-MEAN)/SIGMA; VMX=(VMAX-MEAN)/SIGMA;
+   IF (VMX.LT.VMN) THEN; T=VMX; VMX=VMN; VMN=T; ENDIF;
+   <I=1,NTABLE;
+      IF (ABS(VMN).GE.TABLE(I)) NINTMN=I-1;
+      IF (ABS(VMX).GE.TABLE(I)) NINTMX=I-1;
+   >
+   IF (VMN.LT.0.0) NINTMN=-NINTMN; IF (VMX.LT.0.0) NINTMX=-NINTMX;
+   NSTEP= (NINTMX-NINTMN)/N1 + 1;
+   NINT=NINTMN;
+	"MAKE SYMMETRIC AROUND 0 BY PUTTING 0 IN THE MIDDLE OF A STEP"
+      IF (NINT*NINTMX.LT.0) NINT=NSTEP*(NINT/NSTEP)-NSTEP/2;
+      IF (NINT.LE.-NTABLE) NINT=NINT+NSTEP;
+	"LAY EM OUT STARTING AT VALS(MAXN)=VMN FOR THE SMALLEST"
+      NUM=MAXN; VALS(NUM)=VMN;
+	"VALUES FOR FIRST STEP"
+      VX=VMN;
+	"HERE WE GO"
+      <LOOP> <
+	 VN=VX;
+	 IF (NINT.LE.NINTMX) THEN;
+	    I=IABS(NINT); VX=TABLE(I+1);
+	    IF (NINT.LT.0) VX=-VX;
+	    VX=VX*SIGMA+MEAN;
+	 ELSE;		"ONE MORE FOR LUCK"
+	    IF (NINT.GE.9999) <EXIT>; NINT=9999;
+	    VX=VMX;
+	 ENDIF;
+	 VAL=0.; DVAL=0.; HALF=0.5*(VN+VX);
+	 IF (VN.NE.0.0) THEN;
+	    L=ALOG10(ABS(VN));
+	    DPOWER=DTEN**L;
+	    <I=1,6;
+	       VAL=DVAL; POWER=DPOWER;
+	       J=(HALF-VAL)/POWER;
+	       DTEMP=J; DVAL=DVAL+DPOWER*DTEMP; VAL=DVAL;
+	       IF (VAL.LT.VN) VAL=VAL+POWER;
+	       IF (VAL.LT.VX) <EXIT>;
+	       DPOWER=DPOWER*DTENTH;
+	    >
+	 ENDIF;
+	 NINT=NINT+NSTEP; NUM=NUM-1; VALS(NUM)=VAL; TYPE(NUM)=ITYPE1;
+      >
+	"Now fill in the intermediate ticks"
+      NUMBER=0;
+      :FILL:
+      <NNN=NUM,MAXN;
+	 DIFF=VMX-VALS(NNN);
+	 IF (DIFF.LE.0.0) THEN; N=0;
+	 ELSE;
+	    L=ALOG10(DIFF);
+	    <LOOP> <
+	       STEP=10.**L; N=DIFF/STEP;
+	       IF (N.GE.2) <EXIT>;
+	       L=L-1;
+	    >
+	 ENDIF;
+	 IF ((N+0.1)*STEP.gt.DIFF) N=N-1;
+	 IF (NNN .ne. NUM) THEN;
+	    IF (NUMBER.GE.MAXN) RETURN;
+	    NUMBER=NUMBER+1; VALS(NUMBER)=VMX; TYPE(NUMBER)=ITYPE1;
+	 ENDIF;
+	 IF ( VMX .lt. 0 ) THEN;
+	    NM=N+1; VMX=VALS(NNN);
+	 ELSE;
+	    NM=0;
+	 ENDIF;
+	 <I=1,N;
+	    IF (NUMBER.GE.NNN) <EXIT>:FILL:;
+	    IF (NUMBER.GE.MAXN) RETURN;
+	    NUMBER=NUMBER+1;
+	    VALS(NUMBER)=VMX+(NM-I)*STEP; TYPE(NUMBER)=ITYPE2;
+	 >
+	 VMX=VALS(NNN);
+      >
+END;
+%E  SUBROUTINE TDSYR --- Make year labels
+SUBROUTINE TDSYR(VMIN,VMAX,IN1,IN2,PARM,MAXN,NUMBER,VALS,TYPE);
+"
+	YEAR AXES.
+"
+   REAL VMIN,VMAX,VALS(MAXN);INTEGER IN1,IN2,TYPE(MAXN);
+   REAL PARM(10);
+   REAL HATH(12);
+   REAL BASE(7);
+   DATA BASE/1.,2.,5.,10.,20.,50.,100./;
+   DATA HATH/0.,.031,.059,.090,.120,.151,.181,.212,.243,.273,.304,.334/;
+   VMX= AMAX1(VMAX,VMIN);
+   VMN= AMIN1(VMAX,VMIN);
+   VDIF= VMX-VMN;
+   N1=IAND(2**16-1,IABS(IN1));
+   N2=IAND(2**16-1,IABS(IN2));
+   IF (N1.EQ.0) N1=$MAXMAJOR$;
+   IF (N2.eq.0) N2=$MAXMINOR$;
+   ITYPE1=6;
+   ITYPE2=ISIGN(1,IN2-1);
+   VM= AMAX1(1.0,   AINT(1.0+(VDIF)/FLOAT(N1))    );
+   IF (VM.ge.50.5) RETURN;
+   <I=1,6; IF (VM.gt.BASE(I).and.VM.le.BASE(I+1)) VM=BASE(I+1); >
+   VN= AINT(VMN/VM);
+   V= VN*VM - VM;
+   IF (VM.le.1.5.or.IN2.ne.0.or.VDIF.le.18) V=V+ 0.183;
+   NUMBER= 0;
+   <UNTIL> (V.GT.VMX) <
+      IF (V.ge.VMN) THEN;
+	 NUMBER=NUMBER+1;
+	 IF (NUMBER.GT.MAXN) RETURN;
+	 VALS(NUMBER)= V;
+	 TYPE(NUMBER)=-6;
+      ENDIF;
+      V= V + VM;
+   >
+   JMAX=1;
+   IF (IN2.ne.0) THEN;
+      INC=MIN(MAX(12/IABS(N2),1),12);
+      IF (INC.eq.5) INC=6;
+      IF (INC.gt.6.) INC=12;
+      VM=1;
+   ELSE;
+      INC=12;
+      IF (VDIF.LE.18.) THEN; INC=6; VM=1; ENDIF;
+      IF (VDIF.LE.9.) INC=3;
+      IF (VDIF.le.6 )  INC=2;
+      IF (VDIF.Le.3.)  INC=1;
+   ENDIF;
+   VN= AINT(VMN/VM);
+   VN= VN*VM - VM;
+   IF (VM.gt.1) THEN; JMAX=VM; VM=1.0; ENDIF;
+   <UNTIL> (VN.GT.VMX) <
+      J=1;				"FIRST TICK IS LARGE"
+      <JJ=1,JMAX;
+	 <I=1,12,INC;
+	    V=VN+HATH(I);
+	    IF (V.GE.VMN.and.V.le.VMX) THEN;
+	       NUMBER=NUMBER+1;
+	       IF (NUMBER.GT.MAXN) RETURN;
+	       TYPE(NUMBER)=J;
+	       VALS(NUMBER)=V;
+	    ENDIF;
+	    J=ITYPE2;			"ALL OTHERS TICKS ARE SMALL"
+	 >
+      VN=VN+VM;
+      >
+   >
+END;
+%E  SUBROUTINE TDTICK --- Selects tick locations
+SUBROUTINE TDTICK(ISCAL,VMIN,VMAX,N1,N2,PARM,NUMBER,VALS,ITYPE);
+"
+	This routine is called to ask where to put tick marks.
+
+   INTEGER ISCAL,I1,I2,NUMBER,ITYPE(NUMBER);
+   REAL VMIN,VMAX,PARM(10),VALS(NUMBER);
+
+   INPUT VARIABLES
+	ISCAL	= SCALE TYPE ('N', FROM 'SET SCALE USER N') >=0
+	VMIN	= VALUE AT LEFT (BOTTOM) EDGE
+	VMAX	= VALUE AT RIGHT (TOP) EDGE
+	N1,N2	= VALUES FROM 'SET SCALE' COMMAND
+	PARM	= BASE,OFFSET... FROM 'SET SCALE' COMMAND
+   OUTPUT VARIABLES
+	NUMBER	= NUMBER OF TICKS TO MAKE
+	VALS	= ARRAY OF VALUES FOR TICK LOCATION
+	ITYPE	= TYPE OF TICK
+		 >0 BIG TICK
+		 <0 SMALL TICK
+		 +- 1 NO LABEL
+		 +- 2 NORMAL LABEL
+		 +- 3 BASE AND EXPONENT
+		 +- 4 FIRST DIGIT ONLY
+		 +- 5 3 Char month
+		 +- 6 Year
+		 +- 7 1 Char month
+		 +- 9 E format
+		 +- 8 G format
+		 +- 10 Month
+		 +- 11 Day
+		 +- 12 Hour:min:sec
+   this routine is to be coded by the user.
+"
+END;
+	"-------------------------------------------------"
+%E  FUNCTION TDFNCT --- Dummy - User scale function
+FUNCTION TDFNCT(VALUE,NUMBER);
+
+"Dummy function. To be overridden by user for axis scaling"
+
+   TDFNCT=VALUE;		"I DONT KNOW WHETHER TO GIVE AN ERROR"
+END;
+%E  SUBROUTINE T2CWTS  --- Set Color,width,texture
+SUBROUTINE T2CWTS(LSET,LSAVE);
+   $SPECIFICATION;
+   LSAVE=LINWID*8+LINTEX*64+LINCOL*512+IPATRN*4096;	"Save old value"
+   I=IAND(LSET/8,7);   IF (I.gt.0) LINWID=I;		"Set new value"
+   I=IAND(LSET/64,7);  IF (I.gt.0) LINTEX=I;
+   I=IAND(LSET/512,7); IF (I.gt.0) LINCOL=I;
+   IPATRN=MIN(MAX(IAND(LSET/4096,7),1),$PATN);
+END;

@@ -1,0 +1,21 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.18.15</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.18.15  SIXELS</H4></B>   - This  is  for the LA-50, LA-100, VT-240, LN-03 and
+any other device that uses sixel graphics.  The size is  about  10  by  8"
+except for an LA-100 which is 14 by 10.  To specify this device:
+     TD:<U>SET</U> <U>DEVICE</U> <U>SIXELS</U> <U>"type,options"</U>
+Where  type  is  LA50,  LA100,  VT240,  LN03,  LN03HI, LN03LO, or LN03MED.
+HI,LO,MED select the resolution for the LN-03 printer.  If you do not have
+lots of memory inside the LN-03 you shoule use LN03LO or possibly LN03MED.
+If you wish to get sixel output on a  Talaris  1590  printer  You  specify
+option LN03, and then print the file with /SET=LN03.
+                                  example
+     TD:<U>SET</U> <U>DEVICE</U> <U>SIXEL</U> <U>"LN03"</U>
+
+
+</PRE>
+</BODY>

@@ -1,0 +1,50 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.42</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.42  IF</H4></B> 
+
+<U>IF</U>|<U>IFN</U>OT [.AND.|.OR.] [.NOT.]
+          [<U>DA</U>TA] [<U>ER</U>ROR] [<U>IN</U>TERACTIVE] [<U>ME</U>SH]
+          [<U>TH</U>REE|<U>3D</U>] [value {.LT.|.EQ.|.GT.|.LE.|.NE.|.GE.} value]
+
+The  condition  is  tested and if satisfied the rest of the line up to the
+semicolon ";" is executed.  If not satisfied it is skipped.  If .AND.   or
+.OR.  are omitted .AND.  is assumed.
+
+<U>IF</U>|<U>IFN</U>OT [conditions] THEN
+          . . .
+<U>EL</U>SE
+          . . .
+<U>ENDI</U>F
+
+If  the  tested  condition  is satisfied lines up to the ENDIF or ELSE are
+executed.  Otherwise they are skipped.
+     1.  DATA - True if any data points are available.
+     2.  ERROR - This condition is true if the last line had an error.
+
+
+<A NAME="88">     3.  INTERACTIVE - True if the program is running interactively, False </A>
+         if it is run in BATCH mode.  The device you are using may or  may
+         not be interactive independent of the mode of operation.
+     4.  MESH - True if the data is (3D) mesh data.
+     5.  3D  -  True if 3D is turned on.  You should notice that mesh data
+         may be plotted as flat or 3D data.
+     6.  value - Any number or lexical.
+
+                                  Example
+     TD:<U>IF</U> <U>MESH</U> <U>PLOT;IFNOT</U> <U>MESH</U> <U>HISTOGRAM;</U>
+          or...
+     TD:<U>IF</U> <U>MESH</U> <U>THEN;PLOT;ELSE;HISTOGRAM;ENDIF;</U>
+If the current data is mesh data it is plotted as a scatter plot otherwise
+it is histogrammed.
+     TD:<U>IF</U> <U>3D</U> <U>.AND.</U>  <U>V_SUM</U> <U>.GT.</U>  <U>0</U> <U>HISTOGRAM</U>
+Histograms 3-d data if it is greater than zero.
+     TD:<U>IF</U> <U>V_SUM</U> <U>.GT.</U>  <U>0</U> <U>.OR.</U>  <U>V_SUM</U> <U>.LT.</U>  <U>-1</U> <U>.AND.</U>  <U>3D</U> <U>JOIN</U>
+Joins mesh data if the sum over the data is not between -1 and 0.
+
+
+</PRE>
+</BODY>

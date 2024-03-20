@@ -1,0 +1,551 @@
+%N
+%U+ TDMACROS.MOR
+%';SUBROUTINE'=';<RESET> <SET> ;"SUBROUTINE"'
+<SET>;                      "Ready for reset"
+%L
+" --------- START OF COORDINATE TRANSFORM PACKAGE  'T2XFRM' -----"
+%E  SUBROUTINE T2XFRM  --- Transform coordinates
+SUBROUTINE T2XFRM(NIN,NUM,VECIN,ISCAL,XFRM,NOUT,VECOUT);
+   INTEGER NIN,NOUT,ISCAL(4);
+   REAL VECIN(NIN,NUM),VECOUT(NOUT,NUM),XFRM(12);
+"
+   TRUE DIMENSION OF TRNSFRM IS (NIN+1,NIN)
+   VECIN IS INPUT VECTOR
+   VECOUT IS OUTPUT VECTOR
+   ISCAL IS INDICES FOR NON-LINEAR TRANSFORMATION
+     -1        VALUE
+     -2        ALOG10(VALUE)
+     -3        ALOG10(-VALUE)
+     -4        MONTHS
+     -5        YEARS
+    POSITIVE TDFNCT(VALUE,ISCAL)
+\
+   THE TRANSFORMATION MATRIX GIVES
+			NIN
+      V'(I) = XF(0,I) + SUM XF(J,I)*V(J)
+			J=1
+   WHERE XF IS IN XFRM AS
+      XF(0,1), (1,1), (2,1), (3,1), (0,2), (1,2), ETC.
+\
+   IN ADDITION, FOR PROJECTION FROM 3-D DOWN TO 2-D, A FINAL
+   TRANSFORMATION IS MADE
+                          V''(I) = V'(I)/V'(3)    FOR I=1,2
+"
+   $SPECIFICATION;
+   REAL VEC(3),VEC2(3); "DEC FIRST, FOR AMOD"
+   INTEGER IDAYS(12);
+   DATA IDAYS/0,31,59,90,120,151,181,212,242,273,303,334/;
+
+   "GO"
+   <I=1,3; VEC(I)=0; VEC2(I)=0; >
+   <NPT=1,NUM;        "ONE POINT AT A TIME"
+      <I=1,NIN; VEC(I)=VECIN(I,NPT);>
+	 "NON-LINEAR TRANSFORMATION"
+      <I=1,NIN;
+	 IF (ISCAL(I).LT.0) then;
+	    <CASE> -ISCAL(I) <OF> :LINEAR:,:LOG:,:NEG LOG:,
+		  :MONTH:,:YEAR:,:NORMAL:,:SEC:,:POWER: <
+	       :LINEAR: <DO NOTHING;>
+	       :LOG: <
+		     IF (VEC(I).GT.0.)
+		     THEN; VEC(I)=ALOG10(VEC(I));
+		     ELSE; VEC(I) = -10000.; ENDIF;
+	       >
+	       :NEG LOG: <
+		     IF (VEC(I).LT.0.)
+		     THEN; VEC(I)=ALOG10(-VEC(I));
+		     ELSE; VEC(I) = 10000.; endif;
+	       >
+	       :YEAR: <
+		  T=MIN(MAX(VEC(I),-1.0E9),1.0E9);  "Limit number of years"
+		  JYEAR = T; IF(T.lt.JYEAR) JYEAR=JYEAR-1;
+		  LEAPS = (JYEAR+3)/4;              "Number of leap years"
+		  PART = 1000*(T-JYEAR)-1;          "Days+Leap days"
+		  VEC(I) = JYEAR*365. + PART+LEAPS; "Total number of days"
+	       >
+	       :MONTH: <"0=DEC, 1=JAN, 2=FEB,...,11=NOV,12=DEC, ETC"
+		  T     = VEC(I);
+		  MONTH = T;                    "Month number"
+		  IF (MONTH.gt.T) MONTH=MONTH-1;
+		  PART  = 100*(T-.005-MONTH);   "Days"
+		  JYEAR = (MONTH-1)/12;         "Number of years"
+		  LEAPS = (MONTH+9)/48;         "Number of leap months/days"
+		  MONTH = MOD(MONTH-1,12)+1;    "Current month"
+		  IF (MONTH.le.0) THEN;         "Negative months"
+		     MONTH=MONTH+12; JYEAR=JYEAR-1;
+		  ENDIF;
+		  J=JYEAR*365+IDAYS(MONTH)+LEAPS; "Extra days"
+		  VEC(I) = PART+J;              "Total number of days"
+	       >
+	       :NORMAL: <
+		  VEC(I)=T2FRQF((VEC(I)-SCLPRM(2,I))/SCLPRM(3,I));
+	       >
+	       :SEC: < CONTINUE; >
+	       :POWER: <
+		  TEMP=VEC(I);
+		  VEC(I)=SIGN(ABS(TEMP)**SCLPRM(4,I),TEMP);
+	       >
+	    >
+	 ELSE;
+	    VEC(I)=TDFNCT(VECIN(I,NPT),SCLPRM(1,I));  "USER SCALE"
+	 endif;
+      >
+      "POLAR COORDS?"
+      IF (ISCAL(4).NE.0 .AND. $POLAR) then;
+	 THET1=VEC(1)*RADANG;
+	 RAD = VEC(2);
+	 IF(FLAGS(91)) THEN;      "Spherical coord ?"
+	    PHI1 =VEC(3)*RADANG;
+	    VEC(1)=RAD*COS(THET1)*SIN(PHI1);  "X"
+	    VEC(2)=RAD*SIN(THET1)*SIN(PHI1);  "Y"
+	    VEC(3)=RAD*COS(PHI1);             "Z"
+	 ELSE;
+	    VEC(1)=RAD*COS(THET1);  "X"
+	    VEC(2)=RAD*SIN(THET1);  "Y"
+	 endif;
+      endif;
+      "ROTATE IN NIN-SPACE"
+      M=0;
+      <I=1,NIN;
+	 M=M+1; SUM=XFRM(M);
+	 <J=1,NIN; M=M+1; SUM=SUM+XFRM(M)*VEC(J);>
+	 VEC2(I)=SUM;
+      >
+	"FINAL PROJECTION"
+      TEMP=1.0;
+      IF (NIN.GT.NOUT.and.VEC2(NIN).ne.0) TEMP=VEC2(NIN);
+      <I=1,NOUT; VECOUT(I,NPT)=VEC2(I)/TEMP;>
+   >
+   RETURN; END;
+%E  SUBROUTINE T2IFRM --- Transform backwards
+SUBROUTINE T2IFRM(NIN,NUM,VECIN,ISCAL,XFRM1,NOUT,VECOUT);
+   INTEGER NIN,NOUT,ISCAL(4);
+   REAL XFRM1(12);
+   REAL VECIN(NIN,NUM),VECOUT(NOUT,NUM),XFRM(12);
+  "TRUE DIMENSION OF TRNSFRM IS (NIN+1,NIN)
+   VECIN IS INPUT VECTOR
+   VECOUT IS OUTPUT VECTOR
+   ISCAL IS INDICES FOR NON-LINEAR TRANSFORMATION
+     -1        VALUE
+     -2        ALOG10(VALUE)
+     -3        ALOG10(-VALUE)
+     -4        MONTHS
+     -5        YEARS
+    POSITIVE TDFNCT(VALUE,ISCAL)
+\
+   THE TRANSFORMATION MATRIX GIVES
+			NIN
+      V'(I) = XF(0,I) + SUM XF(J,I)*V(J)
+			J=1
+   WHERE XF IS IN XFRM AS
+      XF(0,1), (1,1), (2,1), (3,1), (0,2), (1,2), ETC.
+\
+   IN ADDITION, FOR PROJECTION FROM 3-D DOWN TO 2-D, A FINAL
+   TRANSFORMATION IS MADE
+			  V''(I) = V'(I)/V'(3)    FOR I=1,2
+  "
+   $SPECIFICATION;
+   REAL VEC(3),VEC2(3),LEAPYR,REGYR; "DEC FIRST, FOR AMOD"
+   REAL DAYS(13);
+   DATA DAYS/0.,31.,59.,90.,120.,151.,181.,212.,242.,273.,303.,334,1000./;
+   M = NOUT; N=0;
+   <I=1,NOUT;
+      N=N+1;  XFRM(I)=XFRM1(N);              "Get translation"
+      <J=1,nout;
+	 M=M+1; N=N+1;
+	 XFRM(M)=XFRM1(N);                    "Get rotation"
+      >
+   >
+   IF(NOUT.eq.3 .and. XFRM(10).eq.0 .and.
+      XFRM(11).eq.0 .and. XFRM(12).eq.0) XFRM(12)=1;
+   CALL T2MINV(XFRM(NOUT+1),NOUT,DET);          "Invert it"
+   <NPT=1,NUM;        "ONE POINT AT A TIME"
+      "FINAL PROJECTION"
+      <I=1,NIN; VEC2(I)=VECIN(I,NPT);>
+      IF (NIN.NE.NOUT) THEN;
+	 VEC2(3)=XFRM(3);
+	 VEC2(1)=VEC2(1)*VEC2(3);
+	 VEC2(2)=VEC2(2)*VEC2(3);
+      endif;
+      "ROTATE IN NOUT-SPACE"
+      M=0;
+      <I=1,NOUT; M=M+1; VEC2(I)=VEC2(I)-XFRM(M);>
+      <I=1,NOUT;
+	 SUM=0;
+	 <J=1,NOUT; M=M+1; SUM=SUM+XFRM(M)*VEC2(J);>
+	 VEC(I) = SUM;
+      >
+      "POLAR COORDS?"
+      IF (ISCAL(4).NE.0 .AND. $POLAR) then;
+	 RAD2 = SQRT(VEC(1)**2+VEC(2)**2);
+	 THET1 = ATAN2(VEC(2),VEC(1))/RADANG;
+	 IF(FLAGS(91))THEN;    "Spherical coord ?"
+	    RAD3 = SQRT(VEC(1)**2+VEC(2)**2+VEC(3)**2);
+	    VEC(3)= ATAN2(RAD2,VEC(3))/RADANG;
+	    VEC(2) = RAD3;
+	    VEC(1) = THET1;
+	 ELSE;
+	    VEC(2) = RAD2;
+	    VEC(1) = THET1;
+	 ENDIF;
+      endif;
+      <I=1,NOUT;
+      "NON-LINEAR TRANSFORMATION"
+	 IF (ISCAL(I).LT.0) then;
+	    <CASE> -ISCAL(I) <OF> :LINEAR:,:LOG:,:NEG LOG:,
+		  :MONTH:,:YEAR:,:NORMAL:,:SEC:,:POWER: <
+	       :LINEAR: <DO NOTHING;>
+	       :LOG: <
+		     VEC(I) = 10**VEC(I);	" Inverse of log"
+	       >
+	       :NEG LOG: <
+		     VEC(I) = -10**VEC(I);	" Inverse of log"
+	       >
+	       :YEAR: <
+		  LEAPS=(AINT(VEC(I))+1095)/1461;  "Leap years"
+		  T=VEC(I)-LEAPS;
+		  JYEAR=T/365;  "Number of years"
+		  PART=T-JYEAR*365;     "DAys left over"
+		  IF (PART.lt.0) THEN; PART=PART+365; JYEAR=JYEAR-1; ENDIF;
+		  VEC(I)=JYEAR+(PART+1)*0.001;   "Final YEAR/day"
+	       >
+	       :MONTH: <"0=DEC, 1=JAN, 2=FEB,...,11=NOV,12=DEC, ETC"
+		  T=VEC(I);
+		  LEAPS = T/1155; T=T-LEAPS;
+		  JYEAR = T/365;
+		  PART =  T-365*JYEAR;
+		  IF (PART.lt.0) THEN; PART=PART+365; JYEAR=JYEAR-1; ENDIF;
+		  MONTH= 1;
+		  JMIN=(PART+20)/30.; JMIN=MIN(MAX(JMIN,1),12);
+		  <J=JMIN,11;
+		     IF (PART.ge.DAYS(J).and.PART.lt.DAYS(J+1)) THEN;
+			PART=PART-DAYS(J);
+			MONTH=J; <EXIT>;
+		     ENDIF;
+		  >
+		  VEC(I)= (PART+.5)*0.01+MONTH+JYEAR*12;
+	       >
+	       :NORMAL: <
+		  XMIN=XYZLIM(I,1); XMAX=XYZLIM(I,2);
+		  YMIN=T2FRQF((XMIN-SCLPRM(2,I))/SCLPRM(3,I));
+		  YMAX=T2FRQF((XMAX-SCLPRM(2,I))/SCLPRM(3,I));
+		  T=VEC(I);
+		  <J=1,6;
+		     IF (ABS(YMAX-YMIN).le.$DELTA*T) <EXIT>;  "Done ?"
+		     X=(T-YMIN)*(XMAX-XMIN)/(YMAX-YMIN);      "New X ?"
+		     Y=T2FRQF((T-SCLPRM(2,I))/SCLPRM(3,I));
+		     IF (Y.gt.T) THEN; XMAX=X; YMAX=Y;   "Too large ??"
+				 ELSE; XMIN=X; YMIN=Y; ENDIF;
+		  >
+		  IF (ABS(VEC(I)-XMIN).lt.ABS(VEC(I)-XMAX)) THEN;
+		     VEC(I)=XMIN;
+		  ELSE; VEC(I)=XMAX;
+		  ENDIF;
+	       >
+	       :SEC: < CONTINUE; >
+	       :POWER: <
+		  TEMP=VEC(I);
+		  VEC(I)=SIGN(ABS(TEMP)**(1/SCLPRM(4,I)),TEMP);
+	       >
+	    >
+	 ELSE;
+	    VEC(I) = TDFNCT(VECIN(I,NPT),-ISCAL(I));  "USER SCALE"
+	 ENDIF;
+      >
+      <I=1,NOUT; VECOUT(I,NPT)=VEC(I);>;
+   >
+   RETURN; END;
+%E  SUBROUTINE T2CROS  --- Cross product
+SUBROUTINE T2CROS(A,B,C);
+   "CROSS PRODUCT C = A X B"
+   REAL A(3),B(3),C(3);
+   C(1)=A(2)*B(3)-A(3)*B(2);
+   C(2)=A(3)*B(1)-A(1)*B(3);
+   C(3)=A(1)*B(2)-A(2)*B(1);
+   RETURN; END;
+%E  FUNCTION T2FRQF  --- Normal function
+REAL FUNCTION T2FRQF(T);
+   REAL A(6),SQT2;
+      DATA A/0.070523078,.042282012,.009270527 ,.000152014 ,
+      .000276567 ,.000043064 /;
+      DATA SQT2/ 1.414214/;
+   TT=ABS(T)/SQT2;
+   SUM=TT*(A(1)+TT*(A(2)+TT*(A(3)+TT*(A(4)+TT*(A(5)+TT*A(6))))))+1.0;
+   IF (SUM.GT.10.0) then; T2FRQF=0.0;
+   ELSE; T2FRQF = 0.5/SUM**16; ENDIF;
+   IF (T.GT.0.) T2FRQF = 1.0-T2FRQF;
+   RETURN; END;
+%E  SUBROUTINE T2MPRJ  --- Generate matrix 3d to 2d
+SUBROUTINE T2MPRJ(XYLIM,XFRM);
+   REAL XYLIM(2,2),XFRM(12);
+   "ROUTINE TO GENERATE TRANSFORMATION MATRIX FROM 3D TO 2D"
+      "THIS ROUTINE IS TAKEN DIRECTLY FROM CODE BY
+       BOB BEACH FOR THE SLAC UNIFIED GRAPHICS SYSTEM.
+       SEE THE U.G. WRITEUP FOR A DERIVATION OF THE
+       MATRIX FORMALISM OF THE TRANSFORMATION."
+\
+   $SPECIFICATION;
+      REAL VECT1(3),VECT(3),UDIR(3),VDIR(3),HDIR(3),XHAT(3);
+   $EQUIVALENCE;
+   $DATA;
+      DATA XHAT/1.,0.,0./;
+\
+   FLAGS(61)=.FALSE.;
+   IF (FLAGS(56)) THEN;       " 3D  Massage input ?"
+      T0=MAX(WORLD(1),MAX(WORLD(2),WORLD(3)));
+      T1=(WINDOW(3)-WINDOW(1))/T0;
+      T2=(WINDOW(4)-WINDOW(2))/T0;
+      T=MIN(MAX(.01,MIN(T1,T2)),100.);    ".01 < T < 100"
+	 "DISTANCE"
+	    CEYEDIS=EYEDIS;
+	    IF (EYEDIS.LT.0.) CEYEDIS=ABS(EYEDIS)*REDUCE(2);
+	 "SCRD"
+	    IF (SCRD.LE.0.) THEN; CSCRD=1.86*ABS(SCRD)*T;
+			    ELSE; CSCRD=SCRD; ENDIF;
+	 "VERTCL (AND UDIR=VERTCL)"
+	    IF ((ABS(VERTCL(1))+ABS(VERTCL(2))+ABS(VERTCL(3))).EQ.0.0) THEN;
+	       UDIR(1)=0.; UDIR(2)=0.; UDIR(3)=1.;
+	    ELSE;
+	       <I=1,3; UDIR(I)=VERTCL(I);>
+	    ENDIF;
+	 "EYEDIR (AND VDIR=-EYEDIR)"
+	    IF (.NOT.FLAGS(55) .OR.
+	       (ABS(EYEDIR(1))+ABS(EYEDIR(2))+ABS(EYEDIR(3))).EQ.0.) THEN;
+		  "VECT GETS VERT X X-HAT (OR Z-HAT)"
+	       CALL T2CROS(UDIR,XHAT,VECT);
+	       IF (ABS(VECT(1))+ABS(VECT(2))+ABS(VECT(3))
+		  .EQ.0.0) VECT(3)=1.;
+		  "HDIR GETS VECT X VERTCL"
+	       CALL T2CROS(VECT,UDIR,HDIR);
+		  "SINE & COSINE OF EULER ANGLES"
+	       SINTH= SIND(TTHETA); COSTH= COSD(TTHETA);
+	       SINPH=-SIND(TPHI  ); COSPH=-COSD(TPHI  );
+		  "AND FINALLY THE VUE DIRECTION"
+	       IF (REVLEV.lt.2.0) THEN;
+		  T=SINTH; SINTH=COSTH; COSTH=T;
+	       ENDIF;
+	       <I=1,3;
+		  VDIR(I) = COSPH*UDIR(I) +
+		     SINPH*(COSTH*HDIR(I) + SINTH*VECT(I));
+		  VECT1(I)= SINPH*UDIR(I) -
+		     COSPH*(COSTH*HDIR(I) + SINTH*VECT(I));
+	       >
+	       CALL T2CROS(VDIR,VECT1,VECT);
+	    ELSE;
+	       <I=1,3; VDIR(I)=-EYEDIR(I);>
+	       CALL T2CROS(UDIR,VDIR,VECT);
+	    ENDIF;
+	 "CENTER POINT IN WORLD SYSTEM"
+	    <I=1,3;
+	       IF (ABS(VUECEN(I)).GT.1000.)
+		  VUECEN(I)=0.5*WORLD(I);
+	    >
+      "GENERATE THE COORDINATE SYSTEM"
+	 "MAKE VECT= UDIR X VDIR,  IE VERTCL X VDIR"
+	    IF (ABS(VECT(1))+ABS(VECT(2))+
+		  ABS(VECT(3)) .EQ. 0.) THEN; "GOT 0. USE X-Y PLANE"
+	       IF (ABS(VDIR(1)) + ABS(VDIR(2)) .NE.0.0) THEN;
+		  VECT(3)=1.0;
+	       ELSE; VECT(2)=1.0; ENDIF;
+	    ENDIF;
+	 "MAKE UDIR=VDIR X VECT"
+	    CALL T2CROS(VDIR,VECT,UDIR);
+	 "NORMALIZE VDIR AND UDIR TO UNIT LENGTH"
+	    TVR1=SQRT(VDIR(1)**2+VDIR(2)**2+VDIR(3)**2);
+	    TVR2=SQRT(UDIR(1)**2+UDIR(2)**2+UDIR(3)**2);
+	    <I=1,3;
+	       VDIR(I)=VDIR(I)/TVR1;
+	       UDIR(I)=UDIR(I)/TVR2;
+	       "SAV VDIR IN COMMON"
+		  VUEDIR(I)=VDIR(I);
+	    >
+	 "MAKE HDIR=VDIR X UDIR"
+	    CALL T2CROS(VDIR,UDIR,HDIR);
+      "GENERATE THE PROJECTIVE TRANSFORMATION."
+	 TVR1=(WINDOW(3)-WINDOW(1))/(XYLIM(1,2)-XYLIM(1,1));
+	 TVR2=(WINDOW(4)-WINDOW(2))/(XYLIM(2,2)-XYLIM(2,1));
+	 TVR3=(TVR1*0.5*(XYLIM(1,2)+XYLIM(1,1))+EYESEP)/
+	     (TVR1*CSCRD);
+	 TVR4=(0.5*(XYLIM(2,2)+XYLIM(2,1)))/CSCRD;
+	 <I=1,3;
+	    XFRM(I+1)=HDIR(I)/TVR1+VDIR(I)*TVR3;
+	    XFRM(I+5)=UDIR(I)/TVR2+VDIR(I)*TVR4;
+	    XFRM(I+9)=VDIR(I)/CSCRD;
+	    EYEPNT(I)=VUECEN(I)-VDIR(I)*CEYEDIS+EYESEP*HDIR(I);
+	 >
+	 <I=1,9,4;
+	    XFRM(I)=-XFRM(I+1)*EYEPNT(1)-XFRM(I+2)*EYEPNT(2)
+		-XFRM(I+3)*EYEPNT(3);
+	 >
+   ELSE;     "2D"
+      <I=1,12; XFRM(I)=0.;>
+      XFRM(2)=(XYLIM(1,2)-XYLIM(1,1))/WORLD(1);
+      XFRM(1)=XYLIM(1,1);
+      XFRM(7)=(XYLIM(2,2)-XYLIM(2,1))/WORLD(2);
+      XFRM(5)=XYLIM(2,1);
+      XFRM(9)=1.;
+      VUEDIR(1)=0.; VUEDIR(2)=0.; VUEDIR(3)=-1.;
+      EYEPNT(1)=0.; EYEPNT(2)=0.; EYEPNT(3)=18.;
+   ENDIF;
+   RETURN; END;
+%E  SUBROUTINE T2AXST  -- Choose longer axes
+SUBROUTINE T2AXST(XYZWRL,IXYZ,IAX2,IAX3,COSTX);
+   IMPLICIT NONE;
+   INTEGER IXYZ,IAX2,IAX3;
+   REAL XYZWRL(3),COSTX;
+"
+	Routine to examine projections of the axes at XYZWRL, and
+	choose IAX2 and IAX3 so the projection of IAX2 is longer.
+	INPUT:	IXYZ (1,2,3) The axis to check on X,Y,Z
+
+	OUTPUT:	IAX2 - The X,Y,Z axis to align the ticks,labels along
+			If the projection of IXYZ is zero,
+			IAX2 is negative.
+		IAX3 - The axis perp. to labels, ticks
+		COSTX -The direction to write along IXYZ axis.
+	
+	Modified by J. CLement to make it indep of Stereo projection.
+"
+   $SPECIFICATION;
+   $EQUIVALENCE;
+   $DATA;
+   INTEGER I,J;
+   REAL XYZ(3,4),XY(3),T2_DOT;
+						"MAKE FIRST ARBITRARY CHOICE"
+   IAX2=IXYZ-1; IF (IAX2.EQ.0) IAX2=3; IAX3=6-IXYZ-IAX2;
+
+   <J=1,4; <I=1,3; XYZ(I,J)=0; > >
+   <I=1,3;	XYZ(I,4)=XYZWRL(I)-EYEPNT(I);	"Vector along view"
+		XYZ(I,I)=1;			"Unit vect along axis"
+   >
+	"Now take dot product of axis with view point"
+   <I=1,3; XY(I)=T2_DOT(XYZ(1,I),XYZ(1,4),3); >
+	"Compare Lengths of projections"
+	"Smallest dot has longest projection"
+   IF (ABS(XY(IAX3)) .lt. ABS(XY(IAX2)) ) THEN;	"3 longer than 2?"
+	 I=IAX2; IAX2=IAX3; IAX3=I;
+   ENDIF;
+	"Set view direction"
+   IF(XYZWRL(IAX2)-VUECEN(IAX2).gt.0) COSTX=-1.0;
+   IF (XY(IAX3) .eq. 0) THEN;			"Axis along view ???"
+	 IAX2=-IAX2;
+   ENDIF;
+   RETURN;
+END;
+%E  SUBROUTINE T2XMUL --- Product of 2 transforms
+SUBROUTINE T2XMUL(X1,X2,N,X3);
+   INTEGER N; REAL X1(12),X2(12),X3(12);
+  "TRUE DIMENSION OF TRANSFORM MATRICES IS (N+1,N).
+   THIS ROUTINE GIVES THE PRODUCT OF 2 TRANSFORMS,
+     X3=X1*X2
+  "
+   J3=0; NP1=N+1; MAX=N*NP1;
+   <I=1,MAX,NP1;
+      <K1=1,4;
+	 SUM=0.;
+	 J1=I; J2=K1;
+	 <J=1,3; J1=J1+1; SUM=SUM+X1(J1)*X2(J2); J2=J2+NP1;>
+	 J3=J3+1; X3(J3)=SUM;
+   >  >
+   <K=1,MAX,NP1; X3(K)=X3(K)+X1(K);>
+END;
+%E  SUBROUTINE T2MINV  --- Matrix inversion routine
+%FORTRAN
+	SUBROUTINE T2MINV(ARRAY,N,DET)
+C
+C  MATRIX INVERSION ROUTINE--BEVINGTON,P.302
+C
+C  ARRAY IS THE SQUARE,SYMMETRIC MATRIX TO BE INVERTED
+C  N IS THE ORDER, DET IS THE CALCULATED DETERMINANT
+C  THE INVERTED MATRIX REPLACES THE ORIGINAL ONE
+C
+c	This routine has been optimized for virtual memory
+c
+      IMPLICIT	REAL*4 (A-H, O-Z)
+      INTEGER    NMAX
+      PARAMETER (NMAX=50)			! MAX NUMBER OF TERMS
+      DIMENSION	ARRAY(N,N)
+      DIMENSION IK(NMAX),JK(NMAX)
+
+      IF (N .gt. NMAX) THEN
+          CALL T2STOP('-Array dimension larger than 50 in MATINV')
+      ENDIF
+
+      DET  = 1.
+
+      DO 10 I = 1,N
+          IK(I) = 0
+   10 JK(I) = 0
+
+      DO 100 K	= 1,N
+C
+C  FIND LARGEST ELEMENT,REORDER SO IT IS ON THE DIAGONAL
+C  PARTIAL PIVOTING
+C
+          AMAX      = 0.0
+          DO 30 J      = K,N
+          DO 30 I      = K,N
+              IF(ABS(AMAX) .le. ABS(ARRAY(I,J))) THEN      ! Larger element ?
+                  AMAX      = ARRAY(I,J)
+                  IK(K)      = I
+                  JK(K)      = J
+              ENDIF
+   30    CONTINUE
+         IF(AMAX .eq. 0.) THEN                  ! Matrix element too small ?
+             DET      = 0.
+             RETURN
+         ENDIF
+         I      = IK(K)
+         IF(I.ne.K) THEN                        ! Not Current col ?
+              DO 50 J      = 1,N                ! Reorder columns
+                  SAVE      = ARRAY(K,J)
+                  ARRAY(K,J)      = ARRAY(I,J)
+   50             ARRAY(I,J)      = -SAVE
+         ENDIF
+         J      = JK(K)
+         IF(J.ne.K) THEN                        ! Not Current row ?
+             DO 60 I      = 1,N                 ! Reorder rows
+                 SAVE      = ARRAY(I,K)
+                 ARRAY(I,K)      = ARRAY(I,J)
+   60            ARRAY(I,J)      = -SAVE
+          ENDIF
+
+C  DIAGONALIZE MATRIX
+
+          DO 70 I      = 1,N
+              IF(I .ne. K) ARRAY(I,K)      = -ARRAY(I,K)/AMAX
+   70     CONTINUE
+          DO 80 J      = 1,N
+          DO 80 I = 1,N
+              IF(J.ne.K.and.I.ne.K)
+     1        ARRAY(I,J)      = ARRAY(I,J)+ARRAY(I,K)*ARRAY(K,J)
+   80     CONTINUE
+          ARRAY(K,K)      = 1.
+          DO 90 J      = 1,N
+              ARRAY(K,J)      = ARRAY(K,J)/AMAX
+   90     CONTINUE
+  100 DET = DET * AMAX
+C
+C  RESTORE ORDERING OF MATRIX
+C
+  101 DO 130 L = 1,N
+          K  = N-L+1
+          J  = IK(K)
+          IF(J.gt.K) THEN                  ! Reorder ?
+              DO 110 I      = 1,N
+                  SAVE      = ARRAY(I,K)
+                  ARRAY(I,K)      = -ARRAY(I,J)
+110           ARRAY(I,J)      = SAVE
+           ENDIF
+           I = JK(K)
+           IF(I.gt.K) THEN                  ! Reorder ?
+               DO 120 J      = 1,N
+                   SAVE      = ARRAY(K,J)
+                   ARRAY(K,J)      = -ARRAY(I,J)
+120            ARRAY(I,J)      = SAVE
+           ENDIF
+130   CONTINUE
+
+      END
+%MORTRAN
+" ----------------- END OF 'T2XFRM' PACKAGE ----------------"

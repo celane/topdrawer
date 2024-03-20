@@ -1,0 +1,42 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.39.1</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.39.1  Options</H4></B>  - 
+
+     1.  X,Y,Z - The data to plot
+     2.  U,V,W - Auxiliary coordinate data
+     3.  DX,DY,...DW  -  The error on the data as half width for the error
+         bars.
+     4.  NDX,NDY,...NDW  -  The  negative  half  of the error bar.  If not
+         defined then it is the same as the error (DX...).
+     5.  RX,RY,...NRX,...NDW - Errors given relative to the central value.
+         (DX=RX*X)
+     6.  RADIUS,DRADIUS,THETA,DTHETA  - Polar coordinates are also enabled
+         for the current plot.
+     7.  PHI,DPHI  -  Spherical  coordinates  are  enabled for the current
+         plot.
+     8.  RRADIUS,RTHETA,RPHI  -  Errors given relative to a central value.
+         If PHI is used SPHERICAL is enabled, otherwise POLAR is enabled.
+     9.  SYMBOL  - The symbol to plot.  This should not be the first item.
+         If you need to have the symbol first, then you must use the  READ
+         POINTS command, or omit the symbol for the first data point.
+    10.  DUMMY  -  Specifies  this entry is a dummy and should be ignored.
+         If n is specified then n entries are ignored.  Only  numbers  are
+         ignored.
+    11.  fctr - Is a scale factor to multiply the data by when it is read.
+         (Default:1.0)
+    12.  PACKED  -  Specifies  that  dats is in packed format with several
+         points per line and no semicolons ";" between them.
+    13.  PERMANENT - Specifies that this order is permanent until the next
+         SET ORDER command.
+
+(Default:X 1.0,Y 1.0,DX 1.0,DY 1.0,SYMBOL)
+
+If  this  command  is  used  without any options other than PERMANENT, the
+order is set to the default.  Numeric fields preceding the symbol  may  be
+onitted.
+</PRE>
+</BODY>

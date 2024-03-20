@@ -1,0 +1,355 @@
+%U+ TDMACROS.MOR
+%L
+<SET>;   "Set the mortran buffer pointer for subsequent <RESET>"
+%';SUBROUTINE'=';<RESET> <SET>;"SUBROUTINE"';
+%E  SUBROUTINE T2_SAVE_DATA  --- Save data sets in unformatted format
+SUBROUTINE T2_SAVE_DATA($INFO,$CARD);
+   IMPLICIT NONE;
+   INTEGER $INFO(10);
+   CHARACTER *(*) $CARD;
+   $SPECIFICATION;
+   $SELECTSPEC;
+   $POINT ARRAYS($NPOINTS);
+   $MAINSPEC;
+   $SPECIFYNONE;
+   $BOOLEAN LOPEN;
+   INTEGER I,J,K,ILINE,M1,M2,ISET,IPTS,JPTS;
+   INTEGER NLIM,JLIM,ISTAT, T2BTRIM;
+   REAL T2MSHX,T2MSHY;
+   REAL T,DLIM(3,2),XFAC,YFAC,ZFAC,DVEC($MAXCOR);
+   CHARACTER*3	C_STATUS;		"File type"
+   CHARACTER*10 C_ACCESS;		"File access"
+   C_FILE='tdsave.tdb';
+   N_FILE=10;
+   C_NAME='TOPDRAWER data';
+   <TOKEN KEY LOOP> <
+      APPEND:Y       < LAPPEN=LTOKEN; >
+      SETS           < CALL T2NSET($INFO,$CARD,NS1,NS2);>
+      POINTS,COLUMNS < CALL T2PNTS($INFO,$CARD,N1,N2);>
+      LOG:Y          < LLOG=LTOKEN; >
+      LINES,ROWS     < CALL T2ROWS($INFO,$CARD,N3,N4); >
+      SELECT:S       < C_SELECT=STRNG; N_SELECT=MAX(1,NSTRNG); >
+      SLICES         < CALL T2BNDA($INFO,$CARD,TLIM); >
+      LIMITED        < CALL T2XYZC($INFO,$CARD,TLIM,2,NLIM); >
+      FILE:F,OUTPUT:F <
+         C_FILE=STRNG; N_FILE=NSTRNG;
+         CALL T2_SET_DEFAULT_FILE(c_file,N_file,'tdsave.tdb');
+      >
+      NAME:T <
+         IF (NSTRNG.gt.0) C_NAME=STRNG(1:NSTRNG);
+      >
+   >
+"
+	Check if any data within selected ranges
+"
+   CALL T2DTLM(TLIM,N1,N2,N3,N4,NS1,NS2,XFAC,YFAC,ZFAC,DLIM,2,'*');
+   IF (DLIM(1,1).gt.DLIM(1,2)) THEN;			"No data"
+      ERROR OUT;'*** ERROR *** No data selected';
+      RETURN;
+   ENDIF;
+   IF (LAPPEN)	THEN;	C_STATUS='OLD';		"Append to existing set ?"
+			C_ACCESS='APPEND';
+		ELSE;	C_STATUS='NEW';
+			C_ACCESS='SEQUENTIAL';
+		ENDIF;
+   OPEN(ERR=:OPERR:
+       ,UNIT=$SCRATCH FILE
+       ,FILE=C_FILE(1:N_FILE)
+       ,STATUS=C_STATUS
+	$ACCESS
+       ,IOSTAT=ISTAT
+       ,FORM='UNFORMATTED');
+   CALL T2_CONCEAL_PASSWORD(C_FILE,N_FILE);	"Kill password info"
+   IF (.not. LAPPEN) THEN;			"Not append ?"
+	N_NAME=80;				"Write out the name"
+	WRITE(1,ERR=:ERR:)N_NAME,C_NAME(:N_NAME);
+   ENDIF;
+   J=0;
+   JPTS=0;
+   <ISET=NS1,NS2;
+      IPTS=0;
+      CALL T2GDSET(ISET,N1,N2,N3,N4,ISETD,TLIM,C_SELECT(:N_SELECT));
+	IF (NP .lt. N1) <NEXT>;
+	CALL T2_GET_SET_NAME(IBGDAT,C_NAME);		"Get name"
+	N_NAME=T2BTRIM(C_NAME);				"And size"
+	IF (C_NAME(:N_NAME) .ne. ' ') THEN;
+	    WRITE(1,ERR=:ERR:)-1,0;			"Title type"
+	    WRITE(1,ERR=:ERR:)N_NAME,C_NAME(:N_NAME);	"Write it"
+	ENDIF;
+      J=0;
+      IF (IBTYPE.eq.2) THEN;
+         M2=NL-N3+2; M1=NP-N1+2;
+         IF (M2.le.1 .or. M1.le.1) <NEXT>;		"No data ?"
+         WRITE(1,ERR=:ERR:)IBTYPE,J;			"WRite type,?"
+         IF (NINCR0.eq.2) M1=-M1;
+         WRITE(1,ERR=:ERR:)M1,M2;			"Rows, Columns"
+         M1=ABS(M1)-1;
+         M2=M2-1;
+         ILINE=1;
+         WRITE(1,ERR=:ERR:)ILINE,(DATBUF(IM+J),J=0,NINCR0-1)
+              ,(DATBUF(I1+J),J=0,M1*NINCR0-1);		"Column values"
+         <I=1,M2;
+            ILINE=ILINE+1;				"Line number"
+            WRITE(1,ERR=:ERR:)ILINE,(DATBUF(I2+J),J=0,NINCR0-1)
+              ,(DATBUF(I3+J),J=0,M1*NINCR0-1);		"WRite ROW,values"
+            I3=I3+NINCR1*NINCR0;
+            I2=I2+NINCR1*NINCR0;
+         >
+         ILINE=ILINE+1;					"Line number"
+         <I=1,NINCR0;
+            BUFFER(I)=         T2MSHX(DATBUF(IM),NINCR0,NINCR1,NINCR2,N1);
+            BUFFER(I+NINCR0)=  T2MSHX(DATBUF(IM),NINCR0,NINCR1,NINCR2,NP+1);
+            BUFFER(I+2*NINCR0)=T2MSHY(DATBUF(IM),NINCR0,NINCR1,NINCR2,N3);
+            BUFFER(I+3*NINCR0)=T2MSHY(DATBUF(IM),NINCR0,NINCR1,NINCR2,NL+1);
+         >
+         WRITE(1,ERR=:ERR:) ILINE,(BUFFER(J),J=1,4*NINCR0);	"Terminator"
+         IPTS=(M1)*(M2);
+      ELSEIF (IBTYPE.eq.1) THEN;
+         WRITE(1,ERR=:ERR:)IBTYPE,J;			"Write type,?"
+         WRITE(1,ERR=:ERR:)NINCR,(I_VORDER(IVARBL(J),2),J=1,NINCR);
+		"Elements (X,DX...)"
+         JLIM=0;
+         IF (TLIM(1,1).ne.HNONE) THEN;
+            JLIM=2; IF (DATBUF(I3).ne.HNONE) JLIM=3;
+            <J=1,$MAXCOR; DVEC(J)=0; >
+            I1=IM;
+         ENDIF;
+         <I=N1,NP;
+             IF (JLIM.gt.0) THEN;			"Limits on data ?"
+							"Get data"
+                <J=1,NINCR; DVEC(IVARBL(J))=DATBUF(I1); I1=I1+1; >
+                <J=1,JLIM;			"Check data wrt. limits"
+                   IF (DVEC(J*2).lt.TLIM(J,1) .or.
+                       DVEC(J*2).gt.TLIM(J,2)) GOTO :KILLPT:;
+                >
+             ENDIF;
+             WRITE(1,ERR=:ERR:)(DATBUF(J),J=IM,IM+NINCR-1);	"write data"
+             IM=IM+NINCR;
+             IPTS=IPTS+1;
+:KILLPT:
+         >
+         WRITE(1,ERR=:ERR:)(HNONE,J=1,NINCR);
+      ENDIF;
+      JPTS=JPTS+IPTS;
+      IF (LLOG) WRITE($TERMINAL OUT,*)'   ',IPTS,
+              ' Points written from set',ISET,' Name=',
+		'"'//C_NAME(:N_NAME)//'"';
+   >
+   IF (JPTS.le.0) THEN;
+      ERROR STRING; ('*** WARNING *** No data saved');
+   ELSEIF(LLOG)THEN;
+	IF (LAPPEN) THEN;
+	     WRITE($TERMINAL OUT,*)'	Appended to:',C_FILE(:N_FILE);
+	ELSE;
+	     WRITE($TERMINAL OUT,*)'	to:',C_FILE(:N_FILE);
+	ENDIF;      
+   ENDIF;
+   GOTO :END:;
+:ERR:
+   CALL T2_TYPE_ERROR($INFO,$CARD,' ',ISTAT);
+:END:
+   CLOSE(UNIT=$SCRATCH FILE,ERR=:CLERR:);
+:CLERR:
+   RETURN;
+:OPERR:
+   CALL T2_TYPE_ERROR($INFO,$CARD,C_FILE(:N_FILE),ISTAT);
+END;
+%E  SUBROUTINE T2_RESTORE_DATA  --- Restore data sets in binary
+SUBROUTINE T2_RESTORE_DATA($INFO,$CARD);
+   IMPLICIT NONE;
+   INTEGER $INFO(10);
+   CHARACTER *(*) $CARD;
+   $SPECIFICATION;
+   $SELECTSPEC;
+   $MAINSPEC;
+   $SPECIFYNONE;
+   $POINT ARRAYS($NPOINTS);
+$VAX;
+   INCLUDE '($LIBCLIDEF)';
+   INCLUDE '($SSDEF)';
+   INTEGER LIB$SET_SYMBOL;
+$END;
+   $BOOLEAN LGET, T2_MATCHC;
+   CHARACTER*8 C_TYPE(2)/' XY data',' Mesh'/;
+   INTEGER T2_CONFIRM;
+   INTEGER I,J,K,IV($MAXCOR),JV($MAXCOR),IPTR,IPTS,JPTS;
+   INTEGER N,NV,ISTAT,ISETS,NSETS,T2BTRIM;
+   REAL VAL1,VAL2,VAL3;
+   DATA VAL3/0.0/;
+   EQUIVALENCE (IPTR,$IVTEMP1);
+   CHARACTER*3 CXYZ;
+   DATA CXYZ/'XYZ'/;
+   C_FILE='tdsave.tdb';
+   N_FILE=10;
+   NS2=9999;
+   <TOKEN KEY LOOP> <
+      CONFIRM:Y     < LCONF=LTOKEN;>
+      SELECT:S      < N_SELECT=MAX(1,NSTRNG); C_SELECT=STRNG(:N_SELECT); >
+      SETS            <
+         VAL1=1; VAL2=9999.;
+         CALL T2FRTO($INFO,$CARD,VAL1,VAL2,VAL3);
+         NS1=VAL1; NS2=VAL2; VAL3=NS2;
+      >
+      APPEND:Y        < LAPPEN=LTOKEN; >
+      LOG:Y           < LLOG=LTOKEN; >
+      FILE:F,INPUT:F <
+         C_FILE=STRNG(1:NSTRNG); N_FILE=NSTRNG;
+         CALL T2_SET_DEFAULT_FILE(c_file,N_file,'tdsave.tdb');
+      >
+   >
+   OPEN(ERR=:OPERR:
+       ,UNIT=$SCRATCH FILE
+       ,FILE=C_FILE(1:N_FILE)
+       ,STATUS='OLD',
+        $READONLY
+        IOSTAT=ISTAT
+       ,FORM='UNFORMATTED');
+   CALL T2_CONCEAL_PASSWORD(C_FILE,N_FILE);
+   READ(1,END=:END:,ERR=:ERR:)N_NAME,C_NAME(:80);
+   IF (N_NAME.ne.80) GOTO :ERR:;
+   N_NAME=T2BTRIM(C_NAME(:N_NAME));
+$VAX;
+   ISTAT=LIB$SET_SYMBOL('TD_S_DATA_NAME',C_NAME(:N_NAME),
+                                    LIB$K_CLI_LOCAL_SYM);
+            IF (.not.ISTAT) CALL LIB$SIGNAL(%VAL(ISTAT));
+$END;
+   LLOG=LLOG .or. LCONF;
+   IF (llog) THEN;
+	write($TERMINAL OUT,*)'  Name=','"'//c_name(:n_name)//'"';
+	WRITE($TERMINAL OUT,*)'    File=',C_FILE(1:N_FILE);
+   ENDIF;
+   IF (.not.LAPPEN) CALL T2PNTR;
+   JPTS=0;
+   N_NAME=1; C_NAME(:N_NAME)=' ';
+   NSETS=1;
+   <LOOP> <
+      READ(1,END=:END:,ERR=:ERR:)IBTYPE,J;
+      IF (J.ne.0) GOTO :ERR:;
+      IPTS=0; ISETS=1;
+      LGET = T2_MATCHC(C_NAME(:N_NAME),C_SELECT(:N_SELECT),FLAGS(130)) .and.
+		NSETS .ge. NS1 .and. NSETS .le. NS2;
+      IF (LCONF .and. IBTYPE .gt. 0) THEN;
+	WRITE($TERMINAL OUT,*)' Set=',NSETS,' Name="',C_NAME(:N_NAME),'"',
+		C_TYPE(IBTYPE);
+            GOTO (:YES:,:NO:,:QUIT:,:ALL:) T2_CONFIRM('Get');
+		:QUIT:	<EXIT>;
+		:ALL:	LCONF=.false.;
+		:YES:	LGET=.true.;  GOTO :ENDC:;
+		:NO:	LGET=.false.;
+		:ENDC:
+      ENDIF;
+      IF (IBTYPE.eq.2) THEN;
+	NSETS=NSETS+1;
+         READ(1,END=:ERR:,ERR=:ERR:)NINCR1,NINCR2;
+	IF (LGET) THEN;
+         NINCR0=1;
+         IF (NINCR1.lt.0) THEN; NINCR1=ABS(NINCR1); NINCR0=2; ENDIF;
+         IF (REVLEV.lt.3) CALL T2PNTR;          "Kill existing data ?"
+         CALL T2NEWM(NINCR0,NINCR1,NINCR2,C_NAME(:N_NAME));
+         IF ($ERROR) GOTO :END:;
+         IPTR=$IMSPTR;
+         <I=1,NINCR2;
+            READ(1,END=:ERR:,ERR=:ERR:)K,
+               (DATBUF(J),J=IPTR,IPTR+NINCR1*NINCR0-1);
+            IF (K.ne.I) GOTO :ERR:;
+            IPTR=IPTR+NINCR0*NINCR1;
+         >
+         READ(1,END=:ERR:,ERR=:ERR:) K,(DATBUF(J),J=IPTR,IPTR+4*NINCR0-1);
+         IF (K.ne.I) GOTO :ERR:;
+         CALL T23SMS(0);
+         IPTS=(NINCR1-1)*(NINCR2-1);
+	ELSE;
+         <I=1,NINCR2+1;
+            READ(1,END=:ERR:,ERR=:ERR:)K;
+            IF (K.ne.I) GOTO :ERR:;
+         >
+	ENDIF;
+      ELSEIF (IBTYPE.eq.1) THEN;
+	NSETS=NSETS+1;
+         N=1;
+         READ (1,END=:ERR:,ERR=:ERR:) NV,(IV(J),J=1,MIN(MAX(NV,1),$MAXCOR));
+         IF (NV.lt.3.or.NV.gt.$MAXCOR) GOTO :ERR:;
+	 <J=1,NV; IF (IV(J) .gt. $MAXCOR) GOTO :ERR:; >
+         I=0;                             "Now add extra coord if needed"
+         <J=1,NINCR; I=IOR(I,2**IVARBL(J)); >
+         <J=1,NV;
+		IF(IV(J) .gt. $MAXCOR .or. IV(J).lt.1) GOTO :ERR:;
+		IV(J)=I_VORDER(IV(J),1);
+		I=IOR(I,2**IV(J)); >
+         JV(1)=0;
+         <J=1,$MAXCOR;
+            IF (IAND(I,2**J).ne.0) THEN;
+               JV(1)=JV(1)+1; JV(JV(1)+1)=J;
+            ENDIF;
+         >
+         IF (LGET) CALL T2SETS(JV);
+         IF (LGET) CALL T2NEWS(0,C_NAME(:N_NAME));
+         IF ($ERROR) GOTO :END:;
+         CALL T2GDSET(NDSETS,1,1,1,1,ISETD,HNONE,'*');
+         <LOOP> <
+            READ(1,END=:END0:,ERR=:ERR:) (BUFFER(IV(I)),I=1,NV);
+            IF (BUFFER(1) .eq. HNONE) <EXIT>;
+	    IF (LGET) THEN;
+            IF (BUFFER(1).ge.$SEPARATOR) THEN;
+               CALL T2NEWS(0,' ');
+               CALL T2GDSET(NDSETS,1,1,1,1,ISETD,HNONE,'*');
+            ELSE;
+
+               IF ($PFREE.le.0) THEN;
+                  CALL T2_VIRT(500*NINCR);
+                  CALL T2GDSET(NDSETS,IPTS+1,IPTS,1,1,ISETD,HNONE,'*');
+                  IF ($PFREE.le.0) THEN;
+                     ERROR OUT;'*** WARNING *** Storage too small';
+                     GOTO :END:;
+                  ENDIF;
+               ENDIF;
+               <I=1,NINCR; DATBUF(IM)=BUFFER(IVARBL(I)); IM=IM+1; >
+               DATBUF(IBGDAT+2)=DATBUF(IBGDAT+2)+NINCR;
+               $INEXTPTR=IM;
+               NPOINT=NPOINT+1;
+               IPTS=IPTS+1;
+            ENDIF;
+            ENDIF;
+         >
+      ELSEIF (IBTYPE .eq. -1) THEN;
+	READ(1,ERR=:ERR:)N_NAME,C_NAME(:N_NAME);
+	<NEXT>;
+      ELSE;
+         GOTO :ERR:;
+      ENDIF;
+:END0:
+      IF (LGET) THEN;
+	JPTS=JPTS+IPTS;
+	FLAGS(28)=.false.;          "Unplotted data present"
+	IF (LLOG) THEN;
+         IF (IBTYPE.eq.1) THEN;
+            WRITE(OUTSTR,*)
+               '  Restore data ',IPTS,' points ',ISETS,' sets';
+         ELSE;
+            WRITE(OUTSTR,*)
+               '  Restore Mesh ',CXYZ(MESH1:MESH1),NINCR1-1,
+                          ' by ',CXYZ(MESH2:MESH2),NINCR2-1,' Set=',ndsets;
+         ENDIF;
+         CALL T2WRSQ(OUTSTR,.true.,$TERMINAL OUT,3);
+         WRITE($TERMINAL OUT,*)'    Name="',C_NAME(:N_NAME),'"';
+	ENDIF;
+      ENDIF;
+      N_NAME=1; C_NAME(:N_NAME)=' ';
+   >
+
+   IF (JPTS.le.0) THEN;
+      ERROR$MESSAGE
+         '*** WARNING *** No data restored out of',N,' sets available';
+   ELSEIF (LLOG) THEN;
+      WRITE($TERMINAL OUT,*)'	From:',C_FILE(:N_FILE);
+   ENDIF;
+   GOTO :END:;
+:ERR:
+   CALL T2_TYPE_ERROR($INFO,$CARD,' ',ISTAT);
+:END:
+   CLOSE(UNIT=$SCRATCH FILE,ERR=:CLERR:);
+:CLERR:
+   RETURN;
+:OPERR:
+   CALL T2_TYPE_ERROR($INFO,$CARD,C_FILE(:N_FILE),ISTAT);
+END;

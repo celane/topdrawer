@@ -1,0 +1,19 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.78.4</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.78.4  Expression</H4></B> 
+
+You  may  use  an expression inside quotes to actually calculate the value
+for an existing data set.  The expression  is  evaluated  for  each  value
+required.   The  lexicals  V_XVALUE,V_DXVALUE,V_ZVALUE...  are the current
+X,DX,Y...  needed to perform the  calculation.   If  you  do  not  specify
+NOERROR  then  the  error  is also computed when X,Y,Z are modified by the
+expression.  If you use an expression you may not use  any  other  options
+except for POINTS, LINES, COLUMNS, SETS, and LOG and ERROR.
+
+
+</PRE>
+</BODY>

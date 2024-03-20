@@ -1,0 +1,26 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 12.18</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>12.18  SETTING_FONTS</H4></B> 
+
+The fonts are selected in 2 different ways for plot symbols and titles.
+
+For  plot  symbols  you  use a 2 character identifier for the symbol.  For
+example 0O selects the cross as a plot symbol.  See commands:
+     1.  SET SYMBOL
+     2.  PLOT
+     3.  SET ORDER
+
+For  titles  the  special symbols are selected with the CASE command.  The
+case command specifies a string with a font selection character  for  each
+character  in  the  title.   For  example  you  wish  to  write  in  Greek
+Alpha,Beta,Gamma followed by ABC.
+     TD:<U>TITLE</U> <U>"ABGABC"</U>
+     TD:<U>CASE</U>  <U>"GGG</U>   <U>"</U>
+
+
+</PRE>
+</BODY>

@@ -1,0 +1,18 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.49.15</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.49.15  USER</H4></B>       - 
+     USER=n1,n1...  specifies the type of user scale.  This is only useful
+if you supply your own scaling routines.  n1 is the scale type.   n2...n10
+are values passed to the user routine.  The user function is called:
+     Value=TDFNCT(X,SCALE)
+X is the value to rescale.
+SCALE(10) is the array of values n1...n10.
+For example a log scale would be:  TDFNCT=ALOG(X)
+
+
+</PRE>
+</BODY>

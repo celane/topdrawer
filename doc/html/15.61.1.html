@@ -1,0 +1,28 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.61.1</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.61.1  Examples</H4></B> 
+
+     TD:<U>SET</U> <U>WINDOW</U> <U>1</U> <U>of</U> <U>V_SETS</U>
+     TD:<U>REPEAT</U> <U>"HIST</U> <U>SET=V_WINDOW;SET</U> <U>WINDOW</U> <U>NEXT;"</U> <U>V_SETS</U>
+produces histograms of all currently available data sets.
+     TD:<U>DEFINE</U> <U>VALUE</U> <U>THETA=0</U>
+     TD:<U>DEFINE</U> <U>COMMAND</U> <U>INCR="DEV</U> <U>VAL</U> <U>THETA=&lt;V_THETA</U> <U>+1&gt;;"</U>
+     TD:<U>DEFINE</U> <U>COMMAND</U> <U>LEND="IF</U> <U>THETA</U> <U>.GT.</U>  <U>180.1</U> <U>ENDREPEAT"</U>
+     TD:<U>REPEAT</U> <U>"V_THETA,&lt;SIN(V_THETA)&gt;;INCR;LEND"</U>
+          or...
+     TD:<U>REPEAT</U> <U>"V_THETA,&lt;SIN(V_THETA)&gt;;INCR"</U> <U>181</U>
+Produces  a  SINE  function from 0 to 180 degrees in 1 degree steps.  This
+example breaks the command into small  separate  commands.   This  is  not
+really  necessary  since  the  total  length  of  a  command  may  be  256
+characters.
+     TD:<U>REPEAT</U> <U>"&lt;V_REPEAT-1&gt;,&lt;SIN&lt;V_REPEAT-1&gt;&gt;"</U> <U>181</U>
+<A NAME="116">Also  generates  a  sine  function from 0 to 180 degrees, in a much faster </A>
+fashion.
+
+
+</PRE>
+</BODY>

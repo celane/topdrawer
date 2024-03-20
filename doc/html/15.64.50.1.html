@@ -1,0 +1,33 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.50.1</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.50.1  Options</H4></B>  - 
+
+     1.  ALL - Turns on or off all shadowing options.
+     2.  SYMBOL - Shadows the symbol.
+
+<A NAME="171">     3.  X - Draws lines from point to back plane along the X axis. </A>
+     4.  Y - Draws lines from point to back plane along the Y axis.
+     5.  Z - Draws lines from point to back plane along the Z axis.
+     6.  :XY - Shadows in XY plane.
+     7.  YZ - Shadows in YZ plane when THREE=ON.
+     8.  ZX - Shadows in ZX plane when THREE=ON.
+     9.  INTENSITY  -  Sets  line  intensity  or  width (0-5).  0 gets the
+         intensity from the SET INTENSITY or SET AXES command.
+    10.  WHITE...  - Sets the line color.  (Default:Same as axes)
+    11.  SOLID...   -  Sets  the  line  texture.   (Default:Same  as axes)
+         See:Command SET TEXTURE.
+    12.  SYMBOL  -  Draws  a symbol [sym] to be plotted at intersection of
+         vertical and horizontal lines.  (Default:sym=0O)
+    13.  PERMANENT  -  Sets the current shadow options permanently for all
+         NEW plots.
+If  no  options are specified, then all shadow parameters are reset to the
+original defaults.
+(Default:ALL=OFF)
+
+
+</PRE>
+</BODY>

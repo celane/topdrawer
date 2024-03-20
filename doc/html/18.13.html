@@ -1,0 +1,32 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 18.13</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>18.13  READPR</H4></B> 
+
+This reads from the SYS$INPUT after prompting
+     CALL READPR('PROMPT',STRING,LENGTH,[Itimeout])
+
+INPUT:
+     PROMPT= string to prompt with
+     Itimeout= timeout time in seconds (integer) If the time between typed
+characters exceeds the timeout then the read is terminated.
+OUTPUT:
+     STRING = input
+     LENGTH = length of the input
+
+You  may  define  keypad keys to return a string using DEFKEY.  DEFKEY and
+READPR are routines which work together.
+
+This subroutine is independent from the rest of TOPDRAWER
+
+                                  example
+     CHARACTER*20 STR
+     CALL READPR('Input:',STR,I,60)
+     IF (I.gt.0) TYPE *,'STR=",STR(1:I),'"'
+Reads  a  string  of 20 characters or less and writes it on your terminal.
+You have 60 seconds to begin typing after the prompt.
+</PRE>
+</BODY>

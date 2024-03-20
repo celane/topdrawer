@@ -1,0 +1,39 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.40.16</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.40.16  3-d_histograms</H4></B> 
+
+A 3-d histogram can be either a plot of mesh data or a  plot  of  "normal"
+x,y,z  data.   Mesh  data  is  normally plotted as a "solid".  XYZ data is
+plotted as a histogram of X vs Z in the plane determined by  Y.   For  all
+3-d  histograms Z must be the dependent variable, and X,Y are independent.
+Repeated XYZ plots may be used to build up a series of histograms.
+
+                                   <U>NOTE</U>
+Some  lines  may  be  missing from the plot, because of the viewpoint.  If
+<A NAME="86">this happens you may need to: </A>
+     TD:<U>SET</U> <U>THREE</U> <U>RDIST</U> <U>1000</U>
+This moves the viewpoint closer to infinity, but maintans the plot size.
+
+If  the  plot  is  too  large  you may need to adjust the screen or window
+distance.
+     TD:<U>SET</U> <U>THREE</U> <U>DIST</U> <U>1000</U> <U>SCRD</U> <U>300</U>
+Will  reduce  the  size  of  the  plot.   The  size of the plot is roughly
+proportional to the ratio of SCRD to DIST.
+
+If you specify color, intensity, or texture it is used for the top side of
+the mesh, while the default is used for the bottom.
+
+                                  example
+     TD:<U>SET</U> <U>COLOR</U> <U>RED</U>
+     TD:<U>SET</U> <U>TEXTURE</U> <U>DOTS</U>
+     TD:<U>HISTOGRAM</U> <U>SOLID</U> <U>WHITE</U>
+Produces  a  mesh plot with bottom in dotted red lines, while the top side
+is drawen in white solid lines.
+
+
+</PRE>
+</BODY>

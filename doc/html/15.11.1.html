@@ -1,0 +1,26 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.11.1</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.11.1  Introduction</H4></B> 
+
+For  each X entered, the corresponding Y is added/averaged to a bin in the
+histogram.  If all selected Y and DYs are zero Y and DY are assumed to  be
+1.0.   When  averaging any data with zero DY is ignored.  The result is an
+<A NAME="40">evenly spaced series of X values with the corresponding distribution in  Y </A>
+and  the  standard deviation of each Y in DY/NDY.  The symbol for each bin
+is set to the default.  You may find that the resulting data is not in the
+correct storage locations especially if a 3-d plot is to be produced.  You
+may change locations with the SWAP command.  If the data has a non zero DX
+then  it  may  be  distributed  over  more  than  1  bin.   The  DX  error
+distribution is assumed to be gaussian, and the data is distributed with a
+cut off at 4 sigma.  If NORMAL=OFF a flat distribution is assumed.
+
+You  may not BIN mesh data.  If you need to rebin mesh data then it should
+be decomposed to a series of data sets using the PROJECT BY n command.
+
+
+</PRE>
+</BODY>

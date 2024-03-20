@@ -1,0 +1,26 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.37.14</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.37.14  COEFFICIENTS|ERRORS</H4></B> 
+
+Sets  individual  coefficients|errors.   If coefficients are set then they
+are <U>not</U> included in the calculation of the fit unless  CONSTRAIN=OFF.   If
+CONSTRAIN=OFF  then  you  are  merely  settting  the  initial value of the
+coefficient.  This is only useful for nonlinear  fits.   If  you  set  the
+error  it  is used as the initial step for nonlinear fits.  INDEX sets the
+index of the coefficient|error.   The  index  may  range  from  0  to  19.
+Undefined errors are assumed to be 0.0.
+<A NAME="76">                                  EXAMPLE </A>
+     TD:<U>COEFFICIENTS</U> <U>1,2.5,.5</U> <U>ERRORS</U> <U>.1,.5,.2</U>
+Sets - a0=1.0+-.1, a1=2.5+-.5, a3=0.5+-.2
+     TD:<U>COEFFICIENTS</U> <U>INDEX=3</U> <U>.5</U> <U>ERRORS</U> <U>I=3</U> <U>.1</U>
+Sets - a3=0.5+-.1
+     TD:<U>COEFFICIENTS</U> <U>1.0</U> <U>I=3</U> <U>2.0</U> <U>I=5</U> <U>.5,-.7</U>
+Sets - A0=1.0, A3=2.0, A5=0.5, A6=-0.7
+
+
+</PRE>
+</BODY>

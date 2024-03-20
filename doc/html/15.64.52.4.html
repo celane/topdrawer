@@ -1,0 +1,21 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.52.4</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.52.4  MAGNIFY|REDUCE</H4></B>  - Magnifies or reduces the overall plot by the
+specified factor.  This modifies the entire plot including  the  character
+sizes.   If  the requested final size is too big for the device, REDUCE is
+automatically set to  a  value  smaller  than  1.   The  magnification  or
+reduction is limited to the range 1.0E-5 to 1.0E+5.
+
+                                  example
+     TD:<U>SET</U> <U>SIZE</U> <U>REDUCE=2</U>
+          or...
+     TD:<U>SET</U> <U>SIZE</U> <U>MAGNIFY=0.5</U>
+reduce the plot from 13 by 10 to 6.5 by 5.0 inches in size.
+
+
+</PRE>
+</BODY>

@@ -1,0 +1,20 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.57.1</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.57.1  FOR</H4></B> 
+
+If  FOR n is specified then TOPDRAWER will wait for n seconds, then resume
+normal execution.  n may be in the range 0 to 200.
+(Default:10)
+
+example
+     TD:<U>REPEAT</U> <U>"NEW;SET</U> <U>HIST</U> <U>NEXT;HIST;WAIT</U> <U>FOR</U> <U>10"</U> <U>10</U>
+Gets  the  next  histogram,  plots  it,  then  waits for 10 seconds before
+plotting the next one.
+
+
+</PRE>
+</BODY>

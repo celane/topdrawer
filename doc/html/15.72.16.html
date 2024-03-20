@@ -1,0 +1,37 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.72.16</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.72.16  CASE</H4></B> 
+
+Controls the format of the title.  It must be the next command  after  the
+TITLE  or  MORE  command  or  on the same line with the TITLE command.  It
+modifies only the preceding string.  It must immediately follow the string
+either on the same, or the next line.
+
+     <U>CA</U>SE 'case_text'
+
+This  specifies  the case or character type of each character in the title
+text.  For the definitions of all possible CASE characters see:
+     TOPDRAWER FONTS
+
+It is not necessary to use a case command if you only want upper and lower
+case ASCII characters.  Simply type them into your title as  you  wish  to
+see them.
+
+                                  example
+     TD:<U>TITLE</U> <U>TOP</U> <U>'ABG'</U> <U>CASE</U> <U>'GGG'</U>
+Produces a title with 3 lower case Greek letters alpha,beta,gamma.
+     TD:<U>TITLE</U> <U>TOP</U> <U>'ABC'</U> <U>'ABG'</U> <U>CASE</U> <U>'GGG'</U>
+<A NAME="208">Produces a title with 3 Roman letters followed by 3 Greek letters. </A>
+     TD:<U>TITLE</U> <U>TOP</U> <U>'S='</U> <U>CASE</U> <U>'G'</U> <U>V_SUM</U>
+Produces a Greek "Sigma".
+     TD:<U>TITLE</U> <U>TOP</U> <U>'S='</U> <U>V_SUM</U> <U>CASE</U> <U>'G'</U>
+Does  not produce any Greek because the case and string are separated by a
+lexical.
+
+
+</PRE>
+</BODY>

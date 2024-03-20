@@ -1,0 +1,24 @@
+#
+# Imakefile for ugs/test
+#
+
+LIB      = ../ugs.a
+
+#include "../Imakefile.def"
+
+TARGET   = tryxw tryps trytek
+
+AllTarget($(TARGET))
+
+tryxw: tryxw.f $(LIB)
+	$(FC) -o tryxw tryxw.f $(LIB) $(LDPRELIB) $(XTOOLLIB) $(XLIB)
+
+tryps: tryps.f $(LIB)
+	$(FC) -o tryps tryps.f $(LIB) $(LDPRELIB) $(XTOOLLIB) $(XLIB)
+
+trytek: trytek.f $(LIB)
+	$(FC) -o trytek trytek.f $(LIB) $(LDPRELIB) $(XTOOLLIB) $(XLIB)
+
+clean::
+	$(RM) $(TARGET)
+

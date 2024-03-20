@@ -1,0 +1,74 @@
+Installation of topdrawer on FreeBSD:
+=====================================
+Source: ftp://iris.riken.go.jp/pub/ugs, ftp://iris.riken.go.jp/pub/topdrawer
+
+The distributed topdrawer binary and ugs library were compiled with gcc-2.7.2.1 
+and g77-0.5.19.1 on FreeBSD-2.2.2.
+
+Step 1: Building the UGS library (with g77)
+-------------------------------------------
+The lang/g77-0.5.19.1 port/package in the FreeBSD collection does NOT 
+do the job.  
+
+The least tedious attempt to work around this (current) problem is to install 
+lang/egcs from the FreeBSD ports, and use its g77 command.  Install with
+'make PREFIX=/usr/local install' or similar to not overwrite the OS versions 
+of gcc, g++ in /usr/bin.  The backdraw is that egcs's snap-shot compilers are based 
+on release gcc-2.8.0 and g77-0.5.21, which are are not yet tested thoroughly.  
+Make sure that you actually use these commands during compilation ('which g77 gcc'). 
+ 
+select '#define FreeBSDArchitecture' in Imakefile.def
+
+xmkmf -a
+make clean (if necessary)
+make all
+ 
+I got the error 'virtual memory exhausted' during compilation of ugdupl.f.  If this 
+happens execute the tcsh command 'unlimit datasize' before you start compiling.
+
+Execute the test programs 'tryxw', 'tryps', 'trytek' in dir 'test'
+
+
+Step 2: Building Topdrawer (with f2c)
+-------------------------------------
+
+Will need bash and gawk, if necessary install from the FreeBSD ports 
+collection: shells/bash japanese/jp-gawk
+
+The f77 interface to f2c that comes with FreeBSD-2.2.2 does NOT do the job, 
+thus save it by 'mv /usr/bin/f77 /usr/bin/f77.system' and
+
+Get f77reorder-2.27.tar.gz (or newer) from http://www-hermes.desy.de/ww/
+
+unpack in tmp dir
+go to top level
+do './configure'
+modify libf77/Makefile:
+substitute 'ar' options 'rvs' with 'rv' (same as in Imakefile.def) 
+modify first line in test/testscript to '#! /usr/local/bin/bash' 
+do 'make install' in top level dir
+
+this installs a new f77 command (a shell script) in /usr/bin and the 
+library libf77.a in /usr/lib
+modify the first line of f77, substitute '/bin/sh' with '/usr/local/bin/bash'
+
+Now, unpack topdrawer.tar.gz and move to toplevel dir
+select '#define FreeBSDArchitecture' in Imakefile.def
+define where you put the UGS library, e.g. UGS = /home/local/lib/ugs.a
+
+modify file src/t2xfrm.f around line 860 by moving the empty line like this:
+      IMPLICITREAL*4 (A-H, O-Z)
+      INTEGER    NMAX
+      PARAMETER (NMAX=50) ! MAX NUMBER OF TERMS
+
+      DIMENSION ARRAY(N,N)
+      DIMENSION IK(NMAX),JK(NMAX)
+(else f77reorder complains about wrong order)
+
+Finally do:
+xmkmf -a
+make clean (if necessary)
+make all
+
+----------------------------------------------
+Nikolas Kauer, kauer@pheno.physics.wisc.edu, Mar 7 1998

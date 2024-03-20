@@ -1,0 +1,33 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.20.5</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.20.5  VALUE</H4></B> 
+
+You may define values for "Lexicals"
+     <U>DEF</U>INE <U>VA</U>LUE <U>name=value</U> [<U>LO</U>G=[<U>ON</U>|<U>OF</U>F]] [<U>FA</U>ST[=<U>ON</U>|<U>OF</U>F]]
+A  lexical  of the form V_name is give the value n If you specify LOG then
+the value is typed on your terminal.  When FAST=ON the value is defined as
+a  local  symbol  in  non  readable  form.   This  will  speeds  up symbol
+definitions, but it has little effect on the symbol usage.  You should use
+FAST  when you are repeatedly redefining symbols.  Non readable symbols do
+<A NAME="62">not make sense for a SHOW VALUE command.  If you need speed, single letter </A>
+names are the most efficient.
+(Default:FAST=OFF)
+
+                                  Example
+     TD:<U>DEFINE</U> <U>VALUE</U> <U>NORM=125.5</U>
+     TD:<U>Y=Y</U> <U>TIMES</U> <U>V_NORM</U>
+Multiplies all data by 125.5.
+     TD:<U>DEFINE</U> <U>VALUE</U> <U>NORM=&lt;100/V_SUM&gt;</U>
+     TD:<U>Y=Y</U> <U>TIMES</U> <U>V_NORM</U>
+Normalizes the data to SUM=100.
+
+You  may  show all defined values with the SHOW VALUE command.  Individual
+values may be shown by the SHOW LEXICAL command.  See:TOPDRAWER DATA
+
+
+</PRE>
+</BODY>

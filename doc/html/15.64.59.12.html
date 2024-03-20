@@ -1,0 +1,37 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.59.12</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.59.12  XAXIS</H4></B>  - 
+     XAXIS|YAXIS|ZAXIS angle
+
+These  options  are  used  to  control  how the ticks and labels are drawn
+relative to the axes.  If the angle is not specified or it is greater than
+360  degrees  the  axes  are  drawn  in  either the XY,YZ, or ZX plane for
+maximum visibility.  The angle allows you to rotate the labels,ticks,  and
+title  around  the  axis.  The rotation is specified by permuting the axes
+XYZ.  For a given axis n the angle 0 lies in the n,n+1 plane, and angle 90
+lies in the n,n+2 plane, with the labels in the negative side.
+
+                               Table of axes
+
+This  gives the plane and direction of the labels.  The sign indicates the
+side the labels are drawn on.
+     Axis    0       90      180     270 degrees
+     X       -XY     -ZX     XY      ZX
+     Y       -YZ     -XY     YZ      XY
+     Z       -ZX     -YZ     ZX      YZ
+
+     TD:<U>SET</U> <U>THREE</U> <U>XAXIS=0</U>
+This  draws  the X labels and ticks in the XY plane with the labels in the
+negative X side of the axis.
+
+     TD:<U>SET</U> <U>THREE</U> <U>YAXIS=90</U>
+This  draws  the X labels and ticks in the YZ plane with the labels in the
+negative Z side of the axis.
+
+
+</PRE>
+</BODY>

@@ -1,0 +1,30 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 16.3</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>16.3  REPEAT</H4></B> 
+
+     <U>V_REP</U>EAT[n]
+This is the repeat index for repeat commands.  It starts at 1 and is equal
+to the number of repeats when the loop terminates.  You  may  specify  the
+loop  number as n.  If n is omitted it is the current inner loop.  If n is
+negative it is the next outer loop.
+
+                                  example
+     TD:<U>REPEAT</U>   <U>2</U>   <U>"TYPE</U>   <U>""A"",S_REPEAT;REPEAT</U>  <U>3</U>  <U>""TYPE</U>  <U>S_REPEAT,'|</U>
+<U>'S_REPEAT[-1]""";</U>
+Types:
+     A1.0
+     1.0|1.0
+     2.0|1.0
+     3.0|1.0
+     A1.0
+     1.0|2.0
+     2.0|2.0
+     3.0|2.0
+
+
+</PRE>
+</BODY>

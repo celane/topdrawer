@@ -1,0 +1,27 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.9</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.9  CARD</H4></B> 
+
+This sets the number of columns per input line for non interactive input.
+<U>SE</U>T <U>CA</U>RD|<U>INP</U>UT [<U>LE</U>NGTH]=[length]
+
+All  data past the length is ignored The length must be in the range 20 to
+256.  See also SET FORMAT.  This parameter remains the  same  when  a  new
+plot is started.
+(Default:256)
+
+You  should  be  careful when using this command.  If you extend the input
+line before extending the format, TOPDRAWER  will  expect  multiple  input
+lines per command.
+
+If  length  is  omitted it is reset to the default value.  For interactive
+input on the VAX the length is 256 and it is independent of the  set  card
+command.
+
+
+</PRE>
+</BODY>

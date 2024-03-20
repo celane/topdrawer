@@ -1,0 +1,24 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.68</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.68  SPAWN</H4></B> 
+
+This command temporarily spawns  out  of  TOPDRAWER  to  VMS.   The  SPAWN
+command is not journaled unless ABORT=OFF MODE is selected.
+     <U>SP</U>AWN [dcl_command]
+
+For  example  you  are  trying  to  do  a plot, but you have forgotten the
+filename with the TOPDRAWER source, so you:
+     TD:<U>SPAWN</U>  <U>DIRECTORY</U>  You will get a directory listing so you can find
+<A NAME="203">the file name. </A>
+
+If  you  use the SPAWN command with no parameters, you return to TOPDRAWER
+with the VMS command:
+     $ <U>LOGOFF</U>
+
+
+</PRE>
+</BODY>

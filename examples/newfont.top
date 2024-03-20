@@ -1,0 +1,29 @@
+set intensity 3
+title 1 10 " "
+set font duplex
+title "' ': Roman"
+title "ABCDEFGHIJKLMNabcdefghijklmn0123456789!&*+()?"
+title " "
+set font duplex I
+title "'I': Italic"
+title "ABCDEFGHIJKLMNabcdefghijklmn0123456789!&*+()?"
+title " "
+set font duplex J
+title "'J': Script"
+title "ABCDEFGHIJKLMNabcdefghijklmn0123456789!&*+()?"
+title " "
+set font duplex 1
+title "'1': Sans-Serif
+title "ABCDEFGHIJKLMNabcdefghijklmn0123456789!&*+()?"
+title " "
+set font duplex 2
+title "'2': Gothic"
+title "ABCDEFGHIJKLMNabcdefghijklmn0123456789!&*+()?"
+title " "
+set font duplex 3
+title "'3': Bold-Roman"
+title "ABCDEFGHIJKLMNabcdefghijklmn0123456789!&*+()?"
+title " "
+set font duplex 4
+title "'4': Bold-Italic"
+title "ABCDEFGHIJKLMNabcdefghijklmn0123456789!&*+()?"

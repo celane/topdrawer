@@ -1,0 +1,23 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 18.19</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>18.19  TDGETV</H4></B> 
+
+     LOGICAL L
+     L=TDGETV('string',VALUE)
+INPUT:
+     string         = The name of the lexical to get
+OUTPUT:
+     VALUE          = The actual value returned
+     L    = .true.  if the lexical was found, .false.  if not found.
+
+                                  example
+       LOGICAL TDGETV
+       IF (TDGETV('V_SUM',SUM)) WRITE(6,*)'Sum=',SUM
+
+
+</PRE>
+</BODY>

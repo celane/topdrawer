@@ -1,0 +1,45 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.31.12</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.31.12  NTUPLES</H4></B>   - You  may select the NTUPLE data and put it into a
+1-d histogram.  These options remain the same, unless respecified.  If the
+option  is  used  without any parameters it is reset to the initial value.
+You may show the options by:  SHOW HISTOGRAM SELECT These options are also
+used to control NTUPL usage by:  DEFINE HISTOGRAM ADD/SUBTRACT commands
+     1.  NTUPLES  selects  only NTUPLES.  Normall NTUPLES are excluded, so
+         you must use this option to look at NTUPLE data.
+     2.  EVENTS  FROM n1 TO N2 selects the event range The event selection
+         remains the same, unless respecified.
+     3.  X/DX/Y/DY...NDW=n  selects  the  value  to put into X/DX...  from
+         each NTUPLE Initially they are X=1, Y=2,  ...W=6,  DX=-1,  DY=-2,
+         DZ=-3.   0  is the event number while positive values are each of
+         the variables in an NTUPLE.
+     4.  NLIMIT=n  FROM  n1  TO  N2 places limits on the selected value n.
+         Where n is the coordinate in the NTUPLE.  If specified without  a
+         value  n  or with n=0 then all limits are set.  If all parameters
+         are unspecified then all limits are reset to large values.
+     5.  NMASK=n Sets MASK number n.  If 0 all masks are cleared.
+         A.  IDENT=n Will mask the data by histogram n
+         B.  X=m  Specifies  which  Variable  to  check  against  the X of
+             histogram n Zero is the event number.
+         C.  Y=m  Specifies which Variable to check against Y of histogram
+             n
+         The   data   is   checked   against  the  histogram  and  if  the
+         correspoinding bin of the histogram is  non  zero  the  NTUPL  is
+         kept,  and  discarded  if not.  These options are also use by the
+         DEFINE HISTOGRAM command to  ADD  or  SUBTRACT  NTUPL  data  from
+         histograms.
+
+                                  example
+You  have an NTUPLE with 6 coordinate values A,B,C,D,E,F You may place all
+of the C values into X and the F values into Y While limiting the B values
+to the range -1 to 1.
+     TD:SET HIST ID=5 EVENTS X=3 Y=6 NLIMIT=2 FROM -1 TO 1
+The resulting data may then be histogrammed using the BIN command.
+
+
+</PRE>
+</BODY>

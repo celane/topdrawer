@@ -1,0 +1,24 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.69</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.69  STOP</H4></B> 
+
+     <U>ST</U>OP|<U>END</U>|<U>EX</U>IT|<U>HA</U>LT|<U>QU</U>IT ['string'] These commands all stop TOPDRAWER.
+Any data remaining in the buffers is flushed, and  all  output  files  are
+closed.
+This is also equivalent to typing Ctrl_Z if Ctrl_Z is ON.
+
+The  program  is  stopped and the string is typed.  If you wish to stop in
+the middle type Ctrl_C.  This will abort the current operation and restore
+the  prompt.   If  you  are in the middle of getting data from a file, the
+file will skip to the next CLEAR or STOP command.  Pressing  Ctrl_C  twice
+rapidly in succession will abort all file input.  If you type Ctrl_C twice
+rapidly again you will be prompted if you wish to  terminate  the  program
+completely.
+
+
+</PRE>
+</BODY>

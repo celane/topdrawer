@@ -1,0 +1,51 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 20.4</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>20.4  88</H4></B> 
+
+     1.  15-Jan-1988 - Added expression parsing.  This allows you to enter
+         an arithmetic expression wherever a number is  called  for.   The
+         syntax  is  &lt;expression&gt;.  See TOPDRAWER DATA EXPRESSION for more
+         details.  Added REPEAT and ENDREPEAT commands.  The  equals  sign
+         "="  may  not be replaced by a comma "," or slash "/" where it is
+         used in the documentation.  It may be replaced by spaces.   Plus,
+         or  minus "+-" signs are not allowed in options except as part of
+         a number.
+     2.  4-Feb-1988 - Added angle lexicals (VIEW_...).  Fixed some bugs in
+         MESH plots.  Added X="expression"  command.   Added  CREATE  MESH
+         command  to  create  mesh  data sets.  Modified PLOT VARIABLE for
+         mesh data so the symbol size is automatically set to the  maximum
+         bin size.
+     3.  Apr-1988  - Fixed LIMITED option for SHOW DATA command, and added
+         LIMITED option to BIN command.  Added FOR option to WAIT.   Added
+         PACKED  option  to  SET ORDER.   The  SET  ORDER  and SET STORAGE
+         commands no longer delete data.  The SORT command has been added.
+     4.  Jun-1988   -  Fixed  the  error  calculation  on  MEAN  for  show
+         statistics.  Fixed NEW RESET so that scales are also reset to the
+         original default.
+     5.  Aug-1988 - Added MESH,NORMAL options to BIN command.  Added CHECK
+         option to  ADD,SUBTRACT,MULTIPLY,DIVIDE  commands.   Added  SPLIT
+         option  to  PROJECT  command.  Added ADD,SUBTRACT,MULTIPLY,DIVIDE
+         options to DEFINE HISTOGRAM commnand.   Fixed  an  infinite  loop
+         when a single point is histogrammed.
+     6.  Nov-1988  -  Added  THETA,PHI,ANGLE specifications to SET SYMBOL,
+         and SET GRID.  Spiffed up the show formats.   Added  EXCL  driver
+         for native mode support of TALARIS-1590 and LN-03+ printers.
+     7.  Dec-1988  -  Fixed several bugs.  Set window 3 of -4 did not work
+         as the first window.  Only 1 of 4 could be the first  window.   A
+         call  to  t2MAIN  with  blank  string after a call with non blank
+         string  would  not  prompt  for  input.    SHOW   WINDOW   worked
+         incorrectly   for   -   windows.    Calls   to  T2JOIN,T2HIST...,
+         incorrectly reset permanent limits.
+     8.  Dec-1988  -  Added  NTFIT,NPFIT  lexicals,  and  extended  TDPLT,
+         T2JOIN,T2HIST for 3-d data.
+     9.  28-Dec-1988              -              Added             options
+         AREA/SHARE/SAVE/READ/WRITE/INPUT/OUTPUT    to     SET/DEFINE/SHOW
+         HISTOGRAM commands.  Created a compatible version with HBOOK4.
+
+
+</PRE>
+</BODY>

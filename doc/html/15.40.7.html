@@ -1,0 +1,29 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.40.7</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.40.7  HIDE</H4></B> 
+
+Controls whether hidden lines are drawn for a 3-d  mesh,  or  whether  one
+histogram hides the next.  You must specify HIDE for both the histogram to
+be hidden and the histogram that is to hide it.  The  histogram  which  is
+drawn  first  will  hide the second one.  HIDE=OFF draws the hidden lines,
+while HIDE=ON omits them.
+(Default:HIDE=ON for mesh, HIDE=OFF for data)
+
+                                  example
+Assume  you  have 2 data sets where you want set 1 to hide elements in set
+2.  Also you would like to fill data set 2.
+     TD:JOIN SET=1 HIDE
+     TD:JOINS SET=2 HIDE FILL
+
+You  can  produce a drawing of a mesh with hidden lines as dotted lines by
+doing the histogram twice:
+     TD:<U>HISTOGRAM</U>
+     TD:<U>HISTOGRAM</U> <U>HIDE=OFF</U> <U>DOTTED</U>
+
+
+</PRE>
+</BODY>

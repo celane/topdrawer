@@ -1,0 +1,29 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 18.31</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>18.31  TDTITL</H4></B> 
+
+Outputs titles
+This  routine  is  not recommended.  It is provided for compatability with
+older versions of TOPDRAWER.  Use TDTEXT instead.
+     CALL TDTITL('title',,x,y)
+This puts the title at the specified x,y.
+     CALL TDTITL('title','position')
+This puts the title at the specified position.
+     CALL TDTITL('title')
+This puts a title under the last title.
+
+     1.  title - Title
+     2.  x,y - Specify the title position in TEXT coordinates.
+     3.  position - Specifies the position relative to the data area
+              parameters:
+              'TOP', 'BOTTOM', 'RIGHT', 'LEFT'
+     4.  If  'title'  alone is specified, then the current title is placed
+         under the last.
+
+
+</PRE>
+</BODY>

@@ -1,0 +1,27 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.54.1</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.54.1  LIMITED</H4></B>   - Limits  the  data to the specified range.  For 3-d
+data the limit on the dependent variable is ignored.  If  limits  are  not
+specified,     the     default     is    the    current    plot    limits.
+See:Command SET LIMITS.
+     1.  X - Specifies X limit
+     2.  Y - Specifies Y limit
+     3.  Z - Specifies the Z limit
+     4.  CURSOR  - Brings up the cursor.  You move it to the X,Y value you
+         wish then press the space bar to enter both X,Y or X to  enter  X
+         or Y to enter Y.
+     5.  RECURSOR - The cursor enters both limits.
+              TD:<U>SET</U> <U>STATISTICS</U> <U>LIMITED</U> <U>RECURSOR</U>
+                   is the same as...
+              TD:<U>SET</U> <U>STATISTICS</U> <U>LIMITED</U> <U>FROM</U> <U>CURSOR</U> <U>TO</U> <U>CURSOR</U>
+
+<A NAME="175">     6.  VLOG  -  Draws  a cross when you press the space bar, and draws a </A>
+         dotted line around the final limits.
+
+
+</PRE>
+</BODY>

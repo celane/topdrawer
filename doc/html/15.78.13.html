@@ -1,0 +1,20 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.78.13</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.78.13  PLUS</H4></B> 
+
+Adds the value to the coordinate.  If you specify ERROR and you are adding
+a  constant  to  X,Y,  or  Z  the  DX,DY,  or  DZ   are   also   modified.
+DY=SQRT(DY**2+(e)**2) where e is the specified error.
+                                  example
+To add 2+-0.1 to y
+     Y=Y PLUS 2 ERROR=.1
+          or...
+     Y=Y + 2 ERROR=.1
+
+
+</PRE>
+</BODY>

@@ -1,0 +1,28 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.72.3</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.72.3  LJUSTIFY|CENTER|RJUSTIFY</H4></B> 
+
+Either left, right or center justifies the title.  (Default:LJUSTIFY)
+  *  LJUSTIFY - The center of the first character is at x,y,z.
+  *  CENTER - The center of the string is at x,y,x.  The center is assumed
+     half way between the first and last characters.
+  *  RJUSTIFY - The center of the last character is at x,y,z.
+If TOP,BOTTOM...  are specified then the title is automatically centered.
+
+                                  example
+     TD:<U>Title</U> <U>TOP</U> <U>LJUST</U> <U>'Left'</U>
+     TD:<U>Title</U> <U>top</U> <U>'Center'</U>
+     TD:<U>Title</U> <U>top</U> <U>RJUST</U> <U>'Right'</U>
+puts 3 titles at the top of the plot on the left,center, and right.
+
+                                  example
+     TD:<U>TITLE</U> <U>10,5</U> <U>RJUST</U> <U>'Location</U> <U>10,5</U> <U>--&gt;+'</U>
+Puts the title with the plus sign at x=10, y=5.
+
+
+</PRE>
+</BODY>

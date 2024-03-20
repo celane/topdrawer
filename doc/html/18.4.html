@@ -1,0 +1,29 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 18.4</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>18.4  LINKING</H4></B> 
+
+For more information on linking see UGS.  The following routines should be
+linked to your program.
+     $ LINK Routine, -
+          TOPDRAWER_OLB[/INCLUDE=TD]/LIBRARY, -
+          PACKLIB_OLB/LIBRARY,MATHLIB_OLB/LIBRARY,
+          UGS_OLB/LIBRARY
+
+If you wish to link a standalone version of topdrawer use /INCLUDE=TD.
+
+For  example  you  wish  to make up a version of Topdrawer to do fits with
+your own supplied function TDUFUN.   You  would  link  a  new  version  as
+follows:
+     $ LINK TDUFUN, -
+          TOPDRAWER_OLB/INCLUDE=TD/LIBRARY, -
+          PACKLIB_OLB/LIBRARY,MATHLIB_OLB/LIBRARY,
+          UGS_OLB/LIBRARY
+
+
+
+</PRE>
+</BODY>

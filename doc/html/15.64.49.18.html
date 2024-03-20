@@ -1,0 +1,24 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.49.18</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.49.18  Example</H4></B>    - 
+     TD:<U>SET</U> <U>SCALE</U> <U>X</U> <U>LOG</U> <U>Y</U> <U>LINEAR</U>
+Sets the X scale to logarithmic, and Y to linear.
+     TD:<U>SET</U> <U>SCALE</U> <U>X</U> <U>LOG</U> <U>SCALE</U> <U>1,5</U> <U>TICKS</U> <U>2,3,4,6,7,8,9</U>
+This  sets  the  log  scales on the X axis so that labels will be drawn at
+1,10,100...  and 5,50,500...   All  subintervals  will  have  small  ticks
+2,3,4,6,7,8,9,20,30,40,60....
+     TD:<U>SET</U> <U>SCALE</U> <U>X</U> <U>LINEAR</U> <U>LABELS=10</U> <U>TICKS=8</U> <U>LONG</U>
+Selects  a  linear  scale for X with a maximum of 10 labelled ticks, and a
+maximum of 8 unlabelled ticks.  All ticks will be the same length.
+     TD:<U>SET</U> <U>SCALE</U> <U>ALL</U> <U>LOG</U> <U>Z</U> <U>LINEAR</U>
+Sets X,Y scales logarithmic, and Z linear.
+     TD:<U>SET</U> <U>SCALE</U> <U>ALL</U> <U>LOG</U>
+Sets all scales logarithmic.
+
+
+</PRE>
+</BODY>

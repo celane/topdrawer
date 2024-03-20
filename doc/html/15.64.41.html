@@ -1,0 +1,40 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.41</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.41  PATTERN</H4></B> 
+
+This selects the pattern for patterned lines.  These are produced by JOIN,
+HIST,  PLOT,  or BAR commands.  This option remains the same until changed
+by a SET PATTERN command.
+<U>SE</U>T <U>PAT</U>TERN [<U>RA</U>NDOM|<U>FU</U>NNY] [<U>DO</U>T] [<U>DA</U>SH] [<U>DAA</U>SH] [<U>SP</U>ACE] [<U>SI</U>ZE=n]
+          [<U>PE</U>RMANENT]
+<U>SE</U>T <U>PAT</U>TERN p1 s1 p2 s2 ....p10 s10
+
+     1.  RANDOM - The distance following this is random.
+     2.  DOT - Draws a single dot followed by a 0.1" space.
+     3.  DASH - Draws a short dash 0.1" long followed by 0.1" space.
+     4.  DAASH - Draws a long dash 0.3" followed by 0.1" space.
+     5.  SPACE - Adds 0.05" of blank space.
+     6.  SIZE=n  -  Size  of  dashes,  and the distance between dashes and
+         dots.
+         (Default:0.1)
+     7.  p = distance to draw in inches.  If negative it varies randomly.
+     8.  s = distance to skip in inches.  If negative it varies randomly.
+     9.  PERMANENT - Makes the current SIZE the permanent default.
+
+You  may  enter  up  to  a  maximum  of  20  values  or  10 DOT/DASH/DAASH
+specifiers.  Random values vary from zero to the value specified.  You may
+also specify patterns as part of any drawing command.  For example:
+     TD:<U>HISTOGRAM</U> <U>PATTERN</U> <U>DOT</U> <U>DOT</U> <U>DASH</U>
+          is the same as ...
+     TD:<U>SET</U> <U>PATTERN</U> <U>DOT</U> <U>DOT</U> <U>DASH;</U>  <U>HISTOGRAM</U> <U>PATTERN</U>
+          or...
+     TD:<U>HISTOGRAM</U> <U>DOT</U> <U>DOT</U> <U>DASH</U>
+See:Command SET TEXTURE
+
+
+</PRE>
+</BODY>

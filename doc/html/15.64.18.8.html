@@ -1,0 +1,33 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.18.8</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.18.8  GRINNELL</H4></B>   - This  is  a  slave  raster  graphics device only.
+Options are:
+     1.  CHANNEL=&lt;value&gt; - Identification of I/O controller (Default:GRA0)
+     2.  UNITS=&lt;value&gt;  - Selects the monitors to use.  This is sum of the
+         display units (1,2,4...).  (Default:1)
+     3.  BWTYPE=&lt;value&gt;   -   Selects   black   and  white  monitor  type.
+         (Default:1)
+                   1 = 1 memory plane no look-up
+                   2 = 2 memory planes no look-up
+                   3 = 2 memory planew with look-up
+     4.  COLTYPE=&lt;value&gt; - Selects the type of color monitor.
+                   1 = 4 memory planes (7 colors 2 levels)
+                   2 = 4 memory planes (7 colors + blink mode)
+                   3 = 3 memory planes (color, intensity, blink)
+                   4 = Same as 2 but with look up table.
+     5.  XMAX=&lt;value&gt; Maximum raster value (Default:511)
+     6.  YMAX=&lt;value&gt; Maximum raster value (Default:511)
+     7.  CSIZ=&lt;value&gt; Character spacing.  (Default:7)
+     8.  EXTCHR - Indicates the controller produces extended char.  set.
+     9.  REPCHR - Character data replaces existing data
+    10.  XSIZ=&lt;value&gt; - Size of monitor in cm (Default:25.4)
+    11.  YSIZ=&lt;value&gt; - Size of monitor in cm (Default:25.4)
+
+
+
+</PRE>
+</BODY>

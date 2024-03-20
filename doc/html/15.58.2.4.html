@@ -1,0 +1,19 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.58.2.4</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.58.2.4  HIDE</H4></B>   - Controls whether hidden lines are drawn for a 3-d axes
+and grid.  HIDE=OFF draws the hidden  lines,  while  HIDE=ON  omits  them.
+This  assumes  that  the  axes are drawn in the normal position behind the
+plot.  It may not work properly for other  positions.   You  <U>must</U>  specify
+which axes are to be plotted.
+(Default:HIDE=OFF)
+                                  example
+For example histogram a mesh with hidden axes:
+     TD:HISTOGRAM ( Hist mesh data)
+     TD:PLOT AXES X Y Z HIDE ( Now plot only visible portion of axes)
+
+</PRE>
+</BODY>

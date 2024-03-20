@@ -1,0 +1,46 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 18.34</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>18.34  TD3HST</H4></B> 
+
+This histograms 3-d data.
+CALL TD3HST(ARRAY,NX,NY[[[[[[[IXYZ],ITXTUR],DXYZ],NXL],NYL],NXH],NYH])
+     1.  ARRAY(NX,NY+1) - Contains the 3-d data.
+      *  ARRAY(1,1) - N1+N2*4 - N=1,2,3 for X,Y,Z
+         N1=1 if ARRAY(1,1) is X, 2 if Y, 3 if Z.
+         N2=1 if ARRAY(1,1) is X, 2 if Y, 3 if Z.
+      *  ARRAY(2:NX,1) - X values at center of bin
+      *  ARRAY(1,2:NY) - Y values at center of bin
+      *  ARRAY(2:nx,2:NY) - Z values
+      *  ARRAY(1,NY+1) - Lower Edge of first x bin
+      *  ARRAY(2,NY+1) - Upper Edge of last x bin
+      *  ARRAY(3,NY+1) - Lower Edge of first y bin
+      *  ARRAY(4,NY+1) - Upper Edge of last y bin
+     2.  IXYZ controls type of plot.
+      *  1 = draw X lines
+      *  2 = draw Y lines
+      *  4 = draw Z lines
+      *  8 = NoDEPTH
+      *  16 = NOHIDE
+      *  32 = NOFRAME
+      *  64 = Shade XY face
+      *  128 = Shade YZ face
+
+<A NAME="234">      *  256 = Shade ZX face </A>
+      *  512 = Shade with X's
+      *  1024 = Shade with dots.
+     3.  DXYZ(3) - Distance between lines used to shade plot (DX,DY,DZ)
+     4.  ITXTUR - (N*64=texture, N=1:7)
+     5.  NXL - Low X chan to plot (0=plot all)
+     6.  NYL - Low Y chan to plot (0=plot all)
+     7.  NXH - High X chan to plot (0=plot all)
+     8.  NYH - High Y chan to plot (0=plot all)
+For      more      information      see      the      sample      program:
+TOPDRAWER_ROOT:[EXAMPLES]TD_DEMO3.FOR
+
+
+</PRE>
+</BODY>

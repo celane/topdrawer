@@ -1,0 +1,25 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 18.28.1</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>18.28.1  Example</H4></B> 
+
+                                  example
+     CALL TDSETS('SIZE 10 BY 8')
+This sets the size of the plot.  This is the same as the command:
+     TD:<U>SET</U> <U>SIZE</U> <U>10</U> <U>BY</U> <U>8</U>
+     CALL TDSETS('COLOR BLUE')
+Now everything is plotted in blue.
+          or....
+     character*10 string
+     data string/'COLOR BLUE'/
+     CALL TDSETS(string)
+
+     CALL TDSETS('DEVICE VERSATEC')
+Sets the current device to be the Versatek printer/plotter.
+
+
+</PRE>
+</BODY>

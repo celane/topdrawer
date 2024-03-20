@@ -1,0 +1,50 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.18.16.7</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.18.16.7  Escape_seq</H4></B>  - Each TEK4010 emulator uses slightly different
+escape sequences.  The following is  a  listing  of  the  sequences  which
+differ from one device to another.
+
+     1.  ENTER Tek mode
+         A.  &lt;ESC&gt;[?38h - VT240,Kermit
+         B.  &lt;ESC&gt;#!1 - TEK4207
+         C.  &lt;GS&gt; - Most other devices
+
+     2.  EXIT Tek mode or Resume ANSI terminal mode
+         A.  &lt;ESC&gt;[?38l - VT240,Kermit
+         B.  &lt;ESC&gt;#!0 - TEK4207
+         C.  &lt;ESC&gt;2 - CIT467
+         D.  &lt;CAN&gt; - most other devices
+
+     3.  Set color (X=single color character)
+         (White,Red,Green,Blue,Yellow,Magenta,Cyan,Black)
+         A.  &lt;ESC&gt;[3Xm - Kermit X=71243560
+             The KERMIT color emulation uses &lt;ESC&gt;[3F;Bm
+             Where F is the Foreground color and B is the background.
+<A NAME="138">         B.  &lt;ESC&gt;MLX - TEK4207 X=12347650 </A>
+             Alternate colors for TEK4207 are:
+             &lt;         ;         :         9
+             Violet    Lt.Blue   Blue-Grn  Yellow-Grn
+             8         =         &gt;         ?
+             Orange    Salmon    Dk.Gray   Lt.Gray
+         C.  &lt;ESC&gt;X - CIT467 X=oiljmknh
+         D.  &lt;ESC&gt;CX  -  LSI7107  X=71243560 The LIS7107 additionally must
+             return to terminal mode to setup a new color.
+
+     4.  Set mode ERASE/DRAW
+         A.  Color terminals use color black
+         B.  &lt;ESC&gt;&lt;RUB&gt;/&lt;ESC&gt;a - RADM3A
+         C.  &lt;ESC&gt;1d/&lt;ESC&gt;0d - RVT100,VIS102
+         D.  &lt;ESC&gt;OW b` @@/&lt;ESC&gt;OW `` @@ - SEL100XL
+                              Codes (decimal)
+3.  &lt;ESC&gt; = 27
+4.  &lt;CAN&gt; = 24
+5.  &lt;GS&gt; = 29
+6.  &lt;RUB&gt; = 127
+
+
+</PRE>
+</BODY>

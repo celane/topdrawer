@@ -1,0 +1,55 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.4</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.4  OPTIONS</H4></B> 
+
+There  are  a  number  of options that are common to many commands.  These
+select either the data to use, or  the  plot  attributes.   Commands  that
+modify data have some common output options.
+                                Data selection
+<U>PO</U>INTS|<U>CO</U>LUMNS=[<U>FR</U>OM] n1 [<U>TO</U>] [n2]
+     Selects the data points or columns of a mesh by number
+<U>LIN</U>ES|<U>RO</U>WS=[<U>FR</U>OM] n1 [<U>TO</U>] [n2]
+     Selects the lines of a mesh
+<U>SET</U>S=[<U>FR</U>OM] n1 [<U>TO</U>] [n2]
+     Selects the data sets by number
+<U>SEL</U>ECT="name"
+     Selects the data sets by name
+<U>LIM</U>ITED  [<U>VL</U>OG[=<U>ON</U>|<U>OF</U>F]]  [[<U>FR</U>OM]|<U>TO</U> [[<U>X</U>=]nx,[[<U>Y</U>=]ny[,[<U>Z</U>=]nz]]] [<U>RE</U>CURSOR]
+     [<U>CU</U>RSOR]
+     Selects the data by specifying a range or value for each point
+<U>SL</U>ICES [X|Y|Z] [<U>FR</U>OM] v1 [[<U>TO</U>] v2]
+     Selects the data by specifying a range and selects the axis to view a
+     mesh.
+[<U>TI</U>TLE[=<U>ON</U>|<U>OF</U>F]]
+     Uses the name of the current histogram to put a title on the plot.
+                                  Plot limits
+<U>EX</U>PAND[=<U>ON</U>|<U>OF</U>F]
+<A NAME="32">                                Plot attributes </A>
+<U>CYC</U>LE[=<U>ON</U>|<U>OF</U>F]
+     Each data set is plotted with a different intensity, color ...
+<U>IN</U>TENSITY|<U>WI</U>DTH=n
+     Selects the line width for the plotted data
+<U>WH</U>ITE|<U>RE</U>D|<U>GR</U>EEN|<U>BLU</U>E|<U>YE</U>LLOW|<U>MA</U>GENTA|<U>CYA</U>N
+     Selects the color for the plotted data
+<U>SO</U>LID|<U>DO</U>TS|<U>DA</U>SHES|<U>DAA</U>SHES|<U>DOTD</U>ASH|<U>PA</U>TTERNED|<U>FU</U>NNY|<U>SP</U>ACE
+     Selects the texture of the lines for plotted data.
+<U>HI</U>DE[=<U>ON</U>|<U>OF</U>F]
+     Hides the current data if behind a previous hidden set.
+<U>FI</U>LL[=<U>ON</U>|<U>OF</U>F]
+     Fills the data with a pattern.
+                               Output selection.
+<U>AP</U>PEND[=<U>ON</U>|<U>OF</U>F]
+     The  resulting  "new" data set is appended to the current sets rather
+     than replacing it.
+<U>NAM</U>E="name"
+     Specifies the name of the "new" data set.
+                                 Miscellaneous
+<U>LO</U>G[=<U>ON</U>|<U>OF</U>F]
+
+
+</PRE>
+</BODY>

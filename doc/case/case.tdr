@@ -1,0 +1,56 @@
+set font duplex
+
+set title size 2.5 permanent
+
+title 1 10 " "
+
+title "ABCDEFGHIJKLMNOPQRSTUVWXYZ" case "11111111111111111111111111"
+title "abcdefghijklmnopqrstuvwxyz" case "11111111111111111111111111"
+title "0123456789"                 case "1111111111"
+
+title "ABCDEFGHIJKLMNOPQRSTUVWXYZ" case "22222222222222222222222222"
+title "abcdefghijklmnopqrstuvwxyz" case "22222222222222222222222222"
+title "0123456789"                 case "2222222222"
+
+title "ABCDEFGHIJKLMNOPQRSTUVWXYZ" case "33333333333333333333333333"
+title "abcdefghijklmnopqrstuvwxyz" case "33333333333333333333333333"
+title "0123456789"                 case "3333333333"
+
+title "ABCDEFGHIJKLMNOPQRSTUVWXYZ" case "44444444444444444444444444"
+title "abcdefghijklmnopqrstuvwxyz" case "44444444444444444444444444"
+title "0123456789"                 case "4444444444"
+
+title "ABCDEFGHIJKLMNOPQRSTUVWXYZ" case "IIIIIIIIIIIIIIIIIIIIIIIIII"
+title "abcdefghijklmnopqrstuvwxyz" case "IIIIIIIIIIIIIIIIIIIIIIIIII"
+title "0123456789"                 case "IIIIIIIIII"
+
+title "ABCDEFGHIJKLMNOPQRSTUVWXYZ" case "JJJJJJJJJJJJJJJJJJJJJJJJJJ"
+title "abcdefghijklmnopqrstuvwxyz" case "JJJJJJJJJJJJJJJJJJJJJJJJJJ"
+title "0123456789"                 case "JJJJJJJJJJ"
+
+new
+
+set mode proportional off
+
+title "  ABCDEFGHIJKLMNOPQRSTUVWXYZ" case "  11111111111111111111111111"
+title "G ABCDEFGHI KLMNOPQRSTU WXYZ" case "1 GGGGGGGGG GGGGGGGGGGG GGGG"
+title "H ABCDEFGHI KLMNOPQRSTU WXYZ" case "1 HHHHHHHHH HHHHHHHHHHH HHHH"
+title "S A  DEFGHIJ L NOPQRSTUVWX Z" case "1 S  SSSSSSS S SSSSSSSSSSS S"
+title "M A C          N  Q ST V    " case "1 M M          M  M MM M    "
+title "X A   E   I  LMN   R  U     " case "1 X   X   X  XXX   X  X     "
+title "P ABCDEFGHIJKL           XY " case "1 PPPPPPPPPPPP           PP "
+title "A  B D       L     R  U     " case "1  A A       A     A  A     "
+title " "
+title "  0123456789<>()./=+-*:?" case "  111111111111111111 111"
+title "S 0 2       <>() / + *:?" case "1 S S       SSSS S S SSS"
+title "M               . = -   " case "1               M M M   "
+title "X           <>          " case "1           XX          "
+title "P 0123456789            " case "1 PPPPPPPPPP            "
+
+set mode proportional on
+
+title " "
+TITLE "071Li(4p51R2,n)071Be at E42p35=54005MeV"
+CASE  "C C   CICVAV I C C      IUCICU U   U   "
+
+flush

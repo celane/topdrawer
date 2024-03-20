@@ -1,0 +1,26 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.65.6.2</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.65.6.2  AREA|DIRECTORY</H4></B>  - Selects the area to list histograms.  You may
+use wild characters to select the particular areas to show.   See  COMMAND
+SET HISTOGRAM.  If you wish to get a directory of the direct access file:
+     TD:SHOW HIST AREA=//FILE/subdir/sub-subdir...
+If you wish to get a directory of a global comman section:
+     TD:SHOW HIST AREA=//SECT/subdir/sub-subdir...
+                                  example
+     TD:SHOW HIST AREA=/X
+Shows all histograms in subdirectory //PAWC/X.
+     TD:SHOW HIST TREE AREA=/X
+Shows all histograms in the directory starting with //PAWC/X.
+     TD:SHOW HIST AREA=/X/*
+Shows all histograms in subdirectories of area //PAWC/X
+<A NAME="198">     TD:SHOW HIST AREA=/X*/Y </A>
+Shows  all  histograms  in the selecte areas.  For example //PAWC/X1/Y and
+//PAWC/X2/Y will be shown but //PAWC/N/Y and //PAWC/X1/Z will not.
+
+
+</PRE>
+</BODY>

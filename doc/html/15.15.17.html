@@ -1,0 +1,23 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.15.17</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.15.17  Example</H4></B> 
+
+     TD:<U>CONTOUR</U>
+Draws a series of contour lines according to the Z scale.
+
+     TD:<U>CONTOUR</U> <U>SECONDARY</U> <U>1,2,3,4,6,7,8,9,PRIMARY,20,LABEL,5,10</U>
+          or...
+
+     TD:<U>CONTOUR</U> <U>SECONDARY</U> <U>FROM</U> <U>1</U> <U>TO</U> <U>9</U> <U>BY</U> <U>1</U> <U>PRIMARY,20,LABEL,5,10</U>
+Draws  contours  for  Z=1  to 20.  Contour 5 and 10 are labeled.  Contours
+5,10, and 20 will be SOLID, all others are dotted.
+     TD:<U>CONTOUR</U> <U>SAVE</U> <U>10</U>
+Saves the contours for Z=10 as separate data sets.  No plot is produced.
+
+
+</PRE>
+</BODY>

@@ -1,0 +1,65 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual Chapter 3</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>Chapter 3  INTRODUCTION</H4></B>
+<A NAME="3"> </A>
+TOPDRAWER  is  fairly easy to use if you confine yourself to simple plots.
+First invoke TOPDRAWER by typing:
+     $ <U>TOPDRAWER</U>
+You are then prompted:
+     TD:   You  first  enter  your data as a set of X,Y,DX,DY values.  The
+DX,DY may be omitted if no error bars are  needed.   Each  data  point  is
+specified on a separate line.  For example a line going from 0,0 to 1,1 is
+specified as:
+     TD:<U>0,0</U>
+     TD:<U>1,1</U>
+Then  the data may be plotted as a set of points with error bars (if DX,DY
+are not zero) by typing the command:
+     TD:<U>PLOT</U>
+
+If you wish to produce a histogram use the command:
+     TD:<U>HISTOGRAM</U>
+On the other hand if you wish to plot a smooth curve type:
+     TD:<U>JOIN</U>
+For series of straight lines connecting the points:
+     TD:<U>JOIN</U> <U>1</U> <U>(1</U> <U>segment</U> <U>per</U> <U>interval)</U>
+To put a title at the top:
+     TD:<U>TITLE</U> <U>TOP</U> <U>'This</U> <U>is</U> <U>my</U> <U>title'</U>
+To put a title at the bottom:
+     TD:<U>TITLE</U> <U>BOTTOM</U> <U>'This</U> <U>is</U> <U>the</U> <U>X</U> <U>axis'</U>
+To put a title on the left:
+     TD:<U>TITLE</U> <U>LEFT</U> <U>'This</U> <U>is</U> <U>the</U> <U>Y</U> <U>axis'</U>
+
+If you are done, you then type:
+     TD:<U>EXIT</U>
+
+Now you liked the plot, but you wish to change a few things.  The commands
+<A NAME="4">mistakes you made.  You also should rename it: </A>
+     $ <U>RENAME</U> <U>TD.TDJ</U> <U>MYPLOT.TOP</U>
+and  invoke  TOPDRAWER  again.  Now instead of typing all the commands in,
+just type:
+     $ <U>SET</U> <U>FILE</U> <U>IN</U> <U>'MYPLOT'</U>
+TOPDRAWER  will  re-execute the commands in the file.  Now you wish to get
+the plots out on the Postscript printer.  so you type:
+     TD:<U>SET</U> <U>DEVICE</U> <U>POSTSCR</U>
+Then replot the data by typing:
+     TD:<U>SET</U> <U>FILE</U> <U>IN</U> <U>'MYPLOT'</U>
+Finally type:
+     TD:<U>EXIT</U>
+
+Now the plot is printed on the Talaris by:
+     $ <U>PRINT</U> <U>MYPLOT.PS</U>
+
+More  plots may be added to the first plot by entering more data, and then
+either PLOT, HISTOGRAM, or JOIN.  Each command may be  modified  by  extra
+commands to make the plot more pleasing.  For example if you type:
+     TD:<U>HISTOGRAM</U> <U>DOTS</U> <U>RED</U>
+Then  the  histogram will be formed with red dotted lines.  This is useful
+to differentiate it from other previously plotted histograms.
+
+
+</PRE>
+</BODY>

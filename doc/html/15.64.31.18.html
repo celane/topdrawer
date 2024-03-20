@@ -1,0 +1,21 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.31.18</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.31.18  TITLE</H4></B>   - This plots the histogram name as a title.  The name
+may be split into 4 parts, Top, X,  Y,  and  Z  by  separating  them  with
+semicolons.
+     Top label;X label;Y label;Z label
+If  the  number  of lines is insufficient for a title, then it is omitted.
+For example you wish to omit the Y title so you:
+     TD:SET TITLE LEFT LINES=0
+
+WARNING For 3-D histograms the title should not be plotted until after the
+histogram has been plotted.  If you omit ON or OFF then ON is assumed.
+(Default:TITLE=OFF)
+
+
+</PRE>
+</BODY>

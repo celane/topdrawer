@@ -1,0 +1,607 @@
+SET ERASE DEFERRED
+   SET AXES RED PERMANENT
+   SET GRID BLUE PERMANENT
+   SET COLOR GREEN PERMANENT
+   SET WIDTH 2 PERMANENT
+   (      SET SIZE 13 BY 10 REDUCE=2)
+       SET FONT DUPLEX
+   SET TITLE SIZE 2
+   TITLE TOP "Demonstration of TOPDRAWER"
+   TITLE  "Font: DUPLEX"
+   TITLE  "Type: STOP to terminate program"
+   TITLE  "Type: The Return key for more"
+NEW FRAME "Extended Font"
+   (      SET SIZE 13 BY 10 REDUCE=2)
+         SET FONT EXTENDED
+   SET TITLE SIZE 2
+   TITLE TOP "Demonstration of TOPDRAWER"
+   TITLE  "Font: EXTENDED"
+   TITLE  "Type: STOP to terminate program"
+   TITLE  "Type: The Return key for more"
+NEW FRAME   "Plot points"
+        title top "PLOT WIDTH=5 (point data)"
+        200  23
+        210  10
+                 220   9
+        230  15
+        240.000    17
+        2.5E2    9
+        2.6D2    3
+        .027E4    14
+        280000000000000000000E-18   7
+        290   8
+        300   10
+        PLOT WIDTH=5
+NEW FRAME "Plot with crosses"
+   SET TITLE SIZE -2
+   title top  "PLOT data with crosses symbol 0"
+   SET SYMBOL 0O SIZE 3       (Symbol=0, size=0.3 inches)
+   200   23
+   210   10
+   220   9
+   230   15
+   240   17
+   250   9
+   260   3
+   270   14
+   280   7
+   290   8
+   300   10
+   PLOT
+NEW FRAME  "Plot many symbols"
+   SET SYMBOL 0O SIZE 3    (plus)
+   SET ORDER X Y SYMBOL
+   title top  "PLOT data symbols 0-9,A,$"
+   200   23
+   210   10    1O    (cross)
+   220   9     2O    (diamond)
+   230   15    3O    (square)
+   240   17    4O    (plus with a hole)
+   250   9     5O    (cross with a hole)
+   260   3     6O    (plus with hash marks)
+   270   14    7O    (cross with hash marks)
+   280   7     8O    (star)
+   290   9     9O    (?)
+   300   8     A     (letter A)
+   310   10    '$'   (special characters in quotes)
+   PLOT
+NEW FRAME  "Plot with axes TOP,RIGHT OFF"
+   SET SYMBOL 0O SIZE 3    (plus)
+   SET AXES TOP OFF RIGHT OFF
+   SET ORDER X Y SYMBOL
+   title top  "PLOT data with AXES TOP,RIGHT OFF"
+   200   23
+   210   10    1O    (cross)
+   220   9     2O    (diamond)
+   230   15    3O    (square)
+   240   17    4O    (plus with a hole)
+   250   9     5O    (cross with a hole)
+   260   3     6O    (plus with hash marks)
+   270   14    7O    (cross with hash marks)
+   280   7     8O    (star)
+   290   8     A     (letter A)
+   300   10    '$'   (special characters in quotes)
+   PLOT
+NEW FRAME "Plot with grid SYMBOL"
+   SET SYMBOL 0O SIZE 3    (plus)
+   SET ORDER X Y SYMBOL
+   title top  "PLOT data with grid SYMBOL"
+   SET GRID SYMBOL "0O"
+   200   23
+   210   10    1O    (cross)
+   220   9     2O    (diamond)
+   230   15    3O    (square)
+   240   17    4O    (plus with a hole)
+   250   9     5O    (cross with a hole)
+   260   3     6O    (plus with hash marks)
+   270   14    7O    (cross with hash marks)
+   280   7     8O    (star)
+   290   8     A     (letter A)
+   300   10    '$'   (special characters in quotes)
+   PLOT
+NEW FRAME "Plot with grid"
+   SET SYMBOL 0O SIZE 3    (plus)
+   SET ORDER X Y SYMBOL
+   title top  "PLOT data with grid"
+   SET GRID ON DOTS
+   200   23
+   210   10    1O    (cross)
+   220   9     2O    (diamond)
+   230   15    3O    (square)
+   240   17    4O    (plus with a hole)
+   250   9     5O    (cross with a hole)
+   260   3     6O    (plus with hash marks)
+   270   14    7O    (cross with hash marks)
+   280   7     8O    (star)
+   290   8     A     (letter A)
+   300   10    '$'   (special characters in quotes)
+   PLOT
+ NEW FRAME "Histogram data"
+   SET SYMBOL 0O SIZE 3
+   SET ORDER X Y SYMBOL
+   title top  "HISTOGRAM data"
+   200   23
+   210   10    1O
+   220   9     2O
+   230   15    3O
+   240   17    4O
+   250   9     5O
+   260   3     6O
+   270   14    7O
+   280   7     8O
+   290   8     A
+   300   10    '$'
+   HISTOGRAM
+ NEW FRAME "Histogram + Plot"
+   SET SYMBOL 1O SIZE 3
+   SET ORDER X Y SYMBOL
+   title top  "HISTOGRAM + PLOT data"
+   200   23
+   210   10    1O
+   220   9     2O
+   230   15    3O
+   240   17    4O
+   250   9     5O
+   260   3     6O
+   270   14    7O
+   280   7     8O
+   290   8     A
+   300   10    '$'
+   HIST
+   PLOT
+ NEW FRAME "Join + Plot"
+   SET SYMBOL 0O SIZE 3
+   title top  "JOIN + PLOT data symbol 3"
+   200 0
+   220 5
+   250 8.4
+   290 3
+   JOIN
+   PLOT
+ NEW FRAME "Hist + Plot 3 sets"
+   SET SYMBOL 3O SIZE 3
+   TITLE TOP "3 Data sets"
+   200   23
+   210   10
+   220   9
+   230   15
+   240   17
+   250   9
+   260   3
+   270   14
+   280   7
+   290   8
+   300   10
+   HIST
+   PLOT
+   SET SYMBOL 2O SIZE 3
+   200 0
+   220 10
+   250 8.4
+   290 1
+   JOIN
+   PLOT
+   SET SYMBOL Z SIZE 3
+   200 10
+   210 15
+   250 19
+   290 15
+   PLOT
+   JOIN
+ NEW FRAME "PLOT + JOIN 3 sets, autoscaled"
+   SET SYMBOL 1 SIZE 3
+   title top  "PLOT + JOIN 3 data sets, autoscaled"
+   10 0
+   0 10
+   -10 0
+   0 -10
+   10 0
+   JOIN 1
+   PLOT
+   SET SYMBOL 2 SIZE 3
+   8 0
+   0 8
+   -8 0
+   0 -8
+   8 0
+   JOIN 2
+   PLOT
+   SET SYMBOL 3 SIZE 3
+   6 0
+   0 6
+   -6 0
+   0 -6
+   6 0
+   JOIN 3
+   PLOT
+ NEW FRAME "Plot + JOIN autoscaled reverse order"
+   SET SYMBOL 3 SIZE 3
+   title top  "PLOT + JOIN 3 data sets, autoscaled"
+   6 0
+   0 6
+   -6 0
+   0 -6
+   6 0
+   JOIN 3
+   PLOT
+   SET SYMBOL 1 SIZE 3
+   10 0
+   0 10
+   -10 0
+   0 -10
+   10 0
+   JOIN 1
+   PLOT
+   SET SYMBOL 2 SIZE 3
+   8 0
+   0 8
+   -8 0
+   0 -8
+   8 0
+   JOIN 2
+   PLOT
+NEW FRAME "PLOT + JOIN manual scale"
+   SET LIMITS X 13 to -13 y -13 to 13
+   SET SYMBOL 3 SIZE 3
+   title top  "PLOT + JOIN 2 data sets, manual scale"
+   6 0
+   0 6
+   -6 0
+   0 -6
+   6 0
+   JOIN 3
+   PLOT
+   SET SYMBOL 1 SIZE 3
+   10 0
+   0 10
+   -10 0
+   0 -10
+   10 0
+   JOIN 1
+   PLOT
+ NEW FRAME "Log-Log plot"
+   title top "Log-Log plot"
+   1 1
+   2 10
+   3 100
+   4 1E4
+   5 1.E5
+   6 1.E10
+   SET SCALE X LOG Y LOG
+   JOIN
+ NEW FRAME "PLOT with error bars"
+   SET LIMITS X FROM 500 TO 2500 Y FROM 0 TO 3
+   SET SYMBOL 1O SIZE 3
+   title top "PLOT with error bars"
+   SET ORDER X Y DY
+   718.      1.520     .165
+   782.      2.413     .264
+   832.      2.446     .231
+   1005.     1.091     .165
+   1106.     1.190     .165
+   1249.     1.190     .132
+   1433.     0.661     .066
+   PLOT
+   SET SYMBOL SIZE 3
+   SET ORDER X DX Y DY
+   1590 50 .66 .1
+   1790 60 .49 .2
+   1990 30 .52 .15
+   2190 45 .41 .3
+   2390 20 .31 .12
+   PLOT
+ NEW FRAME "Various title angles + positions"
+   TITLE TOP 'TOP TITLE'
+   TITLE LEFT 'LEFT TITLE'
+   TITLE RIGHT 'RIGHT'
+   TITLE BOTTOM 'BOTTOM'
+   TITLE 'NO POSITION NUMBER 1'
+   TITLE 4 6 '(4,6)'
+   TITLE 'NO POSITION NUMBER 2'
+   TITLE 4 3 ANGLE 45 'TILT'
+   TITLE 'NO POSITION NUMBER 3'
+   TITLE 11 4 ANGLE 180 'UPSIDE DOWN'
+   TITLE 'NO POSITION NUMBER 4'
+   PLOT AXES
+//This is a comment line
+NEW "Polar plot"
+   TITLE top 'Polar plot demonstation'
+   SET ORDER RAD,THETA,RRAD,Dt,SYMBOL
+   1,  0,.20,20,1O
+   2, 45,.20,20,2O
+   3, 90,.20,20,3O
+   4,135,.20,20,4O
+   5,180,.20,20,5O
+   4,225,.20,20,6O
+   3,270,.20,20,7O
+   2,315,.20,20,8O
+   1,360,.20,2
+   set lim scale     (Same scale factors on X,Y axes)
+   plot;
+   circle 0,0 data dsize =2 dotted
+   circle 0,0 data dsize =4 dash
+   circle 0,0 data dsize =6 dotdash
+   circle 0,0 data dsize =8 daash
+   circle 0,0 data dsize =10 funny
+   circle 0,0 data dsize =12 solid
+   join
+//  This whole line is a comment
+NEW FRAME "Greek - mathemtical demo"
+   SET FONT EXTENDED
+   SET TITLE SIZE 3.5
+   TITLE 4 8 'ADG ADG ADG ADG 222223-13=8'
+   CASE      '    LLL FFF GGG  X X X  X  '
+   SET FONT DUPLEX
+   TITLE 'ADG ADG ADG ADG 222223-13=8'
+   CASE  '    LLL FFF GGG  X X X  X  '
+   TITLE '(N-1)!=G(N)=I2030001 E2-T3T2N-13DT'
+   CASE  ' L     F L  MXMXXU X LX LXLXL  XLL'
+   TITLE 'YS/YT (MB/0.02GEV223)'
+   CASE  'MG ML  GL      L X X '
+   TITLE '|T2PP1| (GEV/C)22'
+   CASE  ' LVGGV    L  L X '
+   SET FONT EXTENDED
+   TITLE '|T2PP1| (GEV/C)22'
+   CASE  ' LVGGV    L  L X '
+   TITLE '|T2PP1| (GEV/C)22'
+   CASE  ' LVGGV    L  L X '
+   TITLE 'Comparison of:'
+   TITLE 'DUPLEX/EXTENDED fonts'
+NEW FRAME "Plot smoothed curve"
+   200   23
+   210   10
+   220   9
+   230   15
+   240   17
+   250   9
+   260   3
+   270   14
+   280   7
+   290   8
+   300   10
+   310   13
+   320   12
+   330   7
+   340   13
+   350   9
+   360   12
+   370   10
+   380   6
+   390   11
+   400   6
+   HIST
+   SMOOTH
+   JOIN
+   TITLE TOP "Smoothed curve"
+ NEW FRAME "Sample flow chart"
+   SET SIZE 8 BY 7 REDUCE 1
+    SET FONT DUPLEX
+    SET TITLE SIZE 1 (AVOIDING DEVICE-GENERATED CHARACTERS)
+    SET ARROW SIZE 1.7 FLARE .5
+    TITLE 3.5 5.9 CENTER SIZE 2 'Newton-Raphson Method'
+    TITLE 'to solve F(x) = 0'
+    TITLE 3.5 5.3 CENTER ''
+    TITLE "X0I+11 = X0I1 - 41F(X0I1)51UUUU52F'(X0I1)"  SPACES 18
+     CASE "LXL  X   LXLX   ZV  LXLX ZVDDDDZV   LXLX "
+    TITLE 3.5 4.5 'start' CENTER
+    ELLIPSE 3.5 4.5 SIZE 1.0 .3
+    ARROW FROM 3.5 4.35  TO 3.5 4.05
+    TITLE 3.5 3.9 CENTER 'X = 1'
+    BOX 3.5 3.90 SIZE .5 .3
+    ARROW FROM 3.5 3.90 LESS .15 TO 3.5 3.45
+    TITLE 3.5 3.35 CENTER 'XNEW ='
+    TITLE "X- 41F(X)51UUUU522F'(X)"  SPACES 8
+     CASE "   ZV    ZVDDDDZVV     "
+    BOX 3.5 3.20 SIZE 1 .5
+    ARROW FROM 3.5 2.95 TO 3.5 2.60
+    TITLE 3.5 2.50 CENTER 'WRITE'
+    TITLE 'XNEW'
+    BOX 3.5 2.35 SIZE 1 .5
+    ARROW FROM 3.5 2.10 TO 3.5 1.75
+    TITLE 5.5 1.60   CENTER ' X-XNEW '
+    TITLE '< 101-62 ?'
+     CASE '    V  V'  SPACES 7
+    DIAMOND 3.5 1.50 SIZE 1 0.5
+    TITLE   3.5 1.50 '?'
+    SET TEXTURE DOTDASH
+    BOX 5.5 1.50 SIZE 1.5 .8
+    ARROW FROM 4.75 1.50 TO 4.0 1.50
+    SET TEXTURE SOLID
+    ARROW FROM 3.5 1.25 TO 3.5 .95
+    TITLE 3.5 .75 CENTER 'Stop'
+    ELLIPSE 3.5 .75 SIZE 1.0 .4
+    ARROW FROM 3 1.50 TO 2.25 1.50
+    TITLE 1.5 1.50 'X = XNEW' CENTER
+    BOX 1.5 1.50 SIZE 1.5 .8
+    ARROW FROM 1.5 1.90 TO 1.5 2.90 SIZ 0
+    ARROW TO 3.0 2.90 FROM 1.5 2.90
+    TITLE 3.0 1.10 '  Yes'
+    TITLE 2.25 1.50 ANGLE 45 '  No'
+ NEW FRAME "Various titles"
+    SET FONT EXTENDED
+    SET WINDOW X 0 TO 7.0 Y 1 TO 7
+    SET LIMITS X 0 TO 7.0 Y 1 TO 7
+    PLOT AXES
+    TITLE .5 6.5 'TITLE NUMBER 1 (.5,6.5)'
+     CASE        ' LLLL  LLLLL'
+    TITLE  'TITLE NUMBER 2 (NO POSITION GIVEN)'
+     CASE  ' LLLL  LLLLL     L  LLLLLLL  LLLL '
+    Title 'Title Number 3'
+    TITLE 6.5 2.5 ANGLE 180 'Title Number 4 is Upside Down'
+    TITLE 'So is Number 5'
+    TITLE 5 2 CENTER 'Title Number 6 is Centered on (X=5)'
+    TITLE 'So is Number 7'
+    TITLE .6 3 SIZE 4 ANGLE 30 'Title Number 8 is Size 4'
+    TITLE 'So is Number 9'
+ NEW FRAME "Titles and arrows in various frames"
+    SET WINDOW Y FROM 1 TO 5
+    SET TITLE SIZE 1.6
+    SET LIMITS X FROM 0 TO 100 Y FROM 0 TO 1
+    PLOT AXES
+    TITLE 2 1.8 '(Title at (2,1.8)'
+    TITLE 20 .5 DATA '(Title at (20,0.5) DATA'
+    TITLE 3.0 4.0 Angle 30 ' This title points to a'
+    TITLE 'Title in the DATA System.'
+    ARROW DOTS FROM 3.0 4.0 TO 20,0.5 DATA
+    TITLE 40 .15 DATA ANGLE 30 ' This title points to a
+    TITLE 'Title in the TEXT system.'
+    ARROW DASH FROM 40 0.15 DATA TO 2 1.8
+    TITLE TOP 'This Title is at the TOP'
+    TITLE BOTTOM 'This Title is at the BOTTOM'
+    TITLE LEFT 'This Title is at the LEFT'
+    TITLE RIGHT 'This Title is at the RIGHT'
+NEW FRAME "Plot with common scales"
+   title top 'All plots have common scales'
+   title bottom 'Windows X 1.3 of -3.6 Y 1.3 of -2.6'
+   set limits x 1 to 5 y 0 to 3.5
+   SET WINDOW x 1.3 of -3.6 y 1.3 of -2.6
+   plot axes
+   set labels left off
+   set limits x 1 to 5 y 0 to 3.5
+   set window 2;plot axes
+   set limits x 1 to 5 y 0 to 3.5
+   set window 3;plot axes
+   set labels left on bottom off
+   set limits x 1 to 5 y 0 to 3.5
+   set window 4;plot axes
+   set labels all off
+   set limits x 1 to 5 y 0 to 3.5
+   set window 5;plot axes
+   set limits x 1 to 5 y 0 to 3.5
+   set window 6;plot axes
+ NEW FRAME "PLOT vs HIST"
+    SET WINDOW Y 3.9 TO 5.9
+    SET SYMBOL 0O SIZE 3
+       1 23;    2  9;    3 15;    4 17;    5  9;    6  3
+       7 14;    8  7;    9  8;   10 10;   11 13;   12 12
+      13  7;   14 13;   15  9;   16 12;   17 10;   18  6
+      19  2;   20  5;   21  2;   22 12;   23  6;   24  5
+      25  4;   26  3;   27  3;   28  4;   29  9;   30 10
+      31  8;   32  7;   33  5;   34  6;   35  8;   36 12
+      37  8;   38 12;   39 13;   40 13;   41 12;   42 10
+      43 20;   44  3;   45  1;   46  3
+    PLOT
+    TITLE TOP 'PLOT'
+    SET WINDOW Y .9 TO 2.9
+    TITLE TOP 'HIST'
+    TITLE BOTTOM 'Window Y 0.9 to 2.9'
+    HIST
+ NEW FRAME "JOIN 1 vs 5"
+    SET WINDOW Y 3.9 TO 5.9
+    PLOT
+    JOIN 1
+    TITLE BOTTOM 'JOIN 1'
+    SET WINDOW Y .9 TO 2.9
+    TITLE BOTTOM 'JOIN 5'
+    PLOT ; JOIN 5
+ NEW FRAME "BIN demonstration"
+    SET WINDOW Y 3.9 TO 5.9
+    SET SYMBOL 0O SIZE 3
+       1 23;    2  9;    3 15;    4 17;    5  9;    6  3
+       7 14;    8  7;    9  8;   10 10;   11 13;   12 12
+      13  7;   14 13;   15  9;   16 12;   17 10;   18  6
+      19  2;   20  5;   21  2;   22 12;   23  6;   24  5
+      25  4;   26  3;   27  3;   28  4;   29  9;   30 10
+      31  8;   32  7;   33  5;   34  6;   35  8;   36 12
+      37  8;   38 12;   39 13;   40 13;   41 12;   42 10
+      43 20;   44  3;   45  1;   46  3
+    HIST ; SMOOTH ; JOIN
+    TITLE BOTTOM 'HIST; SMOOTH; JOIN'
+    SET WINDOW Y 1 TO 3
+    SET ORDER DUMMY X
+       1 23;    2  9;    3 15;    4 17;    5  9;    6  3
+       7 14;    8  7;    9  8;   10 10;   11 13;   12 12
+      13  7;   14 13;   15  9;   16 12;   17 10;   18  6
+      19  2;   20  5;   21  2;   22 12;   23  6;   24  5
+      25  4;   26  3;   27  3;   28  4;   29  9;   30 10
+      31  8;   32  7;   33  5;   34  6;   35  8;   36 12
+      37  8;   38 12;   39 13;   40 13;   41 12;   42 10
+      43 20;   44  3;   45  1;   46  3
+    SET LIMITS X -5 TO 25
+    SET SCALE X LABELS 8 TICKS 5
+    FREQUENCY
+   TITLE BOTTOM 'FREQ; HIST'
+   HISTOGRAM
+ NEW FRAME "Various scales"
+   SET WINDOW Y 5.1 TO 6.0
+   SET LIMITS X 0 TO 10 Y 0 TO 1
+   SET AXES  OFF BOTTOM ON
+   PLOT AXES
+   TITLE BOTTOM 'DEFAULT SCALE'
+   SET WINDOW Y 4.2 TO 5.1
+   SET LIMITS X 0 TO 1E5 Y 0 TO 1
+   SET AXES  OFF BOTTOM ON
+   TITLE BOTTOM 'DEFAULT SCALE'
+   PLOT AXES
+   SET WINDOW Y 3.3 TO 4.2
+   SET LIMITS X 0 TO 10 Y 0 TO 1
+   SET SCALE X LABELS 4 TICKS 2
+   SET AXES  OFF BOTTOM ON
+   PLOT AXES
+   TITLE BOTTOM 'SCALE LABELS 4 TICKS 2'
+   SET WINDOW Y 2.4 TO 3.3
+   SET LIMITS X 0 TO 1E5 Y 0 TO 1
+   SET SCALE X LABELS 4 TICKS 2 LONG
+   SET AXES  OFF BOTTOM ON
+   PLOT AXES
+   TITLE BOTTOM 'SCALE LABELS 4 TICKS 2 LONG'
+   SET WINDOW Y 1.5 TO 2.4
+   SET LIMITS X 0 TO 1E15 Y 0 TO 1
+   SET AXES  OFF BOTTOM ON
+   PLOT AXES
+   TITLE BOTTOM 'LIMITS 0 TO 10215'
+         CASE '              X'
+   SET WINDOW Y 0.6 TO 1.5
+   SET SCALE X LINEAR LABELS 6 TICKS 6 BASE 12
+   SET LIMITS X 0 TO 60   Y 0 TO 1
+   SET AXES  OFF BOTTOM ON
+   TITLE BOTTOM 'SET SCALE LINEAR LABELS 6 TICKS 6 X BASE 12'
+   PLOT AXES
+ NEW FRAME "Ticks,labels,scales demo"
+   SET WINDOW Y 5.1 TO 6.0
+   SET LIMITS X .75 TO 13 Y 0 TO 1
+   SET SCALE X LOG
+   SET AXES  OFF BOTTOM ON
+   PLOT AXES
+   TITLE BOTTOM 'SET SCALE X LOG'
+   SET WINDOW Y 4.2 TO 5.1
+   SET LIMITS X .75 TO 13 Y 0 TO 1
+   SET AXES  OFF BOTTOM ON
+   TITLE BOTTOM 'SET SCALE X LOG LABELS 5,2 EXP TICKS 1 SHORT'
+   SET SCALE X LOG LABELS 5,2 EXP TICKS 1 SHORT
+   PLOT AXES
+   SET WINDOW Y 3.3 TO 4.2
+   SET LIMITS X 1 TO 1E5 Y 0 TO 1
+   SET SCALE X LOG
+   SET AXES  OFF BOTTOM ON
+   PLOT AXES
+   TITLE BOTTOM 'SCALE X LOG'
+   SET WINDOW Y 2.4 TO 3.3
+   SET LIMITS X 1E20 TO 1E30 Y 0 TO 1
+   SET SCALE X LOG
+   SET AXES  OFF BOTTOM ON
+   PLOT AXES
+   TITLE BOTTOM 'LIMITS X 102203 TO 10230'
+           CASE '           X  X      X  '
+   SET WINDOW Y 1.5 TO 2.4
+   SET LIMITS X .3 TO 20 Y 0 TO 1
+   SET SCALE X LOG LABELS 1 TICKS 1 BASE 2
+   TITLE BOTTOM 'SCALE X LOG LABELS 1 TICKS 1 BASE 2'
+   SET AXES OFF BOTTOM ON
+   PLOT AXES
+   SET WINDOW Y 0.6 TO 1.5
+   SET LIMITS X .3 TO 20 Y 0 TO 1
+   SET SCALE X LOG LABELS 1 EXP TICKS 1 BASE 2
+   TITLE BOTTOM 'SCALE X LOG LABELS 1 EXP TICKS 1 BASE 2'
+   SET AXES OFF BOTTOM ON
+   PLOT AXES
+NEW;
+    SET SIZE 13 by 10
+   SET AXES
+   SET GRID
+   SET COLOR
+   SET WIDTH
+   SET AXES PERMANENT
+   SET GRID PERMANENT
+   SET COLOR PERMANENT
+   SET WIDTH PERMANENT

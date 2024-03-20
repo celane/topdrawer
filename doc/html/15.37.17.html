@@ -1,0 +1,49 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.37.17</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.37.17  LIMITED</H4></B>     
+
+Fits points between the specified limits.  If limits  are  not  specified,
+the  default  is the current plot limit.  See:Command SET LIMITS.  You may
+specify up to 5 sets of limits.  This allows you to fit the data using  up
+<A NAME="77">to 5 regions, and omitting the rest of the data. </A>
+     1.  X - Specifies X limit
+     2.  Y - Specifies Y limit
+     3.  Z - Specifies the Z limit
+     4.  CURSOR  - Brings up the cursor.  You move it to the X,Y value you
+         wish then press the space bar to enter both X,Y or X to  enter  X
+         or Y to enter Y.
+     5.  RECURSOR  -  The  cursor enters all regions from the current one,
+         until you type "Q".
+     6.  VLOG  -  Draws  a cross when you press the space bar, and draws a
+         dotted line around the final limits.
+
+                                  example
+     TD:<U>FIT</U> <U>POLY</U> <U>TERMS=3</U> <U>LIMITED</U> <U>FROM</U> <U>1,1</U> <U>to</U> <U>2,5</U>
+          or...
+     TD:<U>FIT</U> <U>POLY</U> <U>TERMS=3</U> <U>LIMITED</U> <U>FROM</U> <U>X=1</U> <U>Y=1</U> <U>TO</U> <U>X=2</U> <U>Y=5</U>
+Fits  all  points  that  with  X  between  1  and  2 and Y between 2 and 5
+inclusive.
+     TD:<U>FIT</U> <U>POLY</U> <U>TERMS=3</U> <U>LIMITED</U> <U>FROM</U> <U>Y=1</U> <U>TO</U> <U>Y=5</U>
+Fits all data points with Y values between 1 and 5 inclusive.
+     TD:<U>FIT</U> <U>POLY</U> <U>TERMS=3</U> <U>LIMITED</U> <U>FROM</U> <U>CURSOR</U> <U>TO</U> <U>CURSOR</U>
+Fits all data points as defined by the cursor limits.
+     TD:<U>FIT</U> <U>POLY</U> <U>TERMS=3</U> <U>LIMITED</U> <U>FROM</U> <U>X=CURSOR</U> <U>TO</U> <U>X=CURSOR</U>
+Fits all data points according to X values defined by the cursor.
+TD:<U>FIT</U> <U>POLY</U> <U>TERMS=3</U> <U>LIMITED</U> <U>FROM</U> <U>1</U> <U>to</U> <U>20</U> <U>FROM</U> <U>40</U> <U>TO</U> <U>80</U>
+Fits a parabola to data in 2 regions, and skips the X values 20 to 40.
+     TD:<U>FIT</U> <U>POLY</U> <U>TERMS=3</U> <U>LIMITED</U> <U>VLOG</U> <U>RECURSOR</U>
+Fits  a parabola to the data for the regions selected by the cursor.  Both
+X and Y values are determinded  by  the  cursor.   Each  cursor  value  is
+entered  by  pressing the space bar.  After the last region, Press the "Q"
+key to quit.
+     TD:<U>FIT</U> <U>POLY</U> <U>TERMS=3</U> <U>LIMITED</U> <U>VLOG</U> <U>X=RECURSOR</U>
+This  is  the  same  as  above,  except  that only X values are entered by
+cursor.
+
+
+</PRE>
+</BODY>

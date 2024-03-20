@@ -1,0 +1,32 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.58.2.9</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.58.2.9  FORMATS...</H4></B>    - These  determine  the  number format.  They are
+analogous to FORTRAN formats.
+     1.  FFORMAT  -  Numbers  are  written  as  nn.nnn or nn The number of
+         digits to the right or left of the decimal point is determined by
+         the  data.   All  labels for a selected axis are written with the
+         same number of digits to the right of the decimal point.
+     2.  GFORMAT  -  Numbers are written as either F or E format depending
+         on the range.  For example if you specify labels from 0 to  1  by
+         .25 they are written as.  0,0.25,0.5,1
+     3.  EFORMAT  -  Labels  are written as n.nn with an exponent power of
+         10.
+     4.  YEARS - Only the year is written
+     5.  MONTHS - The month is written
+     6.  DAYS - The day of the month is written
+     7.  TIME - The time is written.
+     8.  DATE - The date is written in the format dd-mmm-yyyy.
+(Default:GFORMAT)
+
+                                   NOTE
+If  the  format  is  not  G,F,or E then SMALL ticks are not reproduced for
+labels.  This allows you to place the label in any  location  without  any
+ticks.
+
+
+</PRE>
+</BODY>

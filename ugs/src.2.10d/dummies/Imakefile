@@ -1,0 +1,60 @@
+#
+# Imakefile for ugs/src/dummies
+#
+
+LIB      = ../../ugs.a
+
+#include "../../Imakefile.def"
+
+OBJ    = \
+ugcw01.o \
+uggd01.o \
+uggi01.o \
+uggks_dummy.o \
+uggr01.o \
+uggs01.o \
+ugin01.o \
+ugix01.o \
+ugmt01.o \
+ugpi01.o \
+ugpl01.o \
+ugpm01.o \
+ugps01.o \
+ugpu01.o \
+ugpx01.o \
+ugqm01.o \
+ugsa01.o \
+ugsb01.o \
+ugsc01.o \
+ugsd01.o \
+ugse01.o \
+ugsixel_dummy.o \
+ugsx01.o \
+ugta01.o \
+ugtd01.o \
+ugts01.o \
+ugud01.o \
+uguis_dummy.o \
+ugus01.o \
+ugux01.o \
+ugvf01.o \
+ugvi01.o \
+ugvs01.o \
+ugwa01.o \
+ugwb01.o \
+ugwc01.o \
+ugwd01.o \
+ugwe01.o \
+ugwz01.o \
+ugxa01.o \
+ugxb01.o \
+ugxc01.o \
+ugxs01.o \
+ugzz01.o
+
+AllTarget($(LIB))
+
+$(LIB): $(OBJ)
+	$(AR) $(ARFLAGS) $(LIB) $(OBJ)
+	$(RANCMD)
+

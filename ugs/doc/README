@@ -1,0 +1,15 @@
+Contents of the UGS documentation
+
+  File name    Blocks  Contents
+----------------------------------------------------------------------------
+ ugpgmdoc.txt  1138   Programming manual			(160 pages)
+ ugalgdoc.txt   262   Graphic algorithms manual 		( 43 pages)
+ ugintdoc.txt   969   Internal operation and maintenance manual (162 pages)
+
+ ugpgmdoc.ps    176   Postscript file of the figures for ugpgmdoc.txt
+ ugalgdoc.ps    293   Postscript file of the figures for ugalgdoc.txt
+ ugintdoc.ps    431   Postscript file of the figures for ugintdoc.txt
+
+ ugpgmdoc.f     105   Program to output figures for ugpgmdoc.txt
+ ugalgdoc.f     170   Program to output figures for ugalgdoc.txt
+ ugintdoc.f     161   Program to output Figures for ugintdoc.txt

@@ -1,0 +1,27 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.50</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.50  NEW_FRAME</H4></B> 
+
+     <U>NE</U>W [<U>FR</U>AME|<U>PL</U>OT] [<U>RE</U>SET] [ALIAS=alias] "Comment about plot"
+Starts  a new picture.  Untreated points are PLOTTED before going on.  The
+old data points are retained until new  ones  are  read.   Parameters  are
+returned to the default values.  If the plot device is interactive and you
+are executing commands inside a file the program prompts:
+     PAUSE:
+You press the "Return" key to start the next plot.  If instead of "return"
+you type in STOP, TOPDRAWER will stop executing the input file and  return
+to  command  level.   You  can  also type EXIT, QUIT, HALT, END, or Ctrl_Z
+instead of STOP.
+
+If  you  press  Ctrl_C  then  TOPDRAWER will skip input until another STOP
+command is encountered, or the file ends.  Pressing Ctrl_C  twice  rapidly
+in succession will abort all file input.  Pressing Ctrl_C twice rapidly in
+succession again will cause the program to ask you if you wish to abort.
+
+
+</PRE>
+</BODY>

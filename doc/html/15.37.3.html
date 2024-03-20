@@ -1,0 +1,42 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.37.3</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.37.3  EQUATION</H4></B>    
+
+     <U>LINEAR</U>  This  allows you to enter equations for each term of a series
+to fit.  Each term is separated by a semicolon  ";".   The  zeroeth  order
+term  is  always  assumed  to  be  a constant so only the first, second...
+order   terms   are   entered.    For   example   you    wish    to    fit
+Y=C0+C1*X**1.5+C2*EXP(X)
+     TD:FIT EQUATION "XV**1.5;EXP(XV)"
+
+If you have previously fit using an equation:
+     TD:FIT EQUATION ""
+Uses  the  same equation for a new fit.  All other fit options may be used
+with EQUATION, but any options that modify the number of terms to fit must
+appear  after  the  equation  definition.   The X offset is ignored by the
+equation.
+
+     <U>NONLINEAR</U> If you wish to perform a fit to an arbitrary function of X,
+then you must enter the coefficients in the the equation  as  COE[n],  and
+you   must   specify  the  NONLINEAR  option.   Remember  that  each  term
+automatically has a coefficient, so you should  use  coefficients  in  the
+equation that have not been already used.  For example you wish to fit the
+equation:
+     C0+C1*/(1+C2*(X-C3)**2)
+Recalling that C0, and C1 will already be used you enter:
+     TD:FIT EQUATION "1/(1+COE[2]*(XV-COE[3])**2)" NONLINEAR TERMS=3
+You  may  also  need  to  specify  initial values for the coefficients and
+inital errors for the first step.
+    CONSTRAIN=OFF COEF n0,n1,n2,n3 ERROR n0,n1,n2,n3
+
+Note:   The  constant  term  COE[0] is fit by default.  Likewise the C1 is
+automatically included as the coefficient of the first term.  To  get  rid
+of the constant term you use the option:  EXCLUDE 0
+
+
+</PRE>
+</BODY>

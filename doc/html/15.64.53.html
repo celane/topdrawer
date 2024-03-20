@@ -1,0 +1,38 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.53</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.53  SPHERICAL</H4></B> 
+
+<U>SE</U>T <U>PO</U>LAR [<U>ON</U>|<U>OF</U>F] [<U>RA</U>DIANS|<U>DE</U>GREES|<U>FU</U>LLCIRCLE=n|<U>GR</U>AD] [<U>PE</U>ERMANENT]
+
+This  sets  up to plot in spherical coordinates.  (THETA,R,PHI) instead of
+(X,Y,Z).  The data in X is now interpreted as THETA, Y is intepreted as  R
+and Z is intepreted as PHI.  The data is not modified, just reinterpreted.
+     R=sqrt(X**2=Y**2+Z**2)
+     THETA=ATAN2(Y,X)
+<A NAME="174">     PHI=ATAN2(sqrt(x**2+Y**2),Z) </A>
+
+NOTE:   There  is  no  universally  accepted  convention for THETA or PHI.
+Various books use different conventons.  I have adopted a convention  that
+gives THETA the same definition in both spherical and polar coordinates.
+
+     1.  ON|OFF turn the spherical coordinates on or off.  (Default:ON)
+     2.  PERMANENT - Sets these parameters permanently.
+     3.  DEGREES...  - Selects angle representation (Default:DEGREES)
+         A.  GRAD - (0-400)
+         B.  DEGREES - (0-360)
+         C.  PERCENT - (0-100)
+         D.  RADIANS - (0-6.2831853)
+         E.  FULLCIRCLE=n - (0-n)
+
+You  still  set  the  limits  in  X,Y,Z coordinates, and automatic scaling
+centers the origin.   When  you  plot,  the  axes  are  not  automatically
+generated  if  spherical  coordinates  are on.  You must manually plot the
+axes with the command:  PLOT AXES.
+
+
+</PRE>
+</BODY>

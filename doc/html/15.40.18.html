@@ -1,0 +1,24 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.40.18</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.40.18  Limits</H4></B> 
+
+The  limits  of  the  data  for  histograms  is  normally  set so that the
+lowerlimit of the dependent axis with a linear scale is 0.0,  unless  some
+data points are less than zero.  If you wish a different value you can:
+     TD:<U>SET</U> <U>LIMIT</U> <U>YMIN=n</U>
+          or for 3-d....
+     TD:<U>SET</U> <U>LIMIT</U> <U>ZMIN=n</U>
+
+
+                                  <U>WARNING</U>
+
+     If  this  command  is  issued in between 2 plots overlaying each
+     other, they will not have the same scales.
+
+
+</PRE>
+</BODY>

@@ -1,0 +1,20 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.37.11</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.37.11  DGAUSSIAN</H4></B>   
+
+Does a fit to:
+     Z=a0*EXP(-0.5*(((X-a1)/a2)**2)+((Y-a3)/a4)**2))[+a5+a6*X+a7*Y]    for
+NONLINEAR=ON (Default) or
+     for data points with Y&gt;0.0.
+
+If  you specify NTERMS=n where n is larger than 5 a Dpolynomial background
+is added to the gaussian.  The number of terms in the background  is  n-5.
+If NTERMS=6,8 a constant, or sloped plane is used for the background.
+
+
+</PRE>
+</BODY>

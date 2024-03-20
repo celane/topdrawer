@@ -1,0 +1,40 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.37.15</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.37.15  CURVE</H4></B>       
+
+Generates  the fitted curve, (Y,DY) as a function of X, which replaces the
+current data.  DY is calculated using the error matrix.
+     1.  X                 Selects the X coordinate.  (Default)
+     2.  Y                 Selects  the  Y  coordinate.   This  is used to
+         generate a mesh.
+     3.  APPEND  -  The  new data is appended to the current data as a new
+         set rather than replacing it.
+     4.  N - Sets the number of bins in the resulting curve.
+     5.  FROM - Sets the lowest value for the fitted curve.
+     6.  TO - Sets the highest value for the fitted curve.
+     7.  BY - Sets the width between data points in the fitted curve.  You
+         may not specify all four FROM,TO,BY, and N.
+     8.  BINS  -  Specifies  that  FROM, TO refer to the lower edge of the
+         first bin and the upper edge of the last bin.
+     9.  VALUES - Specifies that FROM, TO refer to the center of the first
+         and last bins.
+         (Default:VALUES)
+
+                                      Example
+         The following all produce points at X=0.5,1.5,...9.5
+              CURVE VALUES FROM .5 TO 9.5 BY 1
+              CURVE BINS FROM 0 TO 10 BY 1
+              CURVE BINS FROM 0 TO BY 1 N=10
+              CURVE BINS FROM 0 TO BY 1 N=10 Y FROM 100 to 120 by 2
+
+If  you do not specify FROM, TO ...  a set of values is assumed.  First if
+you are fitting a histogram with equally spaced values, then  the  same  X
+values are assumed.  Otherwise the current X tick spacing is used.
+
+
+</PRE>
+</BODY>

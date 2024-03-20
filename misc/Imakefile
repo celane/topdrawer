@@ -1,0 +1,20 @@
+#
+# Imakefile for topdrawer/misc
+#
+
+LIB      = ../misc.a
+
+#include "../Imakefile.def"
+
+GEN_OBJ  = freq.o gamma.o intrac.o sigwait.o minuit.o noarg.o clock.o
+
+#if ( defined(LinuxAoutArchitecture) || defined(LinuxElfArchitecture) )
+SYS_OBJ  = exit.o time.o fdate.o
+#endif
+
+AllTarget($(LIB))
+
+$(LIB):: $(GEN_OBJ) $(SYS_OBJ)
+	$(AR) $(ARFLAGS) $(LIB) $(GEN_OBJ) $(SYS_OBJ)
+	$(RANCMD)
+

@@ -1,0 +1,28 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.34</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.34  CLEAR</H4></B> 
+
+{<U>CL</U>EAR|<U>ER</U>ASE} [<U>FR</U>OM] [x,y[,z]|<U>CU</U>RSOR] [<U>DA</U>TA] <U>TO</U>[x,y[,z]|<U>CU</U>RSOR] [<U>DA</U>TA]
+This  clears  the  screen  without  resetting  the  buffers or the default
+values.  This is useful if you wish to view several different things  with
+the same parameters.  If you specify a pair of X,Y values only a rectangle
+inside those values is cleared.  This only works on terminals that support
+selective  erase.   Each  X,Y[,Z]  may be specified in either Text or Data
+coordinates.  Text coordinates are assumed if a Z is not specified.
+
+
+                                  <U>WARNING</U>
+
+     After  CLEAR  the  current  scale  settings  are  retained,  and
+     subsequent plots will not automatically have axes or scales.  In
+     general you should use command NEW.
+
+
+
+
+</PRE>
+</BODY>

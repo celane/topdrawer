@@ -1,0 +1,2006 @@
+%E
+%U+ TDMACROS.MOR
+%L
+" ---------------- START OF INPUT PACKAGE 'TOKEN' ----------"
+"THIS SETUP ASSUMES THAT IN THE SET $VM, AND $VAX, ONE
+ IS <GENERATE> AND THE OTHERS ARE <NOGENERATE>
+"
+   %'$FORMAT'='<NOGENERATE>';
+   $VM;
+      %'$MAXEXP'='57';
+   $ELSE;
+      %'$MAXEXP'='31';
+   $END;
+
+   %'$T2EXPR'='"
+      INTEGER MAXSTK;
+      PARAMETER (MAXSTK=100);
+      REAL FSTK(MAXSTK);
+      INTEGER IOPSTK(MAXSTK),ITRSTK(MAXSTK),ISTK;
+      COMMON /T2EXST/ISTK,FSTK,IOPSTK,ITRSTK"'
+<SET>;
+%E  BLOCK DATA TOKDAT --- Character definitions
+BLOCK DATA TOKDAT;
+   $T2TOKNC;
+       "FOR TYPTAB"
+   $ASCII;
+      DATA TYPTAB
+   "nul,soh,stx,etx,eot,enq,ack,bel bs,ht,lf,vt,ff,cr,so,si,"
+    "0" / 08,13,13,13,13,13,13,13,  13,06,08,06,06,08,13,13,
+   "dle,dc1,dc2,dc3,dc4,nak,syn,etb can,em,sub,esc,fs,gs,rs,us"
+    "1"   13,13,13,13,13,13,13,13,  13,13,13,13,13,13,13,13,
+	 "sp, !,qt, #, $, %, &, ',   (, ), *, +, ,, -, ., /"
+    "2"   06,12,09,12,12,12,12,09,  10,11,12,03,07,03,02,05,
+	 " 0, 1, 2, 3, 4, 5, 6, 7,   8, 9, :, ;, <, =, >, ?"
+    "3"   01,01,01,01,01,01,01,01,  01,01,12,08,12,07,12,12,
+	 " @, A, B, C, D, E, F, G,   H, I, J, K, L, M, N, O,"
+    "4"   12,05,05,05,04,04,05,05,  05,05,05,05,05,05,05,05,
+	 " P, Q, R, S, T, U, V, W,   X, Y, Z, [, \, ], ^, _"
+    "5"   05,05,05,05,05,05,05,05,  05,05,05,12,12,12,12,05,
+	 " `, a, b, c, d, e, f, g,   h, i, j, k, l, m, n, o,"
+    "6"   12,05,05,05,04,04,05,05,  05,05,05,05,05,05,05,05,
+	 " p, q, r, s, t, u, v, w,   x, y, z, {, |, }, ~,del"
+    "7"   05,05,05,05,05,05,05,05,  05,05,05,12,12,12,12,13,128*13/;
+       "   0  1  2  3  4  5  6  7    8  9  A  B  C  D  E  F "
+      DATA TYPTB2
+   "nul,soh,stx,etx,eot,enq,ack,bel bs,ht,lf,vt,ff,cr,so,si,"
+    "0" / 08,13,13,13,13,13,13,13,  13,06,08,06,06,08,13,13,
+   "dle,dc1,dc2,dc3,dc4,nak,syn,etb can,em,sub,esc,fs,gs,rs,us"
+    "1"   13,13,13,13,13,13,13,13,  13,13,13,13,13,13,13,13,
+	 "sp, !,qt, #, $, %, &, ',   (, ), *, +, ,, -, ., /"
+    "2"   06,12,09,12,12,12,12,09,  14,19,17,15,07,16,02,18,
+	 " 0, 1, 2, 3, 4, 5, 6, 7,   8, 9, :, ;, <, =, >, ?"
+    "3"   01,01,01,01,01,01,01,01,  01,01,12,08,14,07,19,12,
+	 " @, A, B, C, D, E, F, G,   H, I, J, K, L, M, N, O,"
+    "4"   12,05,05,05,04,04,05,05,  05,05,05,05,05,05,05,05,
+	 " P, Q, R, S, T, U, V, W,   X, Y, Z, [, \, ], ^, _"
+    "5"   05,05,05,05,05,05,05,05,  05,05,05,10,12,11,12,05,
+	 " `, a, b, c, d, e, f, g,   h, i, j, k, l, m, n, o,"
+    "6"   12,05,05,05,04,04,05,05,  05,05,05,05,05,05,05,05,
+	 " p, q, r, s, t, u, v, w,   x, y, z, {, |, }, ~,del"
+    "7"   05,05,05,05,05,05,05,05,  05,05,05,12,12,12,12,13,128*13/;
+       "   0  1  2  3  4  5  6  7    8  9  A  B  C  D  E  F "
+      DATA UPCHAR( 1:32)  /'????????? ??????????????????????'/;
+      DATA UPCHAR(33:64)  /' !"#$%&''''()*+,-./0123456789:;<=>?'/;
+      DATA UPCHAR(65:96)  /'@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_'/;
+      DATA UPCHAR(97:128) /'`ABCDEFGHIJKLMNOPQRSTUVWXYZ{|}~?'/;
+			   "12345678901234567890123456789012"
+      DATA UPCHAR(129:160)/'????????????????????????????????'/;
+      DATA UPCHAR(161:192)/'????????????????????????????????'/;
+      DATA UPCHAR(193:224)/'????????????????????????????????'/;
+      DATA UPCHAR(225:256)/'????????????????????????????????'/;
+      DATA OKCHAR( 1:32)  /'????????? ??????????????????????'/;
+      DATA OKCHAR(33:64)  /' !"#$%&''''()*+,-./0123456789:;<=>?'/;
+      DATA OKCHAR(65:96)  /'@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_'/;
+      DATA OKCHAR(97:128) /'`abcdefghijklmnopqrstuvwxyz{|}~?'/;
+			   "12345678901234567890123456789012"
+      DATA OKCHAR(129:160)/'????????????????????????????????'/;
+      DATA OKCHAR(161:192)/'????????????????????????????????'/;
+      DATA OKCHAR(193:224)/'????????????????????????????????'/;
+      DATA OKCHAR(225:256)/'????????????????????????????????'/;
+      DATA DNCHAR( 1:32)  /'????????? ??????????????????????'/;
+      DATA DNCHAR(33:64)  /' !"#$%&''''()*+,-./0123456789:;<=>?'/;
+      DATA DNCHAR(65:96)  /'@abcdefghijklmnopqrstuvwxyz[\]^_'/;
+      DATA DNCHAR(97:128) /'`abcdefghijklmnopqrstuvwxyz{|}~?'/;
+			   "12345678901234567890123456789012"
+      DATA DNCHAR(129:160)/'????????????????????????????????'/;
+      DATA DNCHAR(161:192)/'????????????????????????????????'/;
+      DATA DNCHAR(193:224)/'????????????????????????????????'/;
+      DATA DNCHAR(225:256)/'????????????????????????????????'/;
+   $ELSE;
+      DATA TYPTAB
+    "nul,soh,stx,etx,sel,ht,rnl,del ge,sps,rpt,vt,ff,cr,s0,si,dle,dc1,dc2,dc3"
+    "0" / 08,13,13,13,13,13,13,13,  13,13,13,13,13,13,13,13,
+    "1"   13,13,13,13,13,13,13,13,  13,13,13,13,13,13,13,13,
+    "2"   13,13,13,13,13,13,13,13,  13,13,13,13,13,13,13,13,
+    "3"   13,13,13,13,13,13,13,13,  13,13,13,13,13,13,13,13,
+	 "sp,                               , ., <, (, +, |"
+    "4"   06,13,13,13,13,13,13,13,  13,13,13,02,12,10,03,12,
+	 " &                               !, $, *, ), ;"
+    "5"   12,13,13,13,13,13,13,13,  13,13,12,12,12,11,08,13,
+	 " -, /,                           |, ,, %, _, >, ?"
+    "6"   03,05,13,13,13,13,13,13,  13,13,12,07,12,05,12,12,
+				       "`, :, #, @, ', =,qt"
+    "7"   13,13,13,13,13,13,13,13,  13,12,12,12,12,09,07,09,
+	 "  , a, b, c, d, e, f, g,   h, i,  ,  ,  ,  ,  ,  ,"
+    "8"   13,05,05,05,04,04,05,05,  05,05,13,13,13,13,13,13,
+	 "  , j, k, l, m, n, o, p,   q, r"
+    "9"   13,05,05,05,05,05,05,05,  05,05,13,13,13,13,13,13,
+	     "~, s, t, u, v, w, x,   y, z"
+    "A"   13,12,05,05,05,05,05,05,  05,05,13,13,13,13,13,13,
+    "B"   13,13,13,13,13,13,13,13,  13,13,13,13,13,13,13,13,
+	 " {, A, B, C, D, E, F, G,   H, I,"
+    "C"   12,05,05,05,04,04,05,05,  05,05,13,13,13,13,13,13,
+	 " }, J, K, L, M, N, O, P,   Q, R"
+    "D"   12,05,05,05,05,05,05,05,  05,05,13,13,13,13,13,13,
+	 " \,  , S, T, U, V, W, X,   Y, Z"
+    "E"   12,13,05,05,05,05,05,05,  05,05,13,13,13,13,13,13,
+       "   0, 1, 2, 3, 4, 5, 6, 7    8, 9, |"
+    "F"   01,01,01,01,01,01,01,01,  01,01,12,13,13,13,13,08/;
+       "   0  1  2  3  4  5  6  7    8  9  A  B  C  D  E  F "
+      DATA TYPTB2
+    "nul,soh,stx,etx,sel,ht,rnl,del ge,sps,rpt,vt,ff,cr,s0,si,dle,dc1,dc2,dc3"
+    "0" / 08,13,13,13,13,13,13,13,  13,13,13,13,13,13,13,13,
+    "1"   13,13,13,13,13,13,13,13,  13,13,13,13,13,13,13,13,
+    "2"   13,13,13,13,13,13,13,13,  13,13,13,13,13,13,13,13,
+    "3"   13,13,13,13,13,13,13,13,  13,13,13,13,13,13,13,13,
+	 "sp,                               , ., <, (, +, |"
+    "4"   06,13,13,13,13,13,13,13,  13,13,13,02,14,14,15,12,
+	 " &                               !, $, *, ), ;"
+    "5"   12,13,13,13,13,13,13,13,  13,13,12,12,17,19,08,13,
+	 " -, /,                           |, ,, %, _, >, ?"
+    "6"   16,18,13,13,13,13,13,13,  13,13,12,07,12,12,19,12,
+				       "`, :, #, @, ', =,qt"
+    "7"   13,13,13,13,13,13,13,13,  13,12,12,12,12,09,07,09,
+	 "  , a, b, c, d, e, f, g,   h, i,  ,  ,  ,  ,  ,  ,"
+    "8"   13,05,05,05,04,04,05,05,  05,05,13,13,13,13,13,13,
+	 "  , j, k, l, m, n, o, p,   q, r"
+    "9"   13,05,05,05,05,05,05,05,  05,05,13,13,13,13,13,13,
+	     "~, s, t, u, v, w, x,   y, z"
+    "A"   13,12,05,05,05,05,05,05,  05,05,13,13,13,13,13,13,
+    "B"   13,13,13,13,13,13,13,13,  13,13,13,13,13,13,13,13,
+	 " {, A, B, C, D, E, F, G,   H, I,"
+    "C"   12,05,05,05,04,04,05,05,  05,05,13,13,13,13,13,13,
+	 " }, J, K, L, M, N, O, P,   Q, R"
+    "D"   12,05,05,05,05,05,05,05,  05,05,13,13,13,13,13,13,
+	 " \,  , S, T, U, V, W, X,   Y, Z"
+    "E"   12,13,05,05,05,05,05,05,  05,05,13,13,13,13,13,13,
+       "   0, 1, 2, 3, 4, 5, 6, 7    8, 9, |"
+    "F"   01,01,01,01,01,01,01,01,  01,01,12,13,13,13,13,08/;
+       "   0  1  2  3  4  5  6  7    8  9  A  B  C  D  E  F "
+      DATA UPCHAR(1:32)   /' ???????????????????????????????'/
+      DATA UPCHAR(33:64)  /'????????????????????????????????'/
+      DATA UPCHAR(65:96)  /' ??????????.<(+|&??????????!$*);'/
+      DATA UPCHAR(97:128) /'-/????????|,%_>??????????`:#@''''="'/
+      DATA UPCHAR(129,160)/'?ABCDEFGHI???????JKLMNOPQR??????'/
+      DATA UPCHAR(161,192)/'?~STUVWXYZ??????????????????????'/
+      DATA UPCHAR(193,224)/'{ABCDEFGHI??????}JKLMNOPQR??????'/
+      DATA UPCHAR(225,256)/'??STUVWXYZ??????0123456789|?????'/
+      DATA OKCHAR(1:32)   /' ???????????????????????????????'/
+      DATA OKCHAR(33:64)  /'????????????????????????????????'/
+      DATA OKCHAR(65:96)  /' ??????????.<(+|&??????????!$*);'/
+      DATA OKCHAR(97:128) /'-/????????|,%_>??????????`:#@''''="'/
+      DATA OKCHAR(129,160)/'?abcdefghi???????jklmnopqr??????'/
+      DATA OKCHAR(161,192)/'?~stuvwxyz??????????????????????'/
+      DATA OKCHAR(193,224)/'{ABCDEFGHI??????}JKLMNOPQR??????'/
+      DATA OKCHAR(225,256)/'??STUVWXYZ??????0123456789|?????'/
+      DATA DNCHAR(1:32)   /' ???????????????????????????????'/
+      DATA DNCHAR(33:64)  /'????????????????????????????????'/
+      DATA DNCHAR(65:96)  /' ??????????.<(+|&??????????!$*);'/
+      DATA DNCHAR(97:128) /'-/????????|,%_>??????????`:#@''''="'/
+      DATA DNCHAR(129,160)/'?abcdefghi???????jklmnopqr??????'/
+      DATA DNCHAR(161,192)/'?~stuvwxyz??????????????????????'/
+      DATA DNCHAR(193,224)/'{abcdefghi??????}jklmnopqr??????'/
+      DATA DNCHAR(225,256)/'??stuvwxyz??????0123456789|?????'/
+   $END;
+END;
+%E  SUBROUTINE TOKEN --- Parses input line
+<TOKEN USING INFOIN,CARDIN>;
+SUBROUTINE TOKEN($INFO,$CARD,KEYS);
+   IMPLICIT NONE;
+   EXTERNAL TOKDAT;
+   INTEGER $INFO(10);
+   CHARACTER*(*) $CARD;		"CHar string to parse"
+   CHARACTER*(*) KEYS;		"Keyword string"
+   CHARACTER*1   CCHAR,QUOTE;
+   $BOOLEAN INTRAC,TDGETV,TDGETS;
+   $BOOLEAN LLIM;
+   REAL FLIM(3);
+   DOUBLE PRECISION T2TIMF;
+   $SPECIFICATION;
+   $POINT ARRAYS($NPOINTS);
+   $SPECIFYNONE;
+   $MAINSPEC;
+   INTEGER I,J,K,II;
+   INTEGER IAGAIN;
+"	Variables passed as arguements of call --
+	INFOIN array
+	(1)  Length of 'CARDIN' string (not changed)
+		TOKRED expects zero to start, sets it to -1 on
+		end of input file.
+	(2)  0,-1 (-1 inhibits read)
+	(3)  ON INPUT: Pointer to last character of previous
+		field (0 for new card)
+	     ON OUTPUT: -> Last character of field just interpreted
+	(4)  ON OUTPUT: -> Last character of previous field
+	(5)  ON OUTPUT: -> Beginning of current token
+	(9)  ON INPUT:  -> -1 if reread same token
+	     ON OUTPUT: ->  0
+     (Other elements in the INFOIN array, used by TD, are:
+	(6)  Substitution counter
+	(7)  CARD ID (NUMBER, WYLBUR LINE, WHATHAVEYOU.)
+		  (NOT USED) (INCREMENTED BY TOKRED)
+	(8)  (NOT USED)
+	     -> column containing previous end-of-card character
+	      or zero if current 'card' started in column 1.
+	(9)  (A FLAG FOR TOKRED) +1 -> Reread this same card
+	(10) (A FLAG FOR TOKERR) This card has been printed
+
+     CARDIN--THE INPUT STRING ITSELF.
+
+     keys--keywords to compare to current infoin field.
+	Lower case keywords will not be matched.  In general,
+	the requirements on writing a keyword string are
+	meaner than those for CARDIN input.
+	Keyword fields are terminated by a comma ',' and list
+	is terminated by the end of the string.
+
+	KEY[:n],
+		A keyword field contains a keyword (containing any
+	character which may be directly followed by
+	a colon and a signed number, specifying the
+	keyword flag. (Returned in -integ-)
+	matched tokens which would be ambiguous, are not
+	ambiguous if all keywords they match have the same
+	non-zero keyword flag.  Thus, 'RI' is ambiguous in
+	the keyword string 'RIGHT,RITE;', but not in 'RIGHT:1,RITE:1;'
+
+	KEY:[min]:[max]:def,
+		TOKEN looks for a number following the key.  If the number
+	is present it is passed to the user in FLOTING/INTEG.
+	If min, max are not specified they are assumed to be largest
+	possible floating point number.  The value is compared to min,max
+	and if out of range, an error is flagged.
+	If no number follows the token the def value is passed.
+
+	KEY:S,	TOKEN looks for a string following the KEY word.
+	and passes it in STRNG.  If no string a null string is passed.
+
+	KEY:T,	TOKEN passes the next string or token in STRNG.
+	If none (end of card) a null string is passed.
+
+	KEY:F  This is similar to KEY:T, but the case of the string
+	is determined by IFILE_CASE (0=upper, 1=lower, 2=unchanged)
+
+	KEY:nY,KEY:nN	TOKEN passes by default
+		LTOKEN=.TRUE. for Y, LTOKEN=.FALSE. for N and INTEG=n.
+	The Options TRUE,FALSE,YES,NO,ON,OFF may follow in the command
+	line (or T,F,Y,N,ON,OF).  If FALSE,NO, or OFF then:
+		LTOKEN=.not. LTOKEN.
+
+    variables (all output, except maxstr) passed in the
+       COMMON BLOCK /TOKENC/   --------------------
+
+     INTERP  OUTPUT INTERPRETATION
+       1  END OF CARD
+	    INTEG  not relevant
+	    FLOTNG not relevant
+	    KEYORD not relevant
+	    STRING not relevant
+       2  KEYWORD MATCHED.
+	    INTEG  keyword flag or following number. (KEY:[min:[max:]]Def)
+	    FLOTNG keyword flag or following number. (KEY:[min:[max:]]Def)
+	    KEYORD ordinal number of matched keyword
+	    STRING matched keyword or next token/string (KEY:[number:]S/T)
+	    LTOKEN .true.(default) or .false.
+		   KEY:[number:]Y/N
+		   If KEYWORD is followed by YES it is TRUE.and.(Y/N)
+		   Otherwise it is FALSE.and.(Y/N)
+       3  INTEGER.
+	    INTEG  value
+	    FLOTNG float(value)
+	    KEYORD not relevant
+	    STRING field from infoin
+       4  FLOATING POINT NUMBER.
+	    INTEG  int(value)
+	    FLOTNG value
+	    KEYORD not relevant
+	    STRING field from infoin
+       5  QUOTED STRING (started by either apostrophe
+	      or quote, terminated by same character.
+	      imbedded character must be doubled.)
+	    INTEG  not relevant
+	    FLOTNG not relevant
+	    KEYORD not relevant
+	    STRING string, with no leading quote, and
+		   doubled quotes singled
+       6  NOT RECOGNIZED. (LEADING ALPHA)
+	     treated as quoted string, to next separator.
+       7  NOT RECOGNIZED (illegal number or non-alphameric
+	     starting character)
+	     Error message is given by TOKEN.
+	     treated as quoted string, to next separator.
+       8  AMBIGUOUS KEYWORD MATCH
+	    INTEG has ordinal number of first match
+	    FLOTNG not relevant
+	    KEYORD ordinal number of first matched keyword
+	    STRING has list of matched keywords
+       9  SPECIAL CHARACTER (E.G. '?')
+	      Only one character is returned.  Special
+	      characters terminate a field and are not
+	      included except as the first character.
+	    INTEG  not relevant
+	    FLOTNG not relevant
+	    KEYORD not relevant
+	    STRING the character
+     INTEG   INTEGER OUTPUT
+     FLOTNG  FLOATING POINT OUTPUT
+     KEYORD  ORDINAL NUMBER OF MATCHED KEYWORD
+     MAXSTR  LENGTH (IN CHARACTERS) OF STRING ARRAY (TO BE
+		SET IN CALLING PROGRAM)
+     NSTRNG  CHARACTER COUNT FOR STRING
+     STRING  STRING OUTPUT.
+"
+
+"	TYPTAB is table of types for each possible character
+	Character types---
+	 1 -- Digit
+	 2 -- Decimal point
+	 3 -- Sign (+ or -)
+	 4 -- E or D (for exponent)
+	 5 -- Letters other than D,E and special characters
+	 6 -- Blank
+	 7 -- Separators  ,=/
+	 8 -- End of card ; Z00  ZFF
+	 9 -- Delimiter for quoted string (apostrophe and quote)
+	10 -- Start of comment '('  ('[' for TYPTB2)
+	11 -- End of comment ')'    (']' for TYPTB2)
+	12 -- Special symbols.
+	13 -- Error (illegal character)
+	14-19  -- <,+,-,*,/,>   (in TYPTB2)
+"
+   $T2TOKNC;
+   INTEGER CHARAC,KEYLET;
+   INTEGER CHTYPE,KEYTYP;
+   $BOOLEAN LFIN;
+   INTEGER ICOL, JCOL, MINCOL, MAXCOL, MINJOU, MAXJOU;
+   INTEGER ICASE, IBRKT, ISAVE, KSAVE;
+   INTEGER MAXCHR, MAXKEY, NSTR, KEYNUM, KEYEND, IFIRST, ILAST;
+   INTEGER ISTRNG, INEXT;
+	"for number conversion"
+   INTEGER IS, ID, IDIGIT, JDIGIT, INODIG, IE, IEXP, IDATE, JNTEG;
+   REAL F60, SAVEN, Y;
+   INTEGER    NXPC   ;
+   PARAMETER (NXPC=30);
+   REAL XPC(NXPC),DATE(4);
+   DATA XPC/1.E01,1.E02,1.E03,1.E04,1.E05,1.E06,1.E07,1.E08,1.E09,1.E10,
+	    1.E11,1.E12,1.E13,1.E14,1.E15,1.E16,1.E17,1.E18,1.E19,1.E20,
+	    1.E21,1.E22,1.E23,1.E24,1.E25,1.E26,1.E27,1.E28,1.E29,1.E30/;
+
+   INTEGER    MINMCH   ;
+   PARAMETER (MINMCH=2);	"Minimum no. of characters for match"
+   KEYORD=0;	"OUTPUT KEY POSITION IN 'KEYS'"
+   IF ($INFO(9).lt.0) THEN;
+      $INFO(9)=0;
+		"End, number, or string ?"
+      IF (NSTRNG.le.0 .or.
+	  INTERP.eq.1 .or.
+	 (INTERP.ge.3 .and. INTERP.le.5)) RETURN;
+      NSTJOU=LSTJOU;
+      goto :GET TOKEN:;				"Read it again"
+   ENDIF;
+   INTERP=0;	"USED AS A NO-MATCH FLAG IN KEY SCAN"
+   MAXCOL=LEN($CARD);
+   IF ($INFO(1).eq.0) THEN; $INFO(1)=MAXCOL;
+			ELSE; MAXCOL=MIN(MAXCOL,$INFO(1)); ENDIF;
+   LLIM=.true.;
+   FLIM(1)=-$LARGE REAL; FLIM(2)=$LARGE REAL;
+   MINJOU=$INFO(3)+1;
+   $INFO(4)=$INFO(3);
+   IAGAIN=0;
+"
+	IAGAIN is set to non zero if more data is expected after a TOKEN
+	-3	YES/NO value
+	-2	String
+	-1	Token or string (Could be a filename)
+	1,2 if number
+	3	Number or string (Data set number)
+"
+   ICASE=0;			"0,1,2	Upper, Lower, Same"
+   LTOKEN=.TRUE.;
+:AGAIN:
+   NSTRNG=0;			"Start saving string"
+   <LOOP> <
+      MINCOL=$INFO(3)+1;	"Pointer in first column"
+      <ICOL=MINCOL,MAXCOL;
+	 CCHAR=$CARD(ICOL:ICOL);
+	 CHARAC=ICHAR(CCHAR);
+	 CHTYPE=TYPTAB(CHARAC+1);
+	 GOTO ( :BEGIN NUMBER:,:BEGIN DEC:,:BEGIN SIGN:,:ALPHA:,:ALPHA:,
+		:BLANK:,:SEPARATOR:,:END OF CARD:,:STRING:,:COMMENT:,
+		:SPECIAL:,:SPECIAL:,:SPECIAL: ) CHTYPE;
+	 :SEPARATOR:
+	    IF (IAGAIN.ne.0.and.CCHAR.ne.'=') GOTO :END TOKEN:;
+	 :BLANK:
+      >
+      ICOL=MAXCOL+1;
+      GOTO :END OF CARD:;
+
+      :BEGIN SIGN:
+	 if (IAGAIN.lt.-1) goto :END TOKEN:;
+	 IF (CCHAR.eq.'-') THEN; IS=-1;		"Value of sign"
+			   ELSE; IS= 1; ENDIF;
+	 ID=0;					"Location of dec pt"
+	 IDIGIT=-9;				"-MAX digits+1"
+	 INTEG=0;				"Starting number"
+	 INODIG=NSTRNG+1;			"Number of non numeric char"
+	 GOTO :NUMBER2:;
+      :BEGIN DEC:
+	 if (IAGAIN.lt.-1) goto :END TOKEN:;
+	 IS=1;
+	 ID=NSTRNG+1;
+	 IDIGIT=-9;
+	 INTEG=0;
+	 INODIG=NSTRNG+1;
+	 GOTO :NUMBER2:;
+      :BEGIN NUMBER:
+	 if (IAGAIN.lt.-1) goto :END TOKEN:;
+	 IS=1;
+	 ID=0;
+	 IDIGIT=-9;
+	 INTEG=(CHARAC-ICHAR('0'));		"Convert"
+	 IF (INTEG.gt.0) IDIGIT=IDIGIT+1;
+	 INODIG=NSTRNG;
+      :NUMBER2:		"-------------- Numbers ------------"
+	 IF (IAGAIN.eq.0) $INFO(5)=ICOL;
+	 IE=0;					"Location of exp"
+	 IEXP=0;				"Exponent"
+	 MINCOL=ICOL+1;
+	 MAXCOL=MIN(MAXCOL,LEN(STRNG)+MINCOL+1);	"Limit string length"
+	 NSTRNG=NSTRNG+1; STRNG(NSTRNG:NSTRNG)=CCHAR;
+	 F60=0.0; IDATE=0;
+	 <ICOL=MINCOL,MAXCOL;
+	    CCHAR=$CARD(ICOL:ICOL);
+	    CHARAC=ICHAR(CCHAR);
+	    CHTYPE=TYPTAB(CHARAC+1);
+	    GOTO (:DIGIT0:,:DEC0:  ,:SIGN0: ,:EXP0:  ,:ALPHA:,
+		  :ENDNUM:,:ENDNUM:,:ENDNUM:,:ENDNUM:,:ENDNUM:) CHTYPE;
+		IF (CHTYPE.eq.14) GOTO :ENDNUM:;
+		INODIG=INODIG+1;
+		IF (CCHAR.eq.':') THEN;
+		  IF (F60.eq.0) THEN; F60=IS; SAVEN=0; ENDIF;
+		  IS=1;
+		  SAVEN=SAVEN+INTEG/F60; F60=F60*60;
+		  INTEG=0; IDIGIT=-9; IEXP=0;
+		  IF (IE+ID.ne.0.or.ABS(F60).ge.3601) goto :ALPHA:;
+		ELSEIF (CCHAR.eq.'\') THEN;
+		  IF (IDATE.gt.2 .or. ID+IE.ne.0) GOTO :ALPHA:;
+		  IF (IDATE.eq.0) THEN;
+		     <J=1,4; DATE(J)=0; >;
+		     DATE(2)=1; DATE(3)=1; JCOL=-5;
+		  ENDIF;
+		  IDATE=IDATE+1;
+		  IF (JCOL.lt.ICOL) DATE(IDATE)=ISIGN(INTEG,IS);
+		  INTEG=0; IDIGIT=-9; IEXP=0; JCOL=ICOL+1; IS=1;
+		ELSE;
+		  GOTO :ALPHA:;
+		ENDIF;
+		NSTRNG=NSTRNG+1; STRNG(NSTRNG:NSTRNG)=CCHAR;
+		<NEXT>;
+		:DEC0: IF (IE+ID.gt.0) GOTO :ALPHA:;	"Bad decimal ?"
+		  INODIG=INODIG+1;
+		  ID=NSTRNG+1;
+		  GOTO :SAVE NUM:;
+		:SIGN0:
+		  IF (NSTRNG.ne.IE) <EXIT>; 	"Terminal sign ?"
+		  INODIG=INODIG+1;
+		  IF (CCHAR.eq.'-') THEN; IS=-1;	"Value of sign"
+				    ELSE; IS= 1; ENDIF;
+		  GOTO :SAVE NUM:;
+		:EXP0:
+		  IF (INODIG.ge.NSTRNG) GOTO :ALPHA:;
+		  INODIG=NSTRNG+1;
+		  IF (IE.gt.0) GOTO :ALPHA:; 	"Multiple exp ?"
+			"Convert to upper case"
+		  CCHAR=UPCHAR(CHARAC+1:CHARAC+1);
+		  IE=NSTRNG+1;
+		  JNTEG=ISIGN(INTEG,IS);	"Save number"
+		  JDIGIT=IDIGIT;
+		  INTEG=0; IS=1; IDIGIT=-9;
+		  GOTO :SAVE NUM:;
+		:DIGIT0:
+		  IF (IDIGIT.ge.0) THEN; IEXP=IEXP+1;
+		  ELSE; INTEG=INTEG*10+(CHARAC-ICHAR('0'));	"Convert"
+			IF (INTEG.gt.0) IDIGIT=IDIGIT+1;
+		  ENDIF;
+		:SAVE NUM:
+	     NSTRNG=NSTRNG+1; STRNG(NSTRNG:NSTRNG)=CCHAR;
+	 >
+:ENDNUM:
+	 IF (INODIG.ge.NSTRNG) GOTO :ALPHA:;
+	 IF (INTERP.eq.0) INTERP=3;			"Assume integer"
+	 IF (ID+IE.gt.0 .and. INTERP.eq.3) INTERP=4;
+	 INTEG=ISIGN(INTEG,IS);
+	 IF (IE .gt. 0) THEN;				"Exponent ?"
+	    IEXP=INTEG+IEXP;				"add it in"
+	    INTEG=JNTEG; 				"Get back number"
+	    IDIGIT=JDIGIT;				"and number of digits"
+	 ELSE; IE=NSTRNG+1; ENDIF;
+	 IF (ID.ne.0) IEXP=IEXP-IE+ID+1; 		"Decimal point ?"
+	 IF (9+IDIGIT+IEXP.gt.$MAXEXP) GOTO :TOO BIG:;
+	 FLOTNG=INTEG;
+	 IF (IEXP.ne.0) THEN;
+	    I=IABS(IEXP);
+	    <LOOP> <
+		J=MIN(I,NXPC);
+		Y=XPC(J);
+		IF (IEXP.LT.0) THEN; FLOTNG=FLOTNG/Y;
+			      ELSE; FLOTNG=FLOTNG*Y; ENDIF;
+		I=I-J;
+		IF (I.eq.0) <EXIT>;
+	    >
+	 ENDIF;
+   $END;
+	 IF (F60.ne.0) FLOTNG=SAVEN+FLOTNG/F60;
+	 IF (IDATE.ne.0) THEN;
+	    IF (INTERP.eq.3) INTERP=4;
+	    IF (JCOL.lt.ICOL) DATE(IDATE+1)=FLOTNG;
+	    FLOTNG=T2TIMF(DATE(1),DATE(2),DATE(3),DATE(4),0.,0.)/3600;
+	 ENDIF;
+	 $INFO(3)=ICOL-1;
+   :NUM TEST:
+	 INTEG=NINT(MIN(MAX(FLOTNG,-2.0E9),2.0E9));
+	 IF (LLIM) GOTO :END TOKEN:;
+	 IF (FLOTNG.ge.FLIM(1) .and. FLOTNG.le.FLIM(2)) GOTO :END TOKEN:;
+   :TOO BIG:
+	 ERROR TOKEN FLIM(1),FLIM(2);
+	    ('*** ERROR *** Number out of range ',1P,G10.3,' to ',G10.3);
+	    INTEG=0; FLOTNG=0;
+	    INTERP=7;
+	 GOTO :END TOKEN:;
+
+      :ALPHA:		"---------- Tokens -------------"
+	 IF ((IAGAIN.gt.0.and.ICOL.eq.MAXCOL)) GOTO :END TOKEN:;
+	 IF (IAGAIN.eq.0) $INFO(5)=ICOL;
+	 MINCOL=ICOL;
+	 MAXCOL=MIN(MAXCOL,LEN(STRNG)+ICOL-NSTRNG);	"Limit string length"
+	 IBRKT=0;
+	 <ICOL=MINCOL,MAXCOL;
+	    CCHAR=$CARD(ICOL:ICOL);
+	    CHARAC=ICHAR(CCHAR);
+	    CHTYPE=TYPTAB(CHARAC+1);
+		"End of token ?"
+	    GOTO (:AN:,:AN:,:AB:,:AC:,:AC:,
+		  :AB:,:AB:,:AE:,:AE:,:AE:,
+		  :AE:,:AS:,:AE:,:AB: ),CHTYPE ;
+	    :AE: <EXIT>;
+		"Allowed inside []= '+ - . space'"
+	    :AB: <IF (IBRKT.gt.0) GOTO :AN:; <EXIT>; >
+	    :AS: <
+		IF     (CCHAR.eq.'[') THEN; IBRKT=IBRKT+1;	"Left braket"
+		ELSEIF (CCHAR.eq.']') THEN; IBRKT=IBRKT-1;	"Right braket"
+		ENDIF;
+		GOTO :AN:;
+	    >
+	    :AC: CCHAR=UPCHAR(CHARAC+1:CHARAC+1);
+	    :AN: NSTRNG=NSTRNG+1; STRNG(NSTRNG:NSTRNG)=CCHAR;
+	 >
+	 IF (IBRKT.ne.0) THEN;		"Mismatched brakets ???"
+	    ISAVE=$INFO(3);
+	    $INFO(3)=ICOL-1;
+	    ERROR OUT;'*** WARNING *** Mismatched brakets []';
+	    $INFO(3)=ISAVE;
+	 ENDIF;
+		"lexical Value ?"
+	 IF (IAGAIN.ge.0 .and. NSTRNG.ge.3 .and. STRNG(1:2).eq.'V_') THEN;
+	    IF (TDGETV(STRNG(ISTRNG+1:NSTRNG),FLOTNG)) THEN;	"Lexical ?"
+		IF (INTERP.eq.0) INTERP=4;
+		$INFO(3)=ICOL-1;
+		GOTO :NUM TEST:;
+	    ENDIF;
+	 ELSEIF (IAGAIN.eq.-3) THEN;
+		"123456789012345678901234567890"
+	    I=INDEX(',ON,YES,TRUE,OFF,NO,FALSE',','//STRNG(1:NSTRNG));
+	    IF (I.eq.0) GOTO :END TOKEN:;
+	    IF     ( (I.lt.13.and.NSTRNG.gt.1) .or. (I.eq.8)) then;
+		$INFO(3)=ICOL-1;
+	    ELSEIF ( (I.ge.13.and.NSTRNG.gt.1) .or. (I.eq.20) ) then;
+		LTOKEN=.not.LTOKEN;
+		$INFO(3)=ICOL-1;
+	    ENDIF;
+	    GOTO :END TOKEN:;
+	 ELSEIF (IAGAIN.le.0 .and. NSTRNG.ge.3 .and. STRNG(1:2).eq.'S_') THEN;
+	    IF (TDGETS(STRNG(1:NSTRNG))) THEN;
+		IF (INTERP.eq.0) INTERP=5;
+		$INFO(3)=ICOL-1;
+		GOTO :END TOKEN:;
+	    ENDIF;
+	 ENDIF;
+	 IF(INTERP.eq.0) THEN;
+	    INTERP=2;
+	 ELSE;
+	    IF (IAGAIN.eq.-1) THEN;
+		$INFO(3)=ICOL-1;
+		IF (ICASE.eq.1) THEN;		"Lowercase ?"
+		  CALL T2DNCS(STRNG(:NSTRNG));
+		ELSEIF (ICASE.eq.2) THEN;	"Preserve case?"
+		  STRNG=$CARD($INFO(3)-NSTRNG+1:$INFO(3));
+		ENDIF;
+	    ELSE;
+		NSTRNG=0;
+	    ENDIF;
+	    GOTO :END TOKEN:;
+	 ENDIF;
+	 <EXIT>;
+
+      :STRING:		"------------ Strings -------------"
+	 IF ( (IAGAIN.gt.0 .and. IAGAIN .ne.3)
+		.or.IAGAIN.lt.-2) GOTO :END TOKEN:;
+	 IF (IAGAIN.eq.0) $INFO(5)=ICOL;
+	 QUOTE=CCHAR;			"Remember the starting character"
+	 IF (INTERP.eq.0) INTERP=5;
+	 ICOL=ICOL+1;
+	 LFIN=.false.;
+	 <LOOP> <
+	    IF (LFIN.or.ICOL.gt. MAXCOL) <EXIT>;
+	    INEXT=INDEX($CARD(ICOL:MAXCOL),QUOTE)+ICOL-1;
+	    IF (INEXT.lt.ICOL) INEXT=MAXCOL+1;
+	    LFIN=.true.;
+	    IF (INEXT.lt.MAXCOL) THEN;
+		IF ($CARD(INEXT+1:INEXT+1).eq.QUOTE) THEN;
+		  LFIN=.false.; INEXT=INEXT+1;
+		ENDIF;
+	    ENDIF;
+	    J=NSTRNG+INEXT-ICOL;
+	    IF (J.gt.LEN(STRNG)) THEN;
+		J=LEN(STRNG);
+		$INFO(3)=ICOL+J-NSTRNG;
+		ERROR OUT;('*** ERROR *** String too long - truncated');
+	    ENDIF;
+	    IF (J.gt.NSTRNG) STRNG(NSTRNG+1:J)=$CARD(ICOL:INEXT-1);
+	    NSTRNG=J;
+	    ICOL=INEXT+1;
+	 >
+	 IF (IAGAIN .eq. 3) THEN;
+		<I=1,NDSETS;
+		    CALL T2GDSET(I,1,$LARGE INTEGER
+			,1,$LARGE INTEGER,ISETD,HNONE
+			,STRNG(:MAX(1,NSTRNG)));
+		    IF (ISETD(NPDATA) .gt. 1) THEN;
+			INTEG=I;
+			<EXIT>;
+		    ENDIF;
+		>
+		IF (INTEG .eq. 0)
+		    ERROR OUT;'*** ERRROR *** No such data set name';
+	 ENDIF;
+	 <EXIT>;
+
+      :COMMENT:		" ------ PROCESS COMMENTS ------"
+	 MINCOL=ICOL+1;
+	 J=1;
+	 <ICOL=MINCOL,MAXCOL;
+	    CHARAC=ICHAR($CARD(ICOL:ICOL));
+	    CHTYPE=TYPTAB(CHARAC+1);
+	    GOTO ( :CAGAIN:,:CAGAIN:,:CAGAIN:,:CAGAIN:,:CAGAIN:,
+		   :CAGAIN:,:CAGAIN:,:END OF CARD:,:CAGAIN:,:COMMENTBEG:,
+		   :COMMENTEND:) CHTYPE;
+	    GOTO :CAGAIN:;
+	    :COMMENTEND:			"right paren ?"
+		J=J-1; IF (J.le.0) <EXIT>;	"Done ?"
+	    GOTO :CAGAIN:;
+	    :COMMENTBEG:			"Left paren ?"
+		J=J+1;				"Count them"
+	    :CAGAIN: CONTINUE;
+	 >
+	 $INFO(3)=ICOL;		"New starting point"
+	 <NEXT>;
+		"--------------  End of the card -----------------"
+      :END OF CARD:
+	 IF (IAGAIN.ne.0) GOTO :END TOKEN:;
+	 $INFO(5)=ICOL;
+	 INTERP=1; $INFO(3)=ICOL-1;
+	 RETURN;
+		"--------------- Special characters ---------------"
+      :SPECIAL:
+	 IF (CCHAR .eq. '<') THEN;
+	    IF (IAGAIN.lt.-1)GOTO :END TOKEN:;
+	    $INFO(3)=ICOL-1;
+	    $INFO(5)=ICOL;
+	    ISAVE=INTERP; KSAVE=KEYORD;
+	    CALL T2EXPR($INFO,$CARD,0,1);
+	    INTERP=ISAVE; KEYORD=KSAVE;
+	    IF ($ERROR) THEN;
+		INTERP=7;
+	    ELSE;
+		IF (INTERP.eq.0) INTERP=4;
+		GOTO :NUM TEST:;
+	    ENDIF;
+	 ENDIF;
+	 IF (IAGAIN.gt.0 .or. IAGAIN.lt.-1) GOTO :END TOKEN:;
+	 IF (IAGAIN.eq.0) $INFO(5)=ICOL;
+	 IF (CCHAR .eq. '[') GOTO :ALPHA:;
+	 IF (INTRAC(I) .and. CCHAR .eq. '?') THEN;
+	    CALL T2_SHOW_KEYS(KEYS);
+	    $ABORT=.true.;
+	    $INFO(3)=ICOL;
+	    GOTO :AGAIN:;
+	 ENDIF;
+	 IF (INTERP.eq.0) INTERP=9;
+	 INTEG=0;
+	 FLOTNG=0;
+	 NSTRNG=1;
+	 STRNG(1:2)=CCHAR;
+	 ICOL=ICOL+1;
+	 <EXIT>;
+
+   >	"END OF GIANT LOOP"
+	"Add blank after the string"
+
+   IF (NSTRNG.lt.LEN(STRNG)) STRNG(NSTRNG+1:NSTRNG+1)=' ';
+   $INFO(3)=ICOL-1;
+
+   IF ((INTERP.eq.9.or.INTERP.eq.6.or.INTERP.eq.2).and.IAGAIN.eq.0) THEN;
+:GET TOKEN:
+      MAXCHR=LEN(KEYS);
+      IF (MAXCHR.le.2) THEN; IF (INTERP.eq.2)INTERP=6; GOTO :END TOKEN:; ENDIF;
+      MINCOL=1;
+      MAXKEY=MAXCHR-NSTRNG;	"Max column to match key"
+      KEYORD=0;			"Initial key"
+      NSTR=NSTRNG;
+      <I=1,1000;		"Look at first 1000 tokens"
+	 INEXT=INDEX(KEYS(MINCOL:MAXCHR),',')+MINCOL;
+	 IF (INEXT.le.MINCOL.or.MINCOL.gt.MAXKEY) THEN;
+	    IF (INTERP.eq.2) INTERP=6; <EXIT>;
+	 ENDIF;
+	 IF (STRNG(1:NSTRNG).eq.KEYS(MINCOL:MINCOL+NSTRNG-1)) THEN;
+	    KEYNUM=INDEX(KEYS(MINCOL:INEXT),':')+MINCOL;
+	    KEYEND=KEYNUM-1; IF (KEYEND.le.MINCOL) KEYEND=INEXT-1;
+	    INTERP=2;
+	    IF (NSTRNG.ge.MIN(KEYEND-MINCOL,MINMCH)) THEN;	"Long enuf ?"
+		KEYORD=I; IFIRST=KEYNUM; ILAST=INEXT-1;
+		IS=1; INTEG=0; ID=-20;
+		<J=KEYEND+1,ILAST-1;	"Decode the number"
+		  CCHAR=KEYS(J:J);
+		  KEYLET=ICHAR(CCHAR);
+		  KEYTYP=TYPTAB(KEYLET+1);
+		  GO TO (:DIG1:,:DEC1:,:SIGN1:,:ALPHA1:,:ALPHA1:) KEYTYP;
+			  IAGAIN=IAGAIN+1;
+			  IF (IAGAIN.gt.2)
+			     CALL T2STOP('*** FATAL *** in token');
+			  INTEG=SIGN(INTEG,IS); FLOTNG=INTEG;
+			  IF (ID.gt.0)   FLOTNG=FLOTNG/XPC(ID);
+			  IF (ID.ne.-20) THEN;
+			     FLIM(IAGAIN)=FLOTNG; LLIM=.false.; ENDIF;
+			  IS=1; INTEG=0; ID=-20;
+			  <NEXT>;
+		  :ALPHA1:IF     (CCHAR.eq.'S') THEN;	"String expected ?"
+			     IAGAIN=-2;
+			  ELSEIF (CCHAR.eq.'T') THEN;	"Token/string ?"
+			     IAGAIN=-1;
+			  ELSEIF (CCHAR.eq.'Y') THEN;	"Yes/No Default=Y"
+			     IAGAIN=-3;
+			  ELSEIF (CCHAR.eq.'N') THEN;	"Yes/No Default=N"
+			     LTOKEN=.FALSE.;
+			     IAGAIN=-3;
+			  ELSEIF (CCHAR.eq.'F') THEN;	"File name"
+			     ICASE=IFILE_CASE;
+			     IAGAIN=-1;
+			  ELSEIF (CCHAR.eq.'D') THEN;	"Data set name"
+			     IF (IAGAIN .lt. 2) THEN;
+				FLIM(2)=NDSETS;
+				IF (IAGAIN .eq. 0) FLIM(1)=0;
+			     ENDIF;
+			     IAGAIN=3;
+			  ELSE;
+			     CALL T2STOP('Error in TOKEN');
+			  ENDIF;
+			  IF (.not. LLIM) INTEG=FLIM(1);
+			  STRNG(1:1)=' ';
+			  GOTO :AGAIN:;
+		  :SIGN1: IF (CCHAR.eq.'-') IS=-1;
+			  <NEXT>;
+		  :DEC1:  ID=0;
+			  <NEXT>;
+		  :DIG1:  INTEG=INTEG*10+(KEYLET-ICHAR('0'));
+			  ID=ID+1;
+		>
+		INTEG=SIGN(INTEG,IS); FLOTNG=INTEG;
+		IF (ID.gt.0) FLOTNG=FLOTNG/XPC(ID);
+		IF (NSTRNG.eq.KEYEND-MINCOL) GOTO :GOT TOKEN:;	"Exact match ?"
+		NSTR=KEYEND-MINCOL;
+		STRNG(1:NSTR+1)=KEYS(MINCOL:KEYEND-1);
+		<II=1,10;			"Look for 10 ambig tokens"
+		  INEXT=INDEX(KEYS(MINCOL:MAXCHR),','//STRNG(1:NSTRNG))+MINCOL;
+		  IF (INEXT.eq.MINCOL) <EXIT>;
+		  MINCOL=INEXT;
+		  INEXT=INDEX(KEYS(MINCOL:MAXCHR),',')+MINCOL;
+		  KEYNUM=INDEX(KEYS(MINCOL:INEXT),':')+MINCOL;
+		  KEYEND=KEYNUM-1; IF (KEYEND.le.MINCOL) KEYEND=INEXT-1;
+		  IF (KEYS(IFIRST:ILAST).ne.KEYS(KEYNUM:INEXT-1)) THEN;
+				"Ambiguous ?"
+				"Save duplicate keys !!!"
+		     J=MIN(NSTR+KEYEND-MINCOL+1,LEN(STRNG));
+		     STRNG(NSTR+1:LEN(STRNG))=KEYS(MINCOL-1:KEYEND-1);
+		     NSTR=J;
+		     INTERP=8;
+		  ENDIF;
+		>
+		NSTRNG=NSTR;
+:GOT TOKEN:
+		IF (INTERP.eq.8) THEN;	"Ambiguous keys ???"
+		  <TOKEN ERROR>;
+		  INTERP=2;
+		ENDIF;
+		IF (IAGAIN.ne.0) GOTO :AGAIN:;
+		GOTO :END TOKEN:;
+	    ENDIF;
+	 ENDIF;
+	 MINCOL=INEXT;
+      >
+   ENDIF;
+:END TOKEN:
+   IF (INPFIL.ne.$INPUT FILE.or.JOUFIL.eq.0.or.$INFO(2).lt.-1) RETURN;
+   LSTJOU=NSTJOU;	"Journal file indicator"
+   MAXJOU=$INFO(3);
+   IF(MAXJOU.ge.MINJOU) THEN;
+      IF (LSTJOU+1.ge.LEN(STJOU)) RETURN;
+      NSTJOU=MIN(NSTJOU+MAXJOU-MINJOU+1,LEN(STJOU));
+      STJOU(LSTJOU+1:NSTJOU)= $CARD(MINJOU:MAXJOU);
+   ENDIF;
+END;
+SUBROUTINE T2_SHOW_KEYS(KEYS);
+   IMPLICIT NONE;
+   $FLAGS;
+   CHARACTER*(*) KEYS;
+   CHARACTER*30  CTEMP;
+   INTEGER I,J,K,JMIN,JMAX,ITYPE,IMIN,IMAX,IDEF;
+   INTEGER    MAXTEST   ;
+   PARAMETER (MAXTEST=6);
+   CHARACTER*2	CTEST(MAXTEST) /':Y',':N',':T',':S',':D',':F'/;
+   CHARACTER*12 CTYPE(7) /' ','=Number','=Logical','=Alpha','="String"'
+	,'=Data set','=File name'/;
+   JMIN=1;
+   WRITE ($TERMINAL OUT,*)'  Options:';
+   <I=1,1000;
+      IF ($TRAP) <EXIT>;
+      JMAX=INDEX(KEYS(JMIN:),',')+JMIN;
+      IF (JMAX.gt.JMIN+1) THEN;
+	ITYPE=1;
+	J=JMAX-1;
+	K=INDEX(KEYS(JMIN:J),':');
+	IF (K.ne.0) THEN;
+	    J=JMIN+K-1;
+	    IMIN=JMIN+K-1; IMAX=IMIN; IDEF=IMIN;
+	    K=INDEX(KEYS(IMIN+1:JMAX-1),':');
+	    IF (K.ne.0) THEN;
+		ITYPE=2;
+		IMAX=IMIN+K;
+		IDEF=IMAX;
+		K=INDEX(KEYS(IMAX+1:JMAX-1),':');
+		IF (K.ne.0) IDEF=IMAX+K;
+	    ENDIF;
+	    <K=1,MAXTEST;
+		IF (INDEX(KEYS(J:JMAX-2),CTEST(K)).ne.0) THEN;
+		    ITYPE=2+K; IF (ITYPE .gt. 3) ITYPE=ITYPE-1;
+		    <EXIT>;
+		ENDIF;
+	    >
+	ENDIF;
+	IF (ITYPE .eq. 3) THEN;
+	    WRITE($TERMINAL OUT,*) '   ',KEYS(JMIN:J-1),' ',CTYPE(ITYPE),
+		' Default',KEYS(IDEF:MAX(IDEF,JMAX-2));
+	ELSEIF (ITYPE .eq. 2) THEN;
+	    WRITE($TERMINAL OUT,*) '   ',KEYS(JMIN:J-1),' ',CTYPE(ITYPE),
+		' Min',KEYS(IMIN:MAX(IMIN,IMAX-1)),
+		' Max',KEYS(IMAX:MAX(IMAX,IDEF-1)),
+		' Default',KEYS(IDEF:MAX(IDEF,JMAX-2));
+	ELSE;
+	    WRITE($TERMINAL OUT,*) '   ',KEYS(JMIN:J-1),' ',CTYPE(ITYPE);
+	ENDIF;
+      ELSEIF (JMAX.eq.JMIN) THEN;
+	 <EXIT>;
+      ENDIF;
+      JMIN=JMAX;
+   >
+END;
+%E  SUBROUTINE TOKRED --- Reads new input line
+<TOKEN USING INFOIN,CARDIN>;
+SUBROUTINE TOKRED($INFO,$CARD,LENG,INFILE,FORMT);
+   IMPLICIT NONE;
+   INTEGER $INFO(10),LENG,INFILE;
+   CHARACTER*(*) $CARD,FORMT;
+   EXTERNAL TOKDAT;
+   $SPECIFYTOK;
+   $SPECIFYLUN;
+   $SPECIFYP;
+   $FLAGS;
+   $T2TOKNC;
+   INTEGER ISTAT,CHARAC,MAXCOL,ICOL,LENGTH,I,J,IMIN,IMAX;
+   $BOOLEAN INTRAC,LOPEN,LNTRAC;
+   DATA LOPEN,LNTRAC/2*.false./;
+   LENGTH=MIN(LEN($CARD),LENG);
+   IF ($INFO(1).LT.0) GO TO :E:;		"END OF FILE"
+$VAX;
+   IF (.not. LOPEN .and. INFILE .eq.$INPUT FILE) THEN;
+      INQUIRE(UNIT=INFILE,OPENED=LOPEN);	"Check if open"
+      LNTRAC=INTRAC(I);
+      IF (LOPEN) THEN;
+	 LNTRAC=.false.;
+      ELSEIF (.not. LNTRAC) then;
+	 OPEN (UNIT=INPFIL,
+		ERR=:E0:,
+		FILE='SYS$INPUT',
+		STATUS='old',
+		readonly);
+		LOPEN=.true.;
+      ENDIF;
+      LOPEN=.true.;
+   ENDIF;
+$END;
+   NSTJOU=0; LSTJOU=0;
+   IF ($INFO(9).gt.0) THEN;		"Re-read same 'card' ?"
+      $INFO(3)=$INFO(8);
+      $INFO(9)=0;			"Turnoff that flag"
+   ELSE;
+      $INFO(9)=0;			"Turnoff that flag"
+      <LOOP> <
+	 IF ($INFO(3).GE.$INFO(1)) THEN;	"At end of card ?"
+	    IF ($INFO(2) .lt. 0) THEN;
+		$INFO(1)=-1; RETURN;
+	    ENDIF;
+	    IMIN=1;
+	    <LOOP> <
+		IF (LNTRAC .and.INFILE .eq.$INPUT FILE) THEN;
+		  $INTERACTIVE=.true.;
+		  IF (IMIN .eq. 1) THEN;
+		    CALL READPR(PRMP1(1:NPRMP1),$CARD(IMIN:),LENGTH);
+		  ELSE;
+		    CALL READPR('_'//PRMP1(1:NPRMP1),$CARD(IMIN:),LENGTH);
+		  ENDIF;
+		      IF(LENGTH.lt.0) GOTO :E0:;
+			"Prompt - J.Clement Mar 86"
+			LENGTH=LENGTH+IMIN-1;
+		ELSE;
+		  $INTERACTIVE=.false.;
+		  READ (INFILE,FORMT,END=:E0:)
+		     ($CARD(J:J),J=IMIN,LENGTH);
+		ENDIF;
+		IF(INFILE.le.NINMAX) NINP(INFILE)=NINP(INFILE)+1;
+		<I=LENGTH,IMIN,-1; IF($CARD(I:I).ne.' ') <EXIT>; >
+		IMAX=I;
+		IF (IMAX .le. 0) THEN;
+		    IMAX=1;
+		    $CARD(1:1)=' ';
+		ENDIF;
+		IF ($CARD(IMAX:IMAX) .eq. '-') THEN;
+			$CARD(IMAX:IMAX)=' ';
+			IMIN=IMAX;
+			<NEXT>;
+		ENDIF;
+		IF($CARD(1:2).ne.'//') <EXIT>;	"Not comment ?"
+	    >
+	    <I=1,IMAX;				"Now convert all char"
+		J=ICHAR($CARD(I:I))+1;		"To an acceptable set"
+		$CARD(I:I)=OKCHAR(J:J);
+	    >
+	    $INFO(1)=IMAX;
+	    $INFO(2)=0;
+	    $INFO(3)=0;
+	    $INFO(6)=0;
+	    $INFO(7)=$INFO(7)+1;
+	    $INFO(10)=0;
+	    <EXIT>;
+	 ELSE;
+	    CALL TOKEN($INFO,$CARD,';');
+	    IF (INTERP.eq.1) THEN;
+		$INFO(3)=$INFO(3)+1;
+		IF ($INFO(3).lt.$INFO(1)) <EXIT>;
+	    ENDIF;
+	 ENDIF;
+      >
+   ENDIF;
+   $INFO(8)=$INFO(3);
+   $INFO(4)=0; $INFO(5)=0; $INFO(6)=0;
+   NSTJOU=0; LSTJOU=0;
+   RETURN;
+   :E0:
+		"J.Clement setup input stack"
+      IF (INFILE .gt.$INPUT FILE) THEN;
+		"J.Clement previous entry in stack"
+	 CLOSE(UNIT=INFILE);
+	 INFILE=INFILE-1;
+		"If terminal + interactive, flush"
+	 IF(INFILE.eq.$INPUT FILE.and.LNTRAC ) CALL TXVOID;
+	 $INFO(1)=1; $CARD=' ';
+      ELSE;
+	 $INFO(1)=-1;
+      ENDIF;
+   :E:
+      IF ($INFO(1).EQ.0) THEN;
+	 ERROR OUT;('*** WARNING *** No input file');
+	 $INFO(1)=-1; $INFO(3)=0; $INFO(4)=0; $INFO(5)=0;
+	 $INFO(9)=0; $INFO(10)=0;
+      ENDIF;
+   RETURN; END;
+
+%E  SUBROUTINE T2UPCS  --- Converts string to upper case
+SUBROUTINE T2UPCS(STRNG);
+"
+       The string STRNG is converted to upper case
+"
+   IMPLICIT NONE;
+   CHARACTER	STRNG*(*);
+   INTEGER	I,J;
+   $T2TOKNC;
+   <I=1,LEN(STRNG);
+      J=1+ICHAR(STRNG(I:I));		"Get code"
+      STRNG(I:I)=UPCHAR(J:J);		"And now in upper case"
+   >
+END;
+%E  SUBROUTINE T2DNCS  --- Converts string to upper case
+SUBROUTINE T2DNCS(STRNG);
+"
+       The string STRNG is converted to upper case
+"
+   IMPLICIT NONE;
+   CHARACTER STRNG*(*);
+   INTEGER	I,J;
+   $T2TOKNC;
+   <I=1,LEN(STRNG);
+      J=1+ICHAR(STRNG(I:I));		"Get code"
+      STRNG(I:I)=DNCHAR(J:J);		"And now in upper case"
+   >
+END;
+%E  FUNCTION T2TOKK  --- Parse keywords only
+SUBROUTINE T2TOKK(INFOIN,TOKEN,KEYS);
+   IMPLICIT NONE;
+   EXTERNAL TOKDAT;
+   INTEGER    MINMCH  ;
+   PARAMETER (MINMCH=2);	"Minimum no. of characters for match"
+   CHARACTER*1 CCHAR;
+   $T2TOKNC;
+   INTEGER KEYLET;
+   INTEGER CHTYPE,KEYTYP;
+   INTEGER INFOIN(10);
+   CHARACTER*(*) TOKEN,KEYS;
+   CHARACTER*200 TOKX ;
+   INTEGER ICOL ,NTOKEN ,MAXCHR ,MINCOL, MAXKEY;
+   INTEGER I ,J,INEXT ,KEYNUM, KEYEND ,IFIRST ,ILAST ,IS ,ISTR1 ,ISTR2;
+
+   IF (TOKEN(1:1).eq.CHAR(0)) THEN;
+      RETURN;
+   ENDIF;
+   INFOIN(1)=6;
+   NTOKEN=LEN(TOKEN);
+   MAXCHR=LEN(KEYS);
+   IF (MAXCHR.le.1.or.NTOKEN.lt.1) GOTO :END TOKEN:;
+   MINCOL=1;
+   MAXKEY=MAXCHR-NTOKEN;	"Max column to match key"
+   INFOIN(2)=0;			"Initial key"
+   <I=1,1000;			"Look at first 1000 tokens"
+      INEXT=INDEX(KEYS(MINCOL:MAXCHR),',')+MINCOL;
+      IF (INEXT.le.MINCOL.or.MINCOL.gt.MAXKEY) THEN;
+	 <EXIT>;
+      ENDIF;
+      IF (TOKEN.eq.KEYS(MINCOL:MINCOL+NTOKEN-1)) THEN;
+	 INFOIN(1)=2;
+	 KEYNUM=INDEX(KEYS(MINCOL:INEXT),':')+MINCOL;
+	 KEYEND=KEYNUM-1; IF (KEYEND.le.MINCOL) KEYEND=INEXT-1;
+	 IF (NTOKEN.ge.MIN(KEYEND-MINCOL,MINMCH)) THEN;	"Long enuf ?"
+	    INFOIN(2)=I; IFIRST=KEYNUM; ILAST=INEXT-1;
+	    IS=1; INFOIN(3)=0;
+	    <J=KEYEND+1,ILAST-1;	"Decode the number"
+		CCHAR=KEYS(J:J);
+		KEYLET=ICHAR(CCHAR);
+		KEYTYP=TYPTAB(KEYLET+1);
+		GO TO (:DIG5:,:DEC5:,:SIGN5:) KEYTYP;
+		:DEC5:  <EXIT>;
+		:SIGN5: IF (CCHAR.eq.'-') IS=-1;
+			<NEXT>;
+		:DIG5:  INFOIN(3)=INFOIN(3)*10+(KEYLET-ICHAR('0'));
+	    >
+	    INFOIN(3)=SIGN(INFOIN(3),IS);
+	    IF (NTOKEN.eq.KEYEND-MINCOL) GOTO :END TOKEN:;	"Exact match ?"
+	    ISTR1=MINCOL; ISTR2=KEYEND-1;
+	    <LOOP> <
+                TOKX = ','//TOKEN ;
+		INEXT=INDEX(KEYS(MINCOL:MAXCHR),TOKX(:LEN(TOKEN)+1))+MINCOL;
+		IF (INEXT.le.MINCOL) <EXIT>;
+		MINCOL=INEXT;
+		INEXT=INDEX(KEYS(MINCOL:MAXCHR),',')+MINCOL;
+		KEYNUM=INDEX(KEYS(MINCOL:INEXT),':')+MINCOL;
+		KEYEND=KEYNUM-1; IF (KEYEND.le.MINCOL) KEYEND=INEXT-1;
+		IF (KEYS(IFIRST:ILAST).ne.KEYS(KEYNUM:INEXT-1)) THEN;
+				"Ambiguous ?"
+                  TOKX = '*** ERROR *** '//TOKEN//' matches both '//
+		     KEYS(ISTR1:ISTR2)//','//KEYS(MINCOL-1:KEYEND-1);
+		  ERROR STRING;TOKX(:LEN(TOKEN)+31+ISTR2-ISTR1+KEYEND-MINCOL);
+		  INFOIN(1)=8;
+		  <EXIT>;
+		ENDIF;
+	    >
+	    <EXIT>;
+	 ENDIF;
+      ENDIF;
+      MINCOL=INEXT;
+   >
+:END TOKEN:
+END;
+%E  SUBROUTINE T2GSET --- Get data set limits
+SUBROUTINE T2GSET(ISET,NMIN,NMAX,NINCR0,NINCR1,NINCR2,IBTYPE);
+   IMPLICIT NONE;
+   $SPECIFICATION;
+   $POINT ARRAYS($NPOINTS);
+   INTEGER J,ISET,NMIN,NMAX,NINCR0,NINCR1,NINCR2,IBTYPE;
+   NMAX=-1; NMIN=0;
+   IF (ISET.gt.NDSETS) RETURN;	"Bad data set?"
+   IF (ISET.eq.0) THEN;
+      IBTYPE=IBLKTP;
+      NMIN=$IMSPTR;
+      IF (IBTYPE.eq.1) THEN;
+	 NMAX=$IENDPTR;
+	 NINCR0=NINCR;
+      ELSE;
+	 NMAX=NMIN+NMESH0*NMESH1*NMESH2;
+	 NINCR0=NMESH0;
+	 NINCR1=NMESH1;
+	 NINCR2=NMESH2;
+      ENDIF;
+   ELSEIF (ISET.gt.0) THEN;
+      NMAX=$IBASEPTR;
+      <J=1,ISET;					"Hunt for data set"
+	NMIN=NMAX;					"Old min,max"
+	NMAX=DATBUF(NMIN+2)+NMIN; >
+      IF (DATBUF(NMIN).ge.$MESHSEPARATOR) THEN;
+	 IBTYPE=2;
+	 NMIN=NMIN+NINT(DATBUF(NMIN+1));		"Data location"
+	 NINCR0=NINT(DATBUF(NMIN-3));
+	 NINCR1=NINT(DATBUF(NMIN-2));
+	 NINCR2=NINT(DATBUF(NMIN-1));
+	 NMAX=NMIN+NINCR0*NINCR1*NINCR2-1;
+      ELSE;
+	 IBTYPE=1;
+	 NMIN=NMIN+NINT(DATBUF(NMIN+1));		"Data location"
+	 NINCR0=NINCR;
+	 NINCR1=0;
+	 NINCR2=0;
+	 NMAX=NMAX-1;
+      ENDIF;
+   ENDIF;
+END;
+%E  FUNCTION TDGETS --- Get data values as strings (lexicals)
+$BOOLEAN FUNCTION TDGETS(CARDIN);
+   IMPLICIT NONE;
+   CHARACTER *(*) CARDIN;
+
+   CHARACTER*128  CARDX ;
+   CHARACTER*11   FORMT ;
+
+   $SPECIFICATION;
+   LOGICAL TDGETV, T2_GET_ENV;
+   REAL VALUE;
+   INTEGER I ,J;
+   IF (TDGETV(CARDIN,VALUE)) THEN;
+      I=ISIGFG; IF (I.le.0) I=$DIGITS;
+      WRITE (FORMT, '(A8,I2.2,A1)' ) '(1P,G20.', I , ')' ;
+      WRITE( STRNG(1:20) , FORMT ) VALUE;
+      I=INDEX(STRNG(1:20),'E+00');		"Null exponent ?"
+      IF (I.gt.0) STRNG(I:I+3)=' ';		"Make it blank"
+      CALL T2SQEZ(STRNG(1:20),NSTRNG);
+      TDGETS=.true.;
+   ELSE;
+      IF ( INDEX(CARDIN,'S_SY') .eq.1 ) THEN;	"Symbol ???"
+	  IF (TDGETV(CARDIN,VALUE)) THEN;
+	     I=NINT(VALUE); J=I/256; I=I-J*256;
+	     STRNG(1:3)=' ';
+	     CALL SYMTXT(VALUE,STRNG(1:3));
+	     NSTRNG=2;
+	     TDGETS=.true.; RETURN;
+	 ENDIF;
+      ENDIF;
+      CARDX = CARDIN ;
+      TDGETS=T2_GET_ENV('TD_'//CARDX(:LEN(CARDIN)),STRNG,NSTRNG);
+   ENDIF;
+END;
+%E  FUNCTION TDGETV --- Get data values by name (lexicals)
+$BOOLEAN FUNCTION TDGETV(CARDIN,VALUE);
+   IMPLICIT NONE;
+   CHARACTER*(*) CARDIN;
+   REAL VALUE ;
+
+   CHARACTER*128 CARDX ;
+   CHARACTER*5  FORMT ;
+
+   $SPECIFYNONE;
+   $SPECIFICATION;
+   $SPECIFYFIT;
+   $MAINSPEC;
+   $SPECIFYHBOOK;
+   $POINT ARRAYS($NPOINTS);
+   $T2TOKNC;
+   LOGICAL T2_GET_ENV,ISTAT;
+   INTEGER T2_HIST_ID;
+   INTEGER IBRA,IKET,IMIN,IMAX,JMIN,JMAX,NMIN,NMAX;
+   INTEGER IJUMP1,IJUMP2,INLEN;
+   INTEGER I,J,K;
+   REAL CPULIM,CPUTIM,RELTIM;
+   REAL STATS(3,3),VALSTR;
+   EQUIVALENCE (OUTSTR,VALSTR);
+   EQUIVALENCE (STATS,H2STAT);
+
+   %'KEYORD'='"INFOTOKK(2)"';
+   %'INTERP'='"INFOTOKK(1)"';
+   %'INTEG'='"INFOTOKK(3)"';
+   %'TOKEN('='"T2TOKK("';
+
+   TDGETV=.true.;
+
+   <TOKEN USING INFOTOKK,CARDIN(3:MAXSTR)>;
+   MAXSTR=LEN(CARDIN);
+   IBRA=INDEX(CARDIN,'[');	"Left braket ?"
+   IF (IBRA.gt.0) MAXSTR=IBRA-1;
+   IF (MAXSTR.eq.3) GOTO :NOTFOUND:;
+   IF (MAXSTR.lt.3) THEN;
+      TDGETV=.false.; RETURN;
+   ENDIF;
+   IF (CARDIN(3:3).ne.CHAR(0)) THEN;
+	<I=1,3; IINDEX(I)=0; >
+      IF (IBRA.gt.0) THEN;
+	 IBRA=IBRA+1;
+	 IKET=INDEX(CARDIN,']')-1;	"Find right braket"
+	 IF     (IKET.le.0) THEN; IKET=LEN(CARDIN);
+	 ELSEIF (IKET.ne.LEN(CARDIN)-1) THEN; GOTO :ERREXIT:; ENDIF;
+	 IF (IKET.ge.IBRA) THEN;	"Indices ??"
+	    IMIN=IBRA;
+	    <I=1,3;
+		IMAX=INDEX(CARDIN(IMIN:IKET),',');	"Comma ?"
+		IF (IMAX.le.0) THEN; IMAX=IKET;	"No comma ?"
+			      ELSE; IMAX=IMAX+IMIN-2; ENDIF;	"Comma ?"
+		IF (IMAX.ge.IMIN) THEN;		"Number ??"
+                  WRITE ( FORMT , '(A2,I2.2,A1)' ) '(I' , 1+IMAX-IMIN , ')' ;
+		  READ (CARDIN(IMIN:IMAX),FORMT,ERR=:SUBERROR:)K ;
+		  IINDEX(I)=K;
+		"IF (K.lt.0) goto :SUBERROR:;"
+		ENDIF;
+		IMIN=IMAX+2; IF (IMIN.gt.IKET) <EXIT>;
+	    >
+	 ENDIF;
+      ENDIF;
+   ENDIF;
+   I1=IINDEX(1); I2=IINDEX(2); I3=IINDEX(3);
+   <TOKEN> <
+      KEY:: <
+	 SYMBOL:1,
+	 XVALUE:2,DXVALUE:3,
+	 YVALUE:4,DYVALUE:5,
+	 ZVALUE:6,DZVALUE:7,
+	 NDXVALUE:8,NDYVALUE:9,NDZVALUE:10,
+	 UVALUE:11,DUVALUE:12,NDUVALUE:13,
+	 VVALUE:14,DVVALUE:15,NDVVALUE:16,
+	 WVALUE:17,DWVALUE:18,NDWVALUE:19,
+	 THVALUE:102,DTHVALUE:103,
+	 RVALUE:104,DRVALUE:105,
+	 PHIVALUE:206,DPHIVALUE:207,
+	 NDTHETA:108,NDRVALUE:109,NDPHIVALUE:210
+	   <
+	    IF (INTEG.gt.100) THEN;
+		IF     (.not.$SPHERICAL.and. INTEG.gt.200) THEN;
+		  ERROR STRING;'*** ERROR *** Spherical coordinates not ON';
+		  GOTO :ERREXIT:;
+		ELSEIF (.not.$POLAR) THEN;
+		  ERROR STRING;'*** ERROR *** Polar coordinates not ON';
+		  GOTO :ERREXIT:;
+		ENDIF;
+		INTEG=MOD(INTEG,100);
+	    ENDIF;
+	    I=I_VORDER(INTEG,1);
+"
+	    IF (I3.lt.0) I3=NDSETS-I3;
+"
+	    CALL T2GSET(I3,NMIN,NMAX,NINCR0,NINCR1,NINCR2,IBTYPE);
+	    IF (NMIN.le.0) GOTO :SUBERROR:;	"Bad data set?"
+	    IF (IBTYPE.eq.1) THEN; 		"Regular data ??"
+		IF (I2.lt.0 .or. I2.gt.1) goto :SUBERROR:; "Illegal index ?"
+		I=IVPTR(I);			"Get pointer to data"
+		IF (I.le.0) goto :NOTAVAIL:;	"Data not in storage ?"
+		IF (I1.eq.0) I1=(ICPOIN(1)-$IMSPTR)/NINCR+1;
+		I1=NMIN+NINCR0*(I1-1);		"Get point location"
+		IF (I1.lt.NMIN .or. I1.gt.NMAX)
+		  GOTO :SUBERROR:; 		"Bad Subscript ?"
+		VALUE=DATBUF(I1+I-1);		"Get the value"
+	    ELSEIF (IBTYPE.eq.2 ) THEN;		"Mesh data ??"
+		J=MOD(I-N_XDATA,NCSIZE);
+		IF (J .lt. 0 .or. J .gt. NINCR0) goto :NOTAVAIL:;
+		IF (I .lt. n_XDATA) goto :NOTAVAIL:;
+		I4=(I-N_XDATA)/NCSIZE +1;
+		IJUMP2=0; IJUMP1=1; IMAX=NINCR1;
+		I=ICPOIN(1)-$IMSPTR;
+		IF     (I4.eq.MESH1) THEN;
+		  IF (I1.eq.0) I1=MOD(I,NINCR1*NINCR0)/NINCR0;
+		ELSEIF (I4.eq.MESH2) THEN;
+		  IF (I1.eq.0) I1=I/(NINCR1*NINCR0);
+		  IMAX=NINCR2; IJUMP1=NINCR1;
+		ELSEIF (I4.eq.MESH3) THEN;
+		  IF (I1.eq.0) I1=MOD(I,NINCR1*NINCR0)/NINCR0;
+		  IF (I2.eq.0) I2=I/(NINCR1*NINCR0);
+		  IJUMP2=NINCR1;
+		  IF (I2.le.0.or.I2.ge.NINCR2) goto :SUBERROR:;
+		ELSE;
+		  GOTO :NOTAVAIL:;
+		ENDIF;
+		IF (I1.le.0.or.I1.ge.IMAX) GOTO :SUBERROR:;	"Bad Subscript ?"
+		VALUE=DATBUF(NMIN+NINCR0*(I1*IJUMP1+I2*IJUMP2)+J);
+	    ELSE;
+		GOTO :NOTAVAIL:;
+	    ENDIF;
+	 >
+	 INPUT_LEVEL < VALUE=INPFIL-$INPUT FILE; >
+	 SETS < VALUE=NDSETS; >
+	 CURRENT_XWINDOW:11,XWINDOWS:21,
+	 CURRENT_YWINDOW:12,YWINDOWS:22,
+	    < I=INTEG/10; J=MOD(INTEG,10); VALUE=MAX(1,INT(ABS(XYPART(J,I))));
+	    >
+	 CURRENT_WINDOW
+	    < VALUE=MAX(1,INT(ABS(XYPART(1,1))))+
+		    MAX(0,INT(ABS(XYPART(2,1)))-1)*MAX(1,INT(ABS(XYPART(1,2))));
+	    >
+	 CURRENT_SET       < VALUE=NCSETS; >
+	 CURRENT_HISTOGRAM < VALUE=T2_HIST_ID(); >
+	 CURRENT_COLUMN,CURRENT_POINT  < VALUE=NCCOL; >
+	 CURRENT_ROW       < VALUE=NCROW; >
+	 WINDOWS
+	   < VALUE=MAX(1,INT(ABS(XYPART(1,2))))*MAX(1,INT(ABS(XYPART(2,2)))); >
+	 COLUMNS           < VALUE=NMESH1; >
+	 ROWS              < VALUE=NMESH2; >
+	 PLOTS             < VALUE=NPLOTS; >
+	 NTUPL < 
+		  IF (I1.lt.MINTUPL.or.I1.gt.MAXTUPL) goto :SUBERROR:;
+		  IF (I2.lt.0 .or. I2 .gt. 3) goto :SUBERROR:;
+		  IF (I2.eq.0) THEN; I2=1; ELSE; I2=I2+2; ENDIF;
+		  VALUE=VTUPL(I1,I2);
+	 >
+	 VIEW_THETA             < VALUE=TTHETA; >
+	 VIEW_PHI               < VALUE=TPHI; >
+	 VIEW_SCRD              < VALUE=SCRD; >
+	 VIEW_DISTANCE          < VALUE=EYEDIS; >
+	 VIEW_SEPARATION        < VALUE=EYESEP; >
+	 POINTS:11,
+	 XMIN:21,XMAX:22,YMIN:31,YMAX:32,ZMIN:41,ZMAX:42,
+	 SUM:51,ESUM:52,
+	 AVERAGE:61,EAVERAGE:62,
+	 MEAN:71,EMEAN:72,
+	 STD:81,ESTD:82 <
+	    IF (DATDAT(1,1).eq.HNONE) THEN;
+		CALL TDSTAT(HNONE,1,$LARGE INTEGER,
+				1,$LARGE INTEGER,1,NDSETS,.TRUE.,2,'*');
+	    ENDIF;
+	    I=INTEG/10; J=MOD(INTEG,10); VALUE=DATDAT(J,I);
+	 >
+	 REPEAT      <
+	    IF (I1.eq.0) I1=LEVREP;
+	    IF (I1.lt.0) I1=LEVREP-I1;
+	    IF (I1.le.0 .or. I1.gt.MAXREP) GOTO :SUBERROR:;
+	    VALUE=IREPCT(I1);
+	 >
+	 CPULIMIT    < VALUE=CPULIM(0.0); IF (VALUE.le.0) VALUE=9999.; >
+	 CPUTIME     < VALUE=CPUTIM(0.0); >
+	 ELAPSEDTIME < VALUE=RELTIM(0.0); >
+	 CHISQR      < VALUE=CHISQR; >
+	 FTEST       < VALUE=FTEST; >
+	 TERMS       < VALUE=NTERMS; >
+	 NTFIT       < VALUE=NFIT; >
+	 NPFIT       < VALUE=NPFIT; >
+	 COEFFICIENT:1,ECOEFFICIENT:2,FIT:3,CONSTRAIN:4 <
+	    I1=I1+1;
+	    IF (I1.gt.MAXTER.or.I1.le.0) GOTO :SUBERROR:;
+	    VALUE=0.0; 		"Initial value"
+	    <CASE> INTEG <OF> :COEF:,:ECOEF:,:FIT:,:CONS: <
+		:COEF:   < VALUE=COFF(I1); >
+		:ECOEF:  < VALUE=DCOFF(I1); >
+		:FIT:    < IF (LFIT(I1))  VALUE=1; >
+		:CONS:   < IF (LCOFF(I1)) VALUE=1; >
+	    >
+	 >
+	 HIST_ENTRIES < VALUE=H2STAT(10); >
+	 HIST_MEAN    < VALUE=H2STAT(11); >
+	 HIST_STD     < VALUE=H2STAT(12); >
+	 HIST_SUM <
+	    IF (I1.lt.0 .or. I1.gt.3 .or. I2.lt.0 .or. I2.gt.3)
+		goto :SUBERROR:;
+	    IF (I1.eq.0) THEN; IMIN=1; IMAX=3;
+			 ELSE; IMIN=I1;IMAX=I1; ENDIF;
+	    IF (I2.eq.0) THEN; JMIN=1; JMAX=3;
+			 ELSE; JMIN=I2;JMAX=I2; ENDIF;
+	    VALUE=0;
+	    <J=JMIN,JMAX; <I=IMIN,IMAX; VALUE=VALUE+STATS(I,J); > >
+	 >
+	 XMARKER:1,YMARKER:2,ZMARKER:3 <
+	    IF (I1.lt.0.or.I1.gt.8) GOTO :SUBERROR:;	"Bad subscript ?"
+	    I1=MAX(I1,1);
+	    VALUE=FMARKER(INTEG,I1);		"Initial value"
+	 >
+      >
+      ELSE:: <
+:NOTFOUND:
+         CARDX = 'TD_V_'//CARDIN(3:MAXSTR) ;
+	 ISTAT=T2_GET_ENV( CARDX(:MAXSTR+3),OUTSTR,inlen);
+	 IF (ISTAT.and.INLEN.gt.0) THEN;
+	    IF ( INLEN.ge.5 .and. OUTSTR(5:5).eq.CHAR(127)) THEN;
+		VALUE=VALSTR;
+	    ELSE;
+                WRITE ( FORMT , '(A2,I2.2,A1)' ) '(G' , INLEN , ')' ;
+		READ(OUTSTR(1:INLEN),FORMT,ERR=:ERR2:) VALUE;
+	    ENDIF;
+	    RETURN;
+	 ENDIF;
+:ERR2:   CONTINUE;
+	 TDGETV=.false.;
+      >
+   >
+   RETURN;
+:NOTAVAIL:
+   ERROR STRING; ('*** ERROR *** Value not in storage');
+   GOTO :ERREXIT:;
+:SUBERROR:
+   ERROR STRING;'*** ERROR *** Bad subscript in lexical';
+:ERREXIT:
+   TDGETV=.false.;
+   RETURN;
+END;
+<RESET>;
+<TOKEN USING INFOIN,CARDIN>;
+%'$BRA'='1'
+%'$ADD'='2'
+%'$SUB'='3'
+%'$MUL'='4'
+%'$DIV'='5'
+%'$KET'='6'
+%'$PWR'='6'
+%'$FCT'='6'
+%';FUNCTION('=';<RESET> <SET> ;"FUNCTION ("'
+%';SUBROUTINE'=';<RESET> <SET> ;"SUBROUTINE"'
+<SET>;			"Ready for reset"
+%E  SUBROUTINE T2EXPR - Parse expressions
+SUBROUTINE T2EXPR($INFO,$CARD,SEXPR,NSEXPR);
+   IMPLICIT NONE;
+   INTEGER INFOIN(5);			"*** Not all necessary ***"
+   CHARACTER*(*) $CARD;
+   INTEGER NSEXPR;
+   $LONG INTEGER SEXPR(NSEXPR);
+   $BOOLEAN TDGETV,LESAVE,LEFAST;
+   $SPECIFICATION;
+   $T2EXPR;
+   $T2TOKNC;
+   INTEGER IOP,IBRKT,ISAVE,ISAVE5;
+   INTEGER IEIND,I,J,K;
+   INTEGER MAXFUN;
+   PARAMETER (MAXFUN=29);
+   $LONG INTEGER FSTR; EQUIVALENCE (FLOTNG,FSTR);
+   CHARACTER*5 SFUN(MAXFUN);
+   DATA SFUN/
+	'  +', '  +',  '  -',  '  *',  '  /', '  **',
+	'SIN', 'ASIN', 'COS',  'ACOS', 'TAN', 'ATAN', 'LOG', 'ALOG',
+	'LN',  'EXP' , 'GAMMA','SQRT', 'RAN', 'ABS' , 'DEG', 'RAD',
+	'INT', 'FRAC', 'NINT', 'MINUS','ERF', 'ERFC', 'FREQ'
+	/;
+   REAL F1,F2,F3;
+$VAX;
+   EXTERNAL T2_HANDL;
+   CALL LIB$ESTABLISH(T2_HANDL);
+$END;
+   LESAVE=SEXPR(1).eq.1;
+   LEFAST=SEXPR(1).eq.2;
+   IEIND=3;
+   ISTK=0; IOP=0; IBRKT=0;
+   LSYERR=.false.; ITRSTK(1)=0; IOPSTK(1)=0;
+:VALUE:
+   <LOOP> <
+      IF (LSYERR) GOTO :ERR:;
+      STRNG(1:1)=' ';
+      IF (LEFAST) THEN;
+	 IEIND=IEIND+1;
+	 $INFO(3)=IAND(SEXPR(IEIND-1),2**16-1);
+	 INTERP=IAND(SEXPR(IEIND-1)/2**16,2**4-1);
+	 IF (INTERP.eq.4) THEN;
+	    FSTR=SEXPR(IEIND);
+	    IEIND=IEIND+1;
+	    GOTO :NUMBER:;
+	 ELSEIF (INTERP.eq.2) THEN;
+	    KEYORD=IAND(SEXPR(IEIND-1)/2**20,2**4-1);
+	    INTEG=IAND(SEXPR(IEIND-1)/2**24,2**8-1);
+	    GOTO :KEYF:;
+	 ENDIF;
+      ELSE;
+       CALL T2TOKN($INFO,$CARD,',PI:1.,'//
+	 'SINE:1,ARCSINE:2,COSINE:3,ARCCOSINE:4,TANGENT:5,ARCTANGENT:6,'//
+	 'ASINE:2,ACOSINE:4,ATANGENT:6,'//
+	 'ALOG:7,LOGARITHM:7,LN:9,EXPONENTIAL:10,GAMMA:11,'//
+	 'SQRT:12,RANDOM:13,ABSOLUTE:14,DEGREES:15,RADIANS:16,'//
+	 'INTEGER:17,FRACTION:18,NINTEGER:19,'//
+	 'ERF:21,ERFC:22,FREQ:23,;');
+      ENDIF;
+      IF (LESAVE) THEN;
+	 IEIND=IEIND+1;
+:SAVE:
+	 IF (IEIND.le.NSEXPR) THEN;			"Can save it ?"
+		SEXPR(IEIND-1)=MIN($INFO(3),2**16-1)+INTERP*2**16;
+		IF (INTERP.eq.4) THEN;			"Number ?"
+		    IF (IEIND.le.NSEXPR) SEXPR(IEIND)=FSTR;
+		    IEIND=IEIND+1;
+		ELSEIF (INTERP.eq.2) THEN;		"Token ?"
+		    SEXPR(IEIND-1)=SEXPR(IEIND-1)+KEYORD*2**20+INTEG*2**24;
+		ENDIF;
+	 ENDIF;
+      ENDIF;
+      <CASE> INTERP <OF> :ENDL:,:KEYL:,:NUM1:,:NUM2:,:STRL:,:BAD1:,
+	 :BAD2:,:SEPARATOR:,:SPEC: <
+	 :BAD1: <
+	    IF     (LEFAST) THEN;
+		<I=1,3; INFOTOKK(I)=SEXPR(IEIND); IEIND=IEIND+1; >
+		<I=1,3; IINDEX(I)=SEXPR(IEIND); IEIND=IEIND+1; >
+		NSTRNG=3; STRNG(2:2)=CHAR(0);
+	    ENDIF;
+	      IF ( TDGETV('V_'//STRNG(2:NSTRNG),FLOTNG)) THEN;
+		IF (LESAVE) THEN;
+		  IF (INFOTOKK(1).eq.2) THEN;	"User defined value ?"
+		    IF (IEIND+6 .lt. NSEXPR) THEN;
+			<I=1,3; SEXPR(IEIND)=INFOTOKK(I); IEIND=IEIND+1; >
+			<I=1,3; SEXPR(IEIND)=IINDEX(I); IEIND=IEIND+1; >
+		    ELSE;
+			IEIND=IEIND+6;
+		    ENDIF;
+		  ELSE;
+		     INTERP=4;
+		     GOTO :SAVE:;
+		  ENDIF;
+		ENDIF;
+		GOTO :NUMBER:;
+	    ENDIF;
+	    GOTO :VALERR:;
+	 >
+	 :BAD2:,:BAD3: <
+	 :VALERR:
+	    IF (LEFAST) NSTRNG=0;
+	    ERROR OUT;'*** ERROR *** Illegal expression';
+	    <EXIT>:VALUE:;>
+	 :SEPARATOR:,:SPEC:,:STRL:,:ENDL: < "Special,String or,End of card ?"
+	    IF (INTERP.ne.1) THEN;
+		$INFO(3)=$INFO(3)-1;		"Reread char"
+	    ENDIF;
+	    IF (IOP.ne.0) THEN;
+		ERROR OUT;'*** ERROR *** Missing number';
+	    ENDIF;
+	    <EXIT>:VALUE:; >
+	 :NUM1: < FLOTNG=3.14159265D0; KEYORD=0; GOTO :NUMBER:; >
+	 :NUM2: <			"Number ?"
+	    :NUMBER: CONTINUE;
+	    IF     (IOP.eq.0) THEN;
+		IF ( ISTK.eq.0 .or.
+		    STRNG(1:1).eq.'+' .or.
+		    STRNG(1:1).eq.'-') THEN; IOP=$ADD;
+		ELSE;                         IOP=$MUL; ENDIF;
+	    ENDIF;
+	    KEYORD=0;
+	    <CASE> IOP <OF> :B:,:A:,:S:,:M:,:D:,:P:,:F: <
+		:F: <		"Function ?"
+		  ISTK=ISTK+1;	"Stack it"
+		  IF (ISTK.gt.MAXSTK) THEN;
+		     ERROR OUT;
+		     '*** ERROR *** Stack overflow (expression too complex)';
+		     <EXIT>:VALUE:;
+		  ENDIF;
+		  FSTK(ISTK)=FLOTNG;
+		  IOPSTK(ISTK)=IOP;
+		  ITRSTK(ISTK)=$INFO(3);
+		  CALL T2FNRD($PWR+1,F3);
+		  "IF (ISTK.LE.0) GOTO :END:;"
+				"Evaluate it"
+		>
+						"Power ?"
+						"Multiply - Divide ?"
+		:B:,:A:,:S:,:M:,:D:,:P: <	"Add - Subtract ?"
+		  GOTO :STACK:;
+		>
+	    >
+	    IOP=0;
+	 >
+	 :KEYL: <				"Operator ?"
+	 :KEYF:;
+	   FLOTNG=0;
+	    <CASE> KEYORD <OF> :B:,:A:,:S:,:M:,:D:,:K:,:F: <
+		:F: <		"Function ?"
+		:FUNCTION:
+		  KEYORD=INTEG+$FCT;
+		  IF (IOP.eq.0 .and. ISTK.ne.0) IOP=$MUL;
+		  IF (IOP.gt.$BRA) GOTO :STACK:;
+		  IOP=KEYORD;>
+		:M: <		"Multiply ?"
+		  IF     (IOP.eq.$MUL) THEN; IOP=$PWR;
+		  ELSEIF (IOP.gt.0)    THEN; GOTO :VALERR:;
+		  ELSE;                      IOP=KEYORD;ENDIF; >
+		:D: <		"Divide ?"
+		  IF (IOP.gt.0) GOTO :VALERR:;
+		  IOP=KEYORD; >
+		:A: <		"Add ?"
+		  IF (IOP.gt.$BRA) GOTO :VALERR:;
+		  IOP=KEYORD; >
+		:S: <		"Subtract ?"
+		  IF (IOP.ge.$MUL) THEN;	"Unary minus ?"
+		     INTEG=20;  GOTO :FUNCTION:;
+		  ENDIF;
+		  IF (IOP.gt.$BRA) GOTO :VALERR:;
+		  IOP=KEYORD; >
+		:B: <		"Bra ?"
+		  IBRKT=IBRKT+1;
+		  IF (IOP.eq.0) THEN;
+		     IF (ISTK.eq.0) THEN; IOP=$ADD;
+				    ELSE; IOP=$MUL; ENDIF;
+		  ENDIF;
+		  IOP=-ABS(IOP);
+		:STACK: CONTINUE;
+		  IF (ISTK.gt.0 .and.
+		      ABS(IOP).ge.$ADD .and. ABS(IOP).le.$DIV)
+		      CALL T2FNRD(2*ABS(IOP/2),F3);
+			"IF (ISTK.LE.0) GOTO :END:;"
+		      IF (LSYERR) GOTO :ERR:;
+		  ISTK=ISTK+1;
+		  IF (ISTK.gt.MAXSTK) THEN;
+		     ERROR OUT;
+		     '*** ERROR *** Stack overflow (expression too complex)';
+		     <EXIT>:VALUE:;
+		  ENDIF;
+		  IOPSTK(ISTK)=IOP;
+		  FSTK(ISTK)=FLOTNG;
+		  ITRSTK(ISTK)=$INFO(3);
+		  IOP=KEYORD;
+		>
+		:K: <		"Ket ?"
+		  IBRKT=IBRKT-1;
+		  IF (IOP.ne.0) THEN;
+		     ERROR OUT;'*** ERROR *** Missing number'; <EXIT>:VALUE:;
+		  ENDIF;
+		  IF (IBRKT.le.0) <EXIT>:VALUE:;
+		  IF (ISTK.gt.0) CALL T2FNRD(0,F3);
+		  "IF (ISTK.LE.0) GOTO :END:;"
+		>
+	    >
+	 >
+      >
+   >
+:END:
+   IF (IBRKT.gt.0 .and. .not. LEFAST)
+      ERROR OUT;'*** WARNING *** Unbalenced parenthesis';
+   IF (.not.LEFAST .and. ITRSTK(1).eq.0)  THEN;
+      ERROR OUT;'*** ERROR *** Missing expression';
+      F3=0;
+   ELSEIF (ISTK.gt.0) THEN;
+      CALL T2FNRD(-9999,F3);
+      IF (LSYERR) GOTO :ERR:;
+   ENDIF;
+   FLOTNG=F3;
+   IF (LESAVE.and. .not. $ERROR) THEN;
+	IF (IEIND.lt.NSEXPR) THEN;
+	    SEXPR(1)=2;
+	    SEXPR(2)=IEIND;
+	ELSE;
+	    SEXPR(1)=0;
+	ENDIF;
+   ENDIF;
+   RETURN;
+:ERR:
+   IF (LEFAST) NSTRNG=0;
+   LSYERR=.false.;
+   ISAVE=$INFO(3); 				"Save current location"
+   ISAVE5=$INFO(5);
+   IF (ISTK.gt.0) $INFO(5)=ITRSTK(ISTK)+1;	"Beginning of operation"
+   $INFO(3)=ITRSTK(ISTK+1);	"End of operation"
+   IOP=IOPSTK(ISTK+1);		"Operation"
+   F2=FSTK(ISTK+1);
+   IF (IOP .le. 6 .and. IOP .gt. 0) THEN;
+      F1=0;
+      IF (ISTK.gt.0) F1=FSTK(ISTK);
+      ERROR $MESSAGE '* "',F1,SFUN(IOP),F2,'"';
+   ELSEIF (IOP.gt.6) THEN;
+      J=MIN(MAX(IOP,1),MAXFUN);
+      ERROR $MESSAGE '* Function argument out of range "',SFUN(J),'(',F2,')"';
+   ENDIF;
+   CALL T2TERR;
+   $INFO(3)=ISAVE; $INFO(5)=ISAVE5;
+   FLOTNG=0;
+   IF (LESAVE) SEXPR(1)=0;
+END;
+%E  SUBROUTINE T2FNRD - Evaluate expression
+SUBROUTINE T2FNRD(IOP3,F3);
+"
+	Unstack and do operations
+"
+   IMPLICIT NONE;
+   INTEGER	I,J;
+   $FLAGS;
+   $T2EXPR;
+   INTEGER	IPREC,IOP,IOP3,ISTK1,ISEED;
+   REAL         RAN
+$VAX;
+   VOLATILE ISTK;
+$END;
+   REAL F1,F2,F3;
+	"Real functions"
+   REAL GAMMA, ERF, ERFC, FREQ, RAN;
+   IPREC=IOP3;
+   IF (ISTK.le.0) THEN;
+      F3=FSTK(1); RETURN;
+   ENDIF;
+   <LOOP> <
+      ISTK1=ISTK;
+      IOP=IOPSTK(ISTK1);			"Previous operation"
+      IF (IOP .lt. IPREC) THEN;			"Lower precedence ?"
+	 IF( IPREC .gt. 0) GOTO :RET:;		"Then return"
+	 IF( IPREC .eq. 0) IPREC=$PWR+1;
+	 IOPSTK(ISTK1)=ABS(IOP);
+	 <NEXT>;
+      ENDIF;
+      IOP=ABS(IOP);
+      F2=FSTK(ISTK1);
+      ISTK1=ISTK1-1;
+      ISTK=ISTK1;
+      IF (ISTK1.gt.0) THEN; F1=FSTK(ISTK1);
+		      ELSE; F1=0; ENDIF;
+      IF (.not. $TRAP) THEN;
+	 <CASE> IOP <OF> :B:,:A:,:S:,:M:,:D:,:P:,
+		:SIN:, :ASIN:, :COS:,  :ACOS:, :TAN:, :ATAN:, :LOG:, :ALOG:,
+		:LN:,  :EXP: , :GAMMA:,:SQRT:, :RAN:, :ABS: , :DEG:, :RAD:,
+		:INT:, :FRAC:, :NINT:, :MINUS:,:ERF:, :ERFC:, :FREQ:
+	      <
+	     ERROR STRING;'*** ERROR *** No such operation';
+		F3=0; GOTO :RET:;
+	    :B:,:A:< F3=F1+F2;>
+	    :M:    < F3=F1*F2;>
+	    :D:    < F3=F1/F2;>
+	    :S:    < F3=F1-F2;>
+	    :P:    < IF (MOD(F2,1.0).ne.0) THEN; F3=F1**F2;
+					   ELSE; F3=F1**INT(F2); ENDIF;
+		   >
+	    :SIN:  < F3=SIND(F2); >
+	    :COS:  < F3=COSD(F2); >
+	    :TAN:  < F3=TAND(F2); >
+	    :ASIN: < F3=ASIND(F2); >
+	    :ACOS: < F3=ACOSD(F2); >
+	    :ATAN: < F3=ATAND(F2); >
+	    :LOG:  < F3=ALOG10(F2); >
+	    :ALOG: < F3=10**F2; >
+	    :LN:   < F3=ALOG(F2); >
+	    :EXP:  < F3=EXP(F2); >
+	    :GAMMA:< IF (F2.le.0) GOTO :ERR:;
+		     F3=GAMMA(F2); >
+	    :SQRT: < F3=SQRT(F2); >
+	    :RAN:  < IF (F2.ne.0) ISEED=F2; F3=RAN(ISEED); >
+	    :ABS:  < F3=ABS(F2); >
+	    :DEG:  < F3=F2/0.0174532925; >
+	    :RAD:  < F3=F2*0.0174532925; >
+	    :INT:  < F3=INT(F2); >
+	    :FRAC: < F3=MOD(F2,1.0); >
+	    :NINT: < F3=NINT(F2); >
+	    :MINUS:< F3=-F2; >
+	    :ERF:  < F3=ERF(F2);>
+	    :ERFC: < F3=ERFC(F2);>
+	    :FREQ: < F3=FREQ(F2);>
+	 >
+      ENDIF;
+      IF (ISTK1.gt.0) THEN; FSTK(ISTK1)=F3;
+		      ELSE; FSTK(1)=F3; GOTO :RET:;
+		      ENDIF;
+   >
+:RET:
+   RETURN;
+:ERR:
+   LSYERR=.true.;
+END;
+%E  SUBROUTINE T2TOKN --- Parses expression line
+<TOKEN USING INFOIN,CARDIN>;
+SUBROUTINE T2TOKN($INFO,$CARD,KEYS);
+   IMPLICIT NONE;
+   INTEGER	I,J;
+   $BOOLEAN INTRAC,TDGETV,TDGETS;
+   INTEGER $INFO(3);
+   CHARACTER*(*) $CARD;		"Char string to parse"
+   CHARACTER*1   CCHAR,QUOTE;
+   CHARACTER*(*) KEYS;		"Keyword string"
+   REAL FLIM(4);
+   DOUBLE PRECISION T2TIMF;
+   $SPECIFICATION;
+   $T2TOKNC;
+   INTEGER CHARAC,KEYLET;
+   INTEGER CHTYPE,KEYTYP;
+   INTEGER ICOL, JCOL, MINCOL, MAXCOL, IBRKT;
+   INTEGER ID, IDIGIT, IDIG, IE, IEXP, IDATE, IS, JNTEG, JDIGIT;
+   REAL F60, SAVEN, Y;
+   INTEGER    NXPC    ;
+   PARAMETER (NXPC=30);
+   REAL XPC(NXPC),DATE(4);
+   DATA XPC/1.E01,1.E02,1.E03,1.E04,1.E05,1.E06,1.E07,1.E08,1.E09,1.E10,
+	    1.E11,1.E12,1.E13,1.E14,1.E15,1.E16,1.E17,1.E18,1.E19,1.E20,
+	    1.E21,1.E22,1.E23,1.E24,1.E25,1.E26,1.E27,1.E28,1.E29,1.E30/;
+
+   INTEGER    MINMCH   ;
+   PARAMETER (MINMCH=2);		"Minimum no. of characters for match"
+   MAXCOL=LEN($CARD);
+   IF ($INFO(1).GT.0) MAXCOL=MIN(MAXCOL,$INFO(1));
+   NSTRNG=0;			"Start saving string"
+   INTERP=6;
+   MINCOL=$INFO(3)+1;		"Pointer in first column"
+   <ICOL=MINCOL,MAXCOL;
+      CCHAR=$CARD(ICOL:ICOL);
+      CHARAC=ICHAR(CCHAR);
+      CHTYPE=TYPTB2(CHARAC+1);
+      GOTO ( :BEGIN NUMBER:,:BEGIN DEC:,:SPECIAL:,:ALPHA:,:ALPHA:,
+	     :BLANK:,:SEPARATOR:,:END OF CARD:,:SPECIAL:,:SPECIAL:,
+	     :SPECIAL:,:SPECIAL:,:SPECIAL:) CHTYPE;
+      :OPERATOR:
+	 $INFO(3)=ICOL;
+	 KEYORD=CHTYPE-13; INTERP=2; FLOTNG=0; RETURN;
+      :BLANK:
+   >
+      INTERP=1;
+      RETURN;
+
+   :END OF CARD:	"--------------  End of the card -----------------"
+      $INFO(3)=ICOL-1;
+      INTERP=1;
+      RETURN;
+
+   :BEGIN DEC:		"-------------- Numbers ------------"
+	 KEYORD=1;
+	 ID=ICOL+1;
+	 IDIGIT=-9;
+	 INTEG=0;
+	 IDIG=0;				"Number of numeric chars"
+	 GOTO :NUMBER2:;
+      :BEGIN NUMBER:
+	 KEYORD=0;
+	 ID=0;
+	 IDIGIT=-9;
+	 INTEG=(CHARAC-ICHAR('0'));		"Convert"
+	 IDIG=1;				"Number of numeric chars"
+	 IF (INTEG.gt.0) IDIGIT=IDIGIT+1;
+      :NUMBER2:
+	 IE=0;					"Location of exp"
+	 IEXP=0;				"Exponent"
+	 MINCOL=ICOL+1;
+	 F60=0.0; IDATE=0;
+	 <ICOL=MINCOL,MAXCOL;
+	    CCHAR=$CARD(ICOL:ICOL);
+	    CHARAC=ICHAR(CCHAR);
+	    CHTYPE=TYPTB2(CHARAC+1);
+	    GOTO (:DIGIT0:,:DEC0:  ,:SIGN0: ,:EXP0:  ,:ENDNUM:,
+		  :ENDNUM:,:ENDNUM:,:ENDNUM:,:ENDNUM:,:ENDNUM:,
+		  :ENDNUM:,:SPCNUM:,:ENDNUM:,:ENDNUM:,:SIGN0:,:SIGN0: ), CHTYPE;
+:SPCNUM:
+		IF (CCHAR.eq.':') THEN;
+		  IF (F60.eq.0) THEN; F60=1; SAVEN=0; ENDIF;
+		  SAVEN=SAVEN+INTEG/F60; F60=F60*60;
+		  INTEG=0; IDIGIT=-9; IEXP=0;
+		  IF (IE+ID.ne.0.or.ABS(F60).ge.3601) GOTO :RET:;
+		ELSEIF (CCHAR.eq.'\') THEN;
+		  IF (IDATE.gt.2 .or. ID+IE.ne.0) GOTO :RET:;
+		  IF (IDATE.eq.0) THEN;
+		     <J=1,4; DATE(J)=0; >;
+		     DATE(2)=1; DATE(3)=1; JCOL=-5;
+		  ENDIF;
+		  IDATE=IDATE+1;
+		  IF (JCOL.lt.ICOL) DATE(IDATE)=INTEG;
+		  INTEG=0; IDIGIT=-9; IEXP=0; JCOL=ICOL+1;
+		ELSE;
+		  GOTO :ENDNUM:;
+		ENDIF;
+		<NEXT>;
+		:DEC0: IF (IE+ID.gt.0) GOTO :RET:;	"Bad decimal ?"
+		  ID=ICOL+1;
+		  <NEXT>;
+		:SIGN0:
+		  IF (ICOL.ne.IE) GOTO :ENDNUM:;	"Terminal sign ?"
+		  IF (CCHAR.eq.'-')IS=-1;		"Value of sign"
+		  <NEXT>;
+		:EXP0:
+		  IF (IDIG.eq.0.or.IE.gt.0) GOTO :RET:;
+		  IDIG=0;
+		  IE=ICOL+1;
+		  JNTEG=INTEG;				"Save number"
+		  JDIGIT=IDIGIT;
+		  INTEG=0; IS=1; IDIGIT=-9;
+		  <NEXT>;
+		:DIGIT0:
+		  IF (IDIGIT.ge.0) THEN; IEXP=IEXP+1;
+		  ELSE; INTEG=INTEG*10+(CHARAC-ICHAR('0'));	"Convert"
+			IDIG=IDIG+1;
+			IF (INTEG.gt.0) IDIGIT=IDIGIT+1;
+		  ENDIF;
+	 >
+      :ENDNUM:
+	 $INFO(3)=ICOL-1;
+	 IF (IDIG.le.0) GOTO :RET:;
+	 IF (IE .gt. 0) THEN;				"Exponent ?"
+	    IEXP=IS*INTEG+IEXP;  			"add it in"
+	    INTEG=JNTEG; 				"Get back number"
+	    IDIGIT=JDIGIT;				"and number of digits"
+	 ELSE; IE=ICOL+1; ENDIF;
+	 IF (ID.ne.0) IEXP=IEXP-IE+ID+1; 		"Decimal point ?"
+	 IF (9+IDIGIT+IEXP.gt.$MAXEXP) GOTO :TOO BIG:;
+	 FLOTNG=INTEG;
+	 IF (IEXP.ne.0) THEN;
+	    I=IABS(IEXP);
+	    <LOOP> <
+		J=MIN(I,NXPC);
+		Y=XPC(J);
+		IF (IEXP.LT.0) THEN; FLOTNG=FLOTNG/Y;
+			      ELSE; FLOTNG=FLOTNG*Y; ENDIF;
+		I=I-J;
+		IF (I.eq.0) <EXIT>;
+	    >
+	    INTEG=NINT(MIN(MAX(FLOTNG,-2.0E9),2.0E9));
+	 ENDIF;
+	 IF (F60.ne.0) FLOTNG=SAVEN+FLOTNG/F60;
+	 IF (IDATE.ne.0) THEN;
+	    IF (JCOL.lt.ICOL) DATE(IDATE+1)=FLOTNG;
+	    FLOTNG=T2TIMF(DATE(1),DATE(2),DATE(3),DATE(4),0.,0.)/3600;
+	 ENDIF;
+      :NUM TEST:
+	 INTERP=4;
+	 GOTO :RET:;
+      :TOO BIG:
+	 ERROR TOKEN -1.0E$MAXEXP,1.0E$MAXEXP;
+	    ('*** ERROR *** Number out of range ',1P,G10.3,' to ',G10.3);
+	    INTEG=0; FLOTNG=0;
+	    INTERP=7;
+	 RETURN;
+   :RET:
+	 $INFO(3)=ICOL-1;
+	 RETURN;
+
+   :ALPHA:		"---------- Tokens -------------"
+	 MAXCOL=MIN(MAXCOL,LEN(STRNG)+ICOL-1);	"Limit string length"
+	 STRNG(1:1)=',';
+	 NSTRNG=1;
+	 MINCOL=ICOL;
+	 IBRKT=0;
+	 <ICOL=MINCOL,MAXCOL;
+	    CCHAR=$CARD(ICOL:ICOL);
+	    CHARAC=ICHAR(CCHAR);
+	    CHTYPE=TYPTB2(CHARAC+1);
+	    GOTO (:AN:,:AN:,:AB:,:AC:,:AC:,
+		  :AB:,:AB:,:AE:,:AE:,:A1:,
+		  :A2:,:AN:,:AE: ),CHTYPE ;
+		"Allowed inside []= '+ - . space'"
+	    :AB: <IF (IBRKT.gt.0) GOTO :AN:; <EXIT>; >
+	    :AE: <EXIT>;
+	    :A1: IBRKT=IBRKT+1; GOTO :AN:;	"Left braket"
+	    :A2: IBRKT=IBRKT-1;			"Right braket"
+	    :AC: CCHAR=UPCHAR(CHARAC+1:CHARAC+1);
+	    :AN: NSTRNG=NSTRNG+1; STRNG(NSTRNG:NSTRNG)=CCHAR;
+	 >
+	 $INFO(3)=ICOL-1;
+	 IF (IBRKT.ne.0) THEN;		"Mismatched brakets ???"
+	    ERROR OUT;'*** WARNING *** Mismatched brakets []';
+	 ENDIF;
+	 IF (NSTRNG.lt.3) RETURN;
+		"lexical Value ?"
+	 IF (NSTRNG.ge.4 .and. STRNG(2:3).eq.'V_') THEN;
+	    STRNG(:NSTRNG)=STRNG(3:NSTRNG);
+	    NSTRNG=NSTRNG-2;
+	    RETURN;
+	 ENDIF;
+	 MAXCOL=LEN(KEYS);
+	 ICOL=INDEX(KEYS,STRNG(1:NSTRNG));
+	 IF (ICOL.eq.0) RETURN;
+	 MINCOL=INDEX(KEYS(ICOL:MAXCOL),':')+ICOL;
+	 IF (NSTRNG.lt.MINCOL-ICOL-1) THEN;
+	    IF (INDEX(KEYS(MINCOL+1:MAXCOL),STRNG(1:NSTRNG)) .gt. 0) THEN;
+		ERROR OUT;'*** ERROR *** Ambiguous function name';
+		INTERP=7;
+		RETURN;
+	    ENDIF;
+	 ENDIF;
+	 INTEG=0;
+	 INTERP=2;
+	 <J=MINCOL,MAXCOL;	"Decode the number"
+	     CCHAR=KEYS(J:J);
+	     KEYLET=ICHAR(CCHAR);
+	     KEYTYP=TYPTAB(KEYLET+1);
+	     IF (KEYTYP.ne.1) THEN;
+		IF (KEYTYP.eq.2) INTERP=3;
+		<EXIT>;
+	     ENDIF;
+	     INTEG=INTEG*10+(KEYLET-ICHAR('0'));
+	 >
+	 KEYORD=8;
+      RETURN;
+
+   :SEPARATOR:		"--------------- Separators -----------------------"
+	 INTERP=8;
+   :SPECIAL:		"--------------- Special characters ---------------"
+	 $INFO(3)=ICOL;
+	 STRNG(1:2)=CCHAR; NSTRNG=1;
+	 INTEG=0;
+	 FLOTNG=0;
+	 RETURN;
+END;

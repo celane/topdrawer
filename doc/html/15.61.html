@@ -1,0 +1,25 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.61</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.61  REPEAT</H4></B> 
+
+     TD:<U>REP</U>EAT "commands" [n] [<U>FA</U>ST[=<U>ON</U>|<U>OF</U>F]]
+This  repeats  the  specified  commands  n  times.   The  commands must be
+specified as a string.  If n is omitted is assumed to be 9999.   ENDREPEAT
+terminates  all  current  repeats,  while  RETURN  terminates  the current
+repeat.  You may nest up to 5 repeat commands.  If FAST is specified  only
+the  repeat  command  is  journaled  otherwise  each  repeat  is journaled
+separately.  If you abort the repeat  with  CNTRL_C,  or  use  the  cursor
+inside  a  repeat  and  it  is  in FAST mode, the journal file will not be
+correct.  The lexical V_REPEAT[n] is the repeat number
+NOTE:   The  command  SET  FILE  INPUT  should not be used inside a repeat
+block.  The lines from the new file will not be executed until  after  the
+repeat.
+(Default:FAST=ON)
+
+
+</PRE>
+</BODY>

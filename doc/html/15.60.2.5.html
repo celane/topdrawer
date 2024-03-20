@@ -1,0 +1,33 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.60.2.5</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.60.2.5  Bin_example</H4></B>  - To Read in a 4 by 4 array of 3 dimensional data 
+     READ MESH BINS
+          FOR   Y=0.0 1.0 2.0 3.0
+          X=0.0 Z= 0 0 0 0
+          X=1.0 Z= 0 1 2 3
+          X=2.0 Z= 1 2 3 4
+          X=3.0 Z= 2 3 4 5
+
+<A NAME="115">Is the same as: </A>
+     READ MESH
+          FOR   Y=0.5 1.5 2.5 3.5
+          X=0.5 Z= 0 0 0 0
+          X=1.5 Z= 0 1 2 3
+          X=2.5 Z= 1 2 3 4
+          X=3.5 Z= 2 3 4 5
+or......
+     READ MESH BINS
+          FOR   Y=0.0 1.0 2.0 3.0 4.0 ENDBINS
+          X=0.0 Z= 0 0 0 0
+          X=1.0 Z= 0 1 2 3
+          X=2.0 Z= 1 2 3 4
+          X=3.0 Z= 2 3 4 5
+          X=4.0 ENDBINS
+
+
+</PRE>
+</BODY>

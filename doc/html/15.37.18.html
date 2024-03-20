@@ -1,0 +1,34 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.37.18</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.37.18  NONLINEAR</H4></B>   
+
+Selects nonlinear fitting techniques.  If ON MINUIT is used to do the fit.
+The ECHISQ, GRADIENT, TOLERENCE, REPEAT, and PRINTLEVEL are used to modify
+the MINUIT fit.  They are ignored for linear fits.   If  you  specify  the
+option MINUIT you will enter interactive MINUIT mode.  You must then guide
+the fit using MINUIT commands.  In addition you may  specify  the  maximum
+and  minimum  value  for  each  coeffiecint with the CMINIMUM and CMAXIMUM
+options.   You  might  also  wish  to  pick  an  initial  error  for  each
+coefficinent, and possibly an initial value.
+
+The   nonlinear  errors  agree  with  the  linear  values  if  you  select
+ECHISQ=1.0.   Note:   Though  Topdrawer  and  PAW  both  use  MINUIT,  the
+resulting  CHISQ  disagrees  by  about a factor of 3.  The TOPDRAWER CHISQ
+<A NAME="78">seems to agree with the correct value by subtracting the fitted curve from </A>
+the data and calculating SUM((Y/DY)**2)/(Points-Params)
+
+The  linear  methods  are  much faster and convergence is guaranteed if no
+numerical errors occurr.  Unfortunately many curves can not  be  expressed
+as a linear combination of terms.
+
+Most  linear  fits may be performed either by linear or nonlinear methods.
+This may be useful in checking the accuracy of the fitting techniques.
+(Default:OFF, ON if GAUSSIAN or EXPONENTAIL)
+
+
+</PRE>
+</BODY>

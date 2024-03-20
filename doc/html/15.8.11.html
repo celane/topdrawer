@@ -1,0 +1,29 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.8.11</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.8.11  Notes</H4></B> 
+
+For  mesh  data  the  independent  coordinate must be Z.  For 2-d data the
+independent coordinate is always Y.  If you add normal data to  mesh  data
+each  normal  Y value is added to the corresponding mesh Z value.  You may
+not add mesh data to normal 2-d data.
+
+If  EFFICIENCY  is  not  specified then the new value is Y3=Y1(+-)Y2.  The
+errors  (DY)  are  treated  as  if  the   data   sets   are   uncorrelated
+DY3=SQRT(DY1**2+DY2**2).
+
+The ADD command with CHECK=OFF allows you to combine X,Y,Z...  data
+     TD:<U>SWAP</U>  <U>X</U>  <U>Y</U> <U>SET=1</U> from 1 data set with mismatched data from another
+set.  For example you wish to plot Y of set 1 vs Y of set 2.
+     TD:<U>SWAP</U> <U>X</U> <U>Y</U> <U>SET=1</U>
+     TD:<U>ADD</U> <U>1,1</U> <U>APPEND</U> (Produces set 3=set 1)
+     TD:<U>Y=0</U> <U>SET=LAST</U> (Set 3 has only X)
+     TD:<U>ADD</U> <U>2,3</U> <U>CHECK=OFF</U> (Set 3 has Y(1),Y(2))
+Set 3 now has X=Y(set 1) and Y=Y(set 2)
+
+
+</PRE>
+</BODY>

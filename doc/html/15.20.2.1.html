@@ -1,0 +1,44 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.20.2.1</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.20.2.1  Options</H4></B>       - 
+                                Histogram selection
+     1.  APPEND=n  - Selects the IDENT as 1 more than the last one to last
+         one+n.
+     2.  CURRENT,NEXT,PREVIOUS,ALL,FIRST,LAST - Selects a histogram.
+     3.  ENTRIES - Selects only histograms with entries
+     4.  HISTOGRAMS - Selects only histograms
+     5.  SELECT - The name of histograms to modify.
+     6.  IDENT - Selects the histograms by number.
+     7.  MESH - Selects only mesh histograms
+     8.  NTUPL - Selects only ntuples
+     9.  SECTION - Selects the Global Section (applies to ZERO only)
+                                    Operations
+    10.  ADD,SUBTRACT,MULTIPY,DIVIDE - Combines 2 histograms into a third.
+    11.  CYCLE - Cycles through hists.
+                               Modifying parameters
+    12.  DISK  - Enables histogram storage on DISK, with n records.  It is
+         stored using unit 87.
+    13.  DEFNAME - The new name to assign to histograms.
+    14.  ERRORS  -  Enable/Disable  error  computations.   This slows down
+         histogram filling.
+    15.  TITLE - Defines the title as the header to each hist printout.
+    16.  PR...   -  Modifies  the  printed  output from the LIST HISTOGRAM
+         command.
+    17.  BINSZ - YES sets bin size to be set to a "resonable value" when a
+         histogram is defined.  This is defined for all histograms.
+    18.  STATISTICS - Enable/Disable "real time" statistics calculations.
+    19.  ZERO - Clears or sets the histogram to zero
+                                     Creation
+    20.  X,Y FROM n TO...  - Specifies the hist scale.
+    21.  SETS - Specifies the data sets to put into the histograms.
+    22.  RANGE - Selects the maximum range of the histogram (HBOOK)
+                                   Miscellaneous
+    23.  LOG - Types the results of the definition
+
+
+</PRE>
+</BODY>

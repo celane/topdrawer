@@ -1,0 +1,39 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual Chapter 7</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>Chapter 7  INPUT</H4></B>
+<A NAME="10"> </A>
+Normally  TOPDRAWER  gets  primary input from either a batch file, or your
+terminal (SYS$INPUT).  You may have secondary input  files  by  using  the
+command:
+     TD:<U>SET</U> <U>FILE</U> <U>INPUT</U> <U>filename</U>
+
+If you run TOPDRAWER interactively, but from an indirect command file, the
+input will be from the file that invoked TOPDRAWER.  If you wish  to  have
+input from the terminal, you may assign TT:  to SYS$INPUT temporarily by:
+     $ <U>ASSIGN</U> <U>/USER</U> <U>TT:</U>  <U>SYS$INPUT</U>
+     $ <U>TOPDRAWER</U>
+
+You  should  not  do  this in BATCH, as TT:  is the default output for the
+graphics.  You may get data  from  output  files  generated  by  histogram
+packages.  For more information on this see:Command SET HISTOGRAM.
+
+Some input may be made via the cross hair cursor.  For example SHOW CURSOR
+brings  up  the  cursor on your terminal.  Move the cursor to the location
+you desire, and press any key except "Return" The current location of  the
+cursor will be typed and entered into the journal file as a comment.  Some
+other commands that use the cursor are ARROW, BOX, CIRCLE, ELLIPSE, TITLE,
+SET WINDOW, and SET LIMITS.
+
+The  input  string  may not be longer than 256 characters.  If you need to
+omit columns or set up a special format for the  commands:   SET CARD  and
+SET FORMAT.
+
+For more information see:TOPDRAWER DATA.
+
+
+</PRE>
+</BODY>

@@ -1,0 +1,1181 @@
+%N
+%U+ TDMACROS.MOR
+%L3
+" ---------  START OF GRAPHIC INTERFACE 'TXLINE' ----------"
+
+"Computers and graphic packages:
+   This thing is supposed to be easy to modify for different
+   computers.  In practice, of course, this won't work, but here is
+   the theory:
+      It knows about two major kinds of graphic package: UG and CC.
+   UG is the Unified Graphics System, which was written at SLAC by
+   Bob Beach, and which is supposed to separate the application
+   program from the device driver, and which actually does that to
+   a large extent.  The advantage is that once Bob writes a driver
+   for the Frobozz 960, you don't have to worry about how you're
+   going to talk to it.  The disadvantage, and this has happened
+   twice in about 7 years, is that when Bob rewrites UGS and
+   supports the Frobozz 960 only with the new package, then you've
+   got to convert your program to call the new UGS.
+      Another disadvantage is that UGS isn't found on too many
+   systems, especially the one you're moving to, and even if it
+   already works on that kind of a mainframe, you're sure to have
+   the Frobozz 960 model II, and UGS only supports models I and IV.
+   So much for device-independent graphics.
+      There are several flavors of UG at SLAC, which require
+   some games:
+      UG I is no more, having been replaced in about 1977 by:
+      UG II.  This runs to this very day on the IBMs, which Bob
+   avoids, and on some of the VAXs.  VAX Fortran allows character
+   variables and constants, which are different from Hollerith
+   variables and constants, so of course the VAX version of UGS
+   requires strings to be character strings, and the IBM version
+   requires Hollerith.  Finally there is
+      UG III.  This was released in late 1981, on only the VAXs,
+   and has the nice feature that the code for all your graphic
+   devices can be linked at once, since they all have different
+   subroutine names.  This uses a great deal of memory,
+   which is not a problem on a VAX with virtual memory.  (VAX
+   programmers do it virtually all the time.)  UG III usually lives
+   on VAXs on an account named UGSYS.  It uses character strings
+   and will not be brought to IBM computers until SLAC and IBM
+   fully support Fortran-77.  In the meantime, Bob may or may not
+   extend UG II to support new graphic devices.
+
+      Which brings us to the second kind of graphic package: CC
+   is the Cal-Comp interface, written for the Cal-Comp plotters
+   a long time ago.  It has 3 basic functions: START the plot,
+   MOVE the pen, and FINISH the plot.  There are a lot of higher-
+   level functions, like subroutines AXES, SYMBOL,and such, but
+   TD doesn't trust them, and besides SYMBOL doesn't know about
+   things like superscripts and Greek letters.  Some machines,
+   like Cal-Comp, allow colors, which TD knows about, and some,
+   like Versatec, allow shading, which TD has never heard of.
+   The basic CC hooks are here, and you're on your own.  Just turn
+   off the $UG macros and turn on the $CC, and read the comments in
+   the $CC section of the code.
+
+   There's one more tiny problem:  all this is theory.  The only
+   part of the code that has been tested (so far) is the U.G. on
+   IBM version.  I'm in the process of bringing up UG2 on the VAX.
+
+   Update:  I have decided to split off the device-dependent code
+   again.  (That's what this entire section was supposed to be, before
+   it got this big.  So there will be separate packages for each of
+   the interface packages to the graphic devices.
+
+   Here is a list of the subroutines that must be present in the
+   package-specific interface.
+
+      SUBROUTINE TXDEVC(INFOIN,CARDIN);
+         Interprets the string from a SET DEVICE command
+      FUNCTION TXSYM(TEXT);
+         Encodes 2 text chars (a plot char specification.
+      SUBROUTINE TXTEXT(X,Y,SIZEIN,ORIENT,TEXT,CASE);
+         Does text.
+      SUBROUTINE TXTSYM(X,Y,SYM,SIZE);
+         Plots a char (SYM is from TXSYM)
+      SUBOUTINE TXSDEF;
+         Sets The Color, Texture, and Line width
+      SUBROUTINE TXXCLO;
+         Closes the graphic device
+      SUBROUTINE TXXCLR;
+         Clears the screen, moves to an empty page, etc.
+      SUBROUTINE TXXMT;
+         Flushes internal buffers.  (Condition of plot is brought up
+         flush to commands.)
+      SUBROUTINE TXXOPN(TRUEIN);
+         Open the graphic device and return its size parameters
+      SUBROUTINE TXXOPT(IOPT,IPARM,PARM,IERR);
+         Sets options (color, baudrate,...)
+      SUBROUTINE TXXPLT(X,Y,LPEN);
+         Move print head
+      SUBROUTINE TXDOT(X,Y)
+         Draws points
+      SUBROUTINE TXXSIZ;
+         Install PLIM as current limits
+      SUBROUTINE TX3TXT(XYZ,SIZEIN,UP,TEXT,CASE,ICNTR);
+         Does 3D text
+      FUNCTION TXXCSZ(TEXT,CASE,CHARSIZE)
+         Returns the length of the TEXT/CASE string.
+
+   Others may be needed in specific cases, such as an error trap
+   (UGXERR for the U.G. system)
+
+   Modifications by J.Clement:
+      A series of Mods allow the use of the cross hair cursor to
+   feed data into TD.  In addition TXDOT was created to allow
+   speed optimizations of the routines.  All code has been converted
+   to Fortran 77.  This has been tested on the VAX only.
+"
+%E
+"  Coordinate systems:
+ Extrema:
+   There are various 4-element arrays lying around, which contain
+   the extrema for various coordinate systems.  In almost every case,
+   the order in the array is
+             XMIN,YMIN,XMAX,YMAX
+   This order of the second and third elements allows you to treat
+   it as two points with (x,y) values.
+
+
+ PLIM(4,4):
+    PLIM(4,i) contains 4 different sets of (x,y) extrema:
+         i=1 has the current limits of the text (outer) system.
+         i=2 has the current limits of the data (window) system.
+         i=3 has the original limits, given by TXXINF/TXXOPN.
+         i=4 has the device absolute extrema from ditto.
+
+ The exception is the limits array in the call to TD2SCS, which does
+ the scissoring.  In this case, the array is XMIN,XMAX,YMIN,YMAX.
+ The reason is that the TD2SCS routine will work in n-dimensional
+ space, so the array could be XMIN,XMAX,YMIN,YMAX,ZMIN,ZMAX,etc,
+ and this order doesn't require variable-dimension arrays.
+ (Well, it was a good reason when I wrote it.)  This applies only to
+ the CCSCIS array, which is loaded from PLIM by TXSCIS.
+"
+%'$XMIN'='1'
+%'$YMIN'='2'
+%'$XMAX'='3'
+%'$YMAX'='4'
+%'$MOVE'='0'; %'$DRAW'='1';
+%';SUBROUTINE'=';<RESET> <SET> ;"SUBROUTINE"'
+<SET>;                      "Ready for reset"
+%E
+" String handling:
+               All character strings are Fortran-77
+   "
+<SET>;  "MARK THE TOP OF THE HEAP"
+%E  SUBROUTINE TXSDEF - Set color,texture,width
+SUBROUTINE TXSDEF;
+   IMPLICIT NONE;
+   $TXCOM;
+   $SPECIFICATION;
+   INTEGER I,DUMMY,IERR;
+   REAL FAC;
+   CALL TXXOPT(1,LINCOL,DUMMY,IERR);
+   CALL TXXOPT(3,LINWID,DUMMY,IERR);
+   NPAT=0;
+   IF (LINTEX.EQ.6) THEN;     "Patterned ?"
+      CALL TXXOPT(2,LINTEX,DUMMY,IERR);    "Setup line texture"
+      IPAT=0; "FLAGS(98)=.FALSE.;"
+      IF (NPATRN(IPATRN).le.1) IPATRN=1;
+      IF(NPATRN(IPATRN).le.1) THEN;
+         PAT(1)=1.0E10; NPAT=1;
+      ELSE;
+         IF (NPATRN(IPATRN).GT.$PATMAX) NPATRN(IPATRN)=$PATMAX;
+         NPAT=NPATRN(IPATRN); PATCUM = 0.0;
+         <I=1,NPAT;
+            PAT(I)=PATRN(I,IPATRN);
+            PATCUM=PATCUM+PAT(I);
+         >
+         IF(XFRMFC*REDUCE(2)*PATCUM.lt.1.E-4) THEN;      "Pattern too fine ?"
+            PAT(1)=1.0E10; NPAT=1;
+         ENDIF;
+      ENDIF;
+   ELSEIF (FLAGS(101).and.LINTEX.gt.0.and.(LINTEX.le.3 .or. LINTEX.eq.7)) THEN;
+      CALL TXXOPT(2,6,DUMMY,IERR);    "Setup line texture"
+      PAT(1)=0.0;
+      IF (LINTEX.eq.7) PAT(1)=3*PATSZ;
+      PAT(2)=PATSZ;
+      PAT(2)=PATSZ;
+      PAT(4)=PATSZ;
+      NPAT=2; IF (LINTEX.eq.3) NPAT=4;
+      IPAT=0; "FLAGS(98)=.FALSE.;"
+      PATCUM=0;
+      <I=1,NPAT;
+         PATCUM=PATCUM+PAT(I);
+      >
+      IF(XFRMFC*REDUCE(2)*PATCUM.lt.1.E-4) THEN;      "Pattern too fine ?"
+         PAT(1)=1.0E10; NPAT=1;
+      ENDIF;
+   ELSE;
+      CALL TXXOPT(2,LINTEX,DUMMY,IERR);    "Setup line texture"
+   ENDIF;
+END;
+%E  SUBROUTINE TXLINE - Draw lines
+SUBROUTINE TXLINE(X,Y,N,INPTEX);
+   $TXCOM;
+   INTEGER N,INPTEX;
+   REAL X(*),Y(*);
+   $SPECIFICATION;
+      REAL XY1(2),XY2(2);
+
+   "            The input data
+    X(N),Y(N) - Data to plot
+    N > 0     - Move, then draw
+      < 0     - Draw to first point
+    INPTEX: 1 DOT
+            2 DASH
+            3 DOTDASH
+            4 SOLID
+            5 FUNNY
+            6 PATTERNED
+            7 DAASH (LONG DASH)
+   "
+
+   NP=IABS(N);
+
+   IF (INPTEX.EQ.5) THEN;   "FUNNY"
+      <I=1,NP; CALL TXDOT(X(I),Y(I));>
+   ELSEIF (NP.GE.1) THEN;
+      IMIN=1;
+      IF(N.gt.0) THEN;
+         IMIN=2; CALL TXSPLT(X(1),Y(1),$MOVE); "Move to start"
+         IPAT=0;
+      ENDIF;
+      IF (NPAT.gt.1 ) THEN;                    "Patterned"
+         <I=IMIN,NP; CALL TXLPAT(X(I),Y(I));>
+      ELSE;    "This is what happens most of the time"
+         <I=IMIN,NP; CALL TXSPLT(X(I),Y(I),$DRAW);>
+      ENDIF;
+   ENDIF;
+END;
+SUBROUTINE TXATTN;
+   "TXATTN is called before writing to the graphic device.
+    If there is a flag somewhere in the system that enables the
+    user to request a premature halt, then TXATTN should check that
+    flag, and set $TRAP true if it is set.
+    $TRAP is examined all over the place before doing any heavy
+    calculations.
+   "
+END;
+%E  SUBROUTINE TXDEF1 - Define text coordinate frame
+SUBROUTINE TXDEF1;
+   $TXCOM;
+   "DEFINES TEXT COORDINATE SYSTEM
+            USES SCREEN AND DEVICE ID
+             SETS SCREEN WINDOW(PLIM(I,1)
+   "
+   "Here's some scaling info:
+      FAC is a factor from inches to SCREEN (user) units.
+            SU = FAC*inches
+          This is set by the user in the SET SIZE command and
+          possibly modified by a 'further size reduction'
+      ZSCRN is a factor from PLIM units to inches.
+            inches = ZSCRN*PU
+      PLIM units are units of the graphic device, and are defined
+          by the graphic package.  For U.G. they are about 0 to 1.
+          For a usual Cal-Comp package they are inches, about 0
+          to 10, or 0.01 inches, about 0 to 1000.
+      Therefore FAC is about 1. and ZSCRN is about 10.
+      On the 4013, which is only 6 inches across, ZSCRN is about
+      6, and FAC is about 10/6=1.6 (I think)
+
+      SCRTMP units are same as SCREEN units, but X,Y directions
+      are those of the device, not the user plot.
+
+    Here's an example:  SET DEVICE VERSATEC SIDEWAYS (rotated)
+                        SET SIZE 6 by 10   (high and narrow)
+       SCRTMP = 10 by 6, which is 6 by 10 in the sideways system.
+       FAC = 1
+       PLIM(3)=PLIM(4) = -0.169   0.0     1.169   1.0
+                which is x from -0.169 to 1.169  and y from 0 to 1
+                (3) and (4) are the same because the device doesn't
+                expand past the original limits.
+       ATRUE  =  10.55  by  7.88  (NB *device* orientation, not plot)
+       REDFAC = 1.0    because ATRUE <= SCRTMP, so it will fit.
+       PTRUE  =  1.27   by  0.762   (NB *device* orientation)
+       QPX are all false, because UG won't go over a fold.
+          So it gets centered left & right, which is up&down in
+          the sideways system, and shoved up (aka left).
+       PLIM(1) is finally   -.135  .238  1.135  1.000
+           i.e. x from -.135  to 1.135    and y from .238 to 1
+           note that (1.135--.135) / ( 1 - .238 ) = 10 / 6
+   "
+   $SPECIFICATION;
+      REAL PTRUE(2),SFAC(2);
+      $BOOLEAN QPX(4);
+
+   IF ($DEF TEXT) RETURN;                          "Already done ?"
+   "Open a device if necessary"
+      IF (.not.$OPEN) CALL TXNEXT;
+      IF (FLAGS(93)) THEN; CALL TXXSIZ; FLAGS(93)=.FALSE.; ENDIF;
+   "FAC*ZSCRN is PLIM units/SCREEN units"
+      FAC = REDUCE(2);   "REDUCE(2) IS 'UNITS'"
+      IF (REDUCE(1).GT.0.) FAC = FAC*REDUCE(1);  "(1) IS 'REDUCE'"
+   "Find absolute max size, allowing extensible screen in SCREEN units"
+      ATRUEX = (PLIM($XMAX,4)-PLIM($XMIN,4))*FAC*ZSCRN(1);
+      ATRUEY = (PLIM($YMAX,4)-PLIM($YMIN,4))*FAC*ZSCRN(2);
+   "Find a further size reduction if necessary"
+      REDFAC = AMIN1(1.,ATRUEX/PSCR(1),ATRUEY/PSCR(2));
+      IF (REDFAC.LT.1.0) THEN;
+         OLDRED = REDUCE(1);
+         REDUCE(1) = REDUCE(1)/REDFAC;
+         FAC = FAC/REDFAC;
+         IF (REDFAC.LT.0.99 .AND. REDUCE(1).GT.0.0) THEN;
+            ERROR MESSAGE REDUCE(1),OLDRED,REDUCE(2);
+               ('*** WARNING *** REDUCE Reset to',f8.2,
+                ', Previous REDUCE=',F8.2,' UNITS=',F8.2);
+         ENDIF;
+      ENDIF;
+         "Find final size, in 'PLIM' (DEVICE) units"
+      <I=1,2; SFAC(I)=1./(FAC*ZSCRN(I));
+         PTRUE(I) = PSCR(I)*SFAC(I);
+         TEMP=PTRUE(I)/SFAC(I)-PSCR(I);      "Error in screen size"
+         IF (TEMP.gt.0.0)
+            SFAC(I)=SFAC(I)*(1.0+3*TEMP/PSCR(I));  "Correct error"
+         PTRUE(I) = PSCR(I)*SFAC(I);
+      >
+            "FIGURE ABSOLUTE POSITION LEFT&RIGHT (DEVICE orientation)"
+      QPX(3)=PLIM($XMIN,3).NE.PLIM($XMIN,4);
+      QPX(4)=PLIM($XMAX,3).NE.PLIM($XMAX,4);
+      IF (QPX(3).AND..NOT.QPX(4)) THEN;          "EXTENSIBLE LEFT"
+         PLIM($XMIN,1) = PLIM($XMAX,3)-PTRUE(1); "SHOVE RIGHT"
+      ELSEIF (.NOT.QPX(3) .AND. QPX(4)) THEN;    "EXT. RIGHT"
+         PLIM($XMIN,1) = PLIM($XMIN,3);             "SHOVE LEFT"
+      ELSE;                            "NEITHER OR BOTH.  JUST CENTER IT"
+         PLIM($XMIN,1) = (PLIM($XMIN,3)+PLIM($XMAX,3)-PTRUE(1))/2.;
+      ENDIF;
+         "Correct for margin and check limits"
+      PLIM($XMIN,1) = MAX(PLIM($XMIN,1)+MARGIN(1)*SFAC(1),PLIM($XMIN,3));
+      PLIM($XMAX,1) = MIN(PLIM($XMIN,1)+SCREEN(1)*SFAC(1),PLIM($XMAX,3));
+         "FIGURE ABSOLUTE POSITION UP & DOWN"
+      QPX(1)=PLIM($YMIN,3).NE.PLIM($YMIN,4);
+      QPX(2)=PLIM($YMAX,3).NE.PLIM($YMAX,4);
+      IF (.NOT.QPX(2)) THEN;                     "NOT EXTENSIBLE UP"
+         PLIM($YMIN,1) = PLIM($YMAX,3)-PTRUE(2); "SHOVE UP"
+      ELSE;                                      "EXT. UP"
+         PLIM($YMIN,1) = PLIM($YMIN,3);             "SHOVE DOWN"
+      ENDIF;
+         "Correct for margin"
+      PLIM($YMIN,1) = MAX(PLIM($YMIN,1)+MARGIN(3)*SFAC(2),PLIM($YMIN,3));
+      PLIM($YMAX,1) = MIN(PLIM($YMIN,1)+SCREEN(2)*SFAC(2),PLIM($YMAX,3));
+         "SET UP TRANSFORMATION FROM TEXT TO DEVICE SYSTEM"
+         "Start with zero for everybody"
+      <I=1,6; XFRM34(I)=0.0;>
+         "Additive values are purely PLIM system"
+      XFRM34(1)=PLIM($XMIN,1);
+         "The rotation is done simply by position in the matrix."
+      XFRM34(2)=SFAC(1);
+      XFRM34(4)=PLIM($YMIN,1);
+      XFRM34(6)=SFAC(2);
+         "Make factor for TX package, for title sizes, etc"
+      XFRMFC=SQRT(XFRM34(2)*XFRM34(6)-XFRM34(3)*XFRM34(5));
+         "Set flag that text system is ok"
+      $DEF TEXT = .TRUE.;
+   "INSTALL THIS SYSTEM, WITH FULL-SCREEN SCISSORING"
+      CALL TXSCIS(1);
+END;
+%E  SUBROUTINE TXDEFW - Define window
+SUBROUTINE TXDEFW;
+"
+	Sets up window position
+"
+   $TXCOM;
+   $SPECIFICATION;
+   $BOOLEAN LINSID,LSET;
+   INTEGER I,J;
+   IF ($DEF WINDOW) RETURN;		"Already defined ?"
+   <I=1,6;N_LINES(I)=1; >		"Reset title line counters"
+"
+	SIZ gets the (larger) number of windows on the screen
+	T gets smaller as SIZ gets larger:
+	     1..SIZ..3   ->  -2.0..T..-1.2
+		SIZ > 3  ->   T=-3.6/SIZ
+"
+   SIZ = MAX(1.0,ABS(XYPART(1,2)))*13.*REDUCE(2)/WINLIM(1,2);
+   T=    MAX(1.0,ABS(XYPART(2,2)))*10.*REDUCE(2)/WINLIM(2,2);
+   IF (SIZ.LT.T) SIZ=T; IF (SIZ.LT.1.) SIZ=1.;
+   IF (SIZ.LE.3.) THEN; T=0.4*SIZ-2.4;
+                  ELSE; T=3.6/SIZ; ENDIF;
+   IF (.not.FLAGS(71)) GRDSIZ=SIGN(T,GRDSIZ);
+   IF (.not.FLAGS(72)) SYMSIZ=SIGN(T,SYMSIZ);
+   IF (.NOT.FLAGS(76)) TITSIZ=SIGN(T,TITSIZ);	"If not user set, set them"
+   IF (.NOT.FLAGS(77)) LBLSIZ=SIGN(T,LBLSIZ);
+   IF (.NOT.FLAGS(78)) TIKSIZ(1)=0.05*T*REDUCE(2);
+   <I=1,3; IF (.not.FLAGS(78+I)) BARSIZ(I)=abs(T)/20; >
+	"Set up window"
+   T = TITINX*0.1*REDUCE(2)*ABS(TITSIZ);	"Title char size"
+   IF ($3D) THEN;				"Get label sizes"
+      EL=0; E=0;
+   ELSE;
+      E =0.1*REDUCE(2)*ABS(LBLSIZ);		"Label char size"
+      EL=ABS(LBLCHR(2))*E;			"Label string size (Y)"
+   ENDIF;
+   TS=MAX(1.0,TIKFAC)*ABS(TIKSIZ(1));		"Tick size"
+   <I=1,2;
+      LSET=XYPART(I,2).ne.0;			"If X-area not already set"
+      SIZ=WINLIM(I,2);
+      IF (LSET) THEN;
+         SIZ=SIZ/ABS(XYPART(I,2));
+         WINDOW(I+2)=SIZ*ABS(XYPART(I,1))+WINLIM(I,1);
+         WINDOW(I)=WINDOW(I+2)-SIZ;
+      ENDIF;
+      LINSID=(XYPART(I,1).ge.0.and.XYPART(I,2).ge.0);	"Not full screen ?"
+      LSET=LSET.and.LINSID;			"Set + inside ?"
+           "J=1,2,3,4 Left,Bottom,Right,Top"
+      <J=I,4,2;
+         TN=TITLIN(J)*TITFAC(J);
+         TL=T*MAX(0.,TN);
+         TITLOC(J) = WINDOW(J);
+         IF (LSET) THEN;			"Modify window ?"
+            OUTSID(J) = .true.;			"All outside"
+            WINDOW(J) = WINDOW(J) + TITMAR(J)*SIZ;	"Reduce by margin"
+            TITLOC(J) = TITLOC(J) + TITMAR(J)*SIZ;
+            WINDOW(J) = WINDOW(J) + TL;		"Adjust window for title"
+         ELSE;
+            TITLOC(J) = TITLOC(J) - TL;		"Adjust Title location"
+            TL = WINDOW(J)-WINLIM(I,1);
+            OUTSID(J) = TL-0.999*ABS(SIZ) .le. 0 .or.
+                        TL+0.999*ABS(SIZ) .ge. WINLIM(I,2);
+         ENDIF;
+         IF (J.eq.2) TITLOC(J) = WINDOW(J);	"X label ?"
+         TL=FRELBL(J);				"Extra offset for labels"
+         IF (FLAGS(18+J) .and. FLAGS(35+J).and.TL.gt.0) THEN;	"and labels"
+            TL= EL + E*TL;
+            IF     (LSET)    THEN; WINDOW(J)=WINDOW(J) + TL;
+            ELSEIF (TN.ge.0) THEN; TITLOC(J)=TITLOC(J) - TL; ENDIF;
+         ENDIF;
+         IF (TN.lt.0) THEN;				"Inside title ?"
+            TITLOC(J) = WINDOW(J);			"Starts at window"
+            IF (J.eq.2) TITLOC(J)=TITLOC(J) - T*TN;	"Bottom ?"
+            IF (FLAGS(31+J))				"ticks ?"
+               TITLOC(J) = TITLOC(J) + TS;
+         ENDIF;
+"
+	Limit windows
+"
+         WINDOW(J)=MIN(MAX(WINDOW(J),WINLIM(I,1)),WINLIM(I,2)+WINLIM(I,1));
+         TITLOC(J)=MIN(MAX(TITLOC(J),0.),SCREEN(I));
+         SIZ=-SIZ; E=-E; EL=-EL; T=-T; TS=-TS;
+      >
+      EL=E;				"For (X) window calculations"
+   >
+   <I=1,2; <J=1,2; WINABS(J,I,IWINLEV)=WINDOW(J+2*(I-1));
+                   PLOT_EXTENT(J,I)=WINABS(J,I,IWINLEV);
+   >  >
+   $DEF WINDOW = .TRUE.;
+END;
+%E  SUBROUTINE TXDEF2 - Define data coordinate frame
+SUBROUTINE TXDEF2;
+   IMPLICIT NONE;
+   $TXCOM;
+"
+   Defines data coordinate system.
+      Uses window, scale, limits, and text coord system
+      Sets window scissoring (PLIM(I,2)
+	1 = Data frame (3-d)
+	2 = World frame (3-d)
+	3 = Text frame (2-d)
+	4 = Device frame (2-d)
+	XFRM14 transforms from data to device!
+   "
+
+   $SPECIFICATION;
+      INTEGER I,J;
+      REAL EQUAL(12),XYZLMI(3,2),XYZLMJ(3,2),FAC(3),T,CEN,WIDTH,D;
+      $BOOLEAN LTEST;
+   $DATA;
+      DATA EQUAL/0.,1.,0.,0.,0.,0.,1.,0.,0.,0.,0.,1./;
+
+   "THIS REQUIRES LIMITS.  SKIP IT IF NOT AVAILABLE"
+   CALL T2STLM;                                 "Set limits ?"
+   IF (FLAGS(5).AND.FLAGS(6).AND.FLAGS(7).AND.FLAGS(8)) THEN;
+      "DECIDE DIMENSIONALITY OF PLOT"
+         IF (.not. $DEF TEXT) CALL TXDEF1;            "Set text frame ?"
+      "SET UP WINDOW"
+         CALL TXDEFW;
+      "SET UP SCALING"
+         "SCALING IS ALWAYS OK, DEFAULT IS LINEAR"
+      "SET LIMITS"
+         CALL T2XFRM(2,2,WINDOW,LINEAR,XFRM34,2,PLIM(1,2));
+      "Require ymax > ymin"
+         IF (PLIM($YMAX,2).LT.PLIM($YMIN,2)) THEN;
+            T=PLIM($YMAX,2);
+            PLIM($YMAX,2)=PLIM($YMIN,2); PLIM($YMIN,2)=T;
+         ENDIF;
+      "FIND LIMIT POINTS IN INTERMEDIATE SYSTEM"
+         NONLIN(4)=0;  "NO POLAR ROTATION"
+         IF(FLAGS(13).and. .not.$3D) THEN;       "Equal scaling ?"
+            <I=1,2; FAC(I)=(WINDOW(I+2)-WINDOW(I))/
+                           (XYZLIM(I,2)-XYZLIM(I,1));
+               IF(FAC(I) .lt. DSCAL) THEN;
+                  ERROR MESSAGE; (' X or Y truncated');
+               ENDIF;
+               IF(DSCAL.gt.0) FAC(I)=DSCAL;
+            >
+            IF(FAC(2) .lt. FAC(1)) THEN; FAC(1)=FAC(2);
+            ELSE;  FAC(2)=FAC(1); ENDIF;
+            <I=1,2;
+               CEN=(XYZLIM(I,2)+XYZLIM(I,1))/2;
+               WIDTH=(WINDOW(I+2)-WINDOW(I))/(2*FAC(I));
+               XYZLIM(I,2)=CEN+WIDTH;
+               XYZLIM(I,1)=CEN-WIDTH;
+            >
+         ENDIF;
+         <I=1,3;
+             IF (LSCREV(I)) THEN;       "Backwards scale ?"
+                XYZLMJ(I,1)=XYZLIM(I,2);
+                XYZLMJ(I,2)=XYZLIM(I,1);
+             ELSE;
+                XYZLMJ(I,1)=XYZLIM(I,1);
+                XYZLMJ(I,2)=XYZLIM(I,2);
+             ENDIF;
+         >
+         CALL T2XFRM(3,2,XYZLMJ,NONLIN,EQUAL,3,XYZLMI);
+         NONLIN(4)=1;  "PUT IT BACK"
+      "MAKE TRANSFORMATION FROM INTERMED SYSTEM TO WORLD SYS"
+         <I=1,12; XFRM12(I)=0.;>
+            "1--->2 From data to world"
+         <I=1,3;
+            D=XYZLMI(I,2)-XYZLMI(I,1);
+            IF (D.NE.0.) THEN;
+               XFRM12(5*I-3)=WORLD(I)/D;                  "DIAGONALS"
+               XFRM12(4*I-3)=-XYZLMI(I,1)*XFRM12(5*I-3);  "OFFSETS"
+            ENDIF;
+         >
+             "MAKE TRANSFORM FROM WORLD TO TEXT  2-->3"
+         CALL T2MPRJ(WINDOW,XFRM23);
+             "MAKE TRANSFORM FROM WORLD TO DEVICE  2-->4  "
+             "(XFRM14 IS TEMP STOR, 3D REP OF XFRM34)"
+         <I=1,11; XFRM14(I)=0.;> XFRM14(12)=1.;
+         XFRM14(2)=XFRM34(2); XFRM14(6)=XFRM34(5);
+         XFRM14(3)=XFRM34(3); XFRM14(7)=XFRM34(6);
+         XFRM14(4)=XFRM34(1); XFRM14(8)=XFRM34(4);
+         CALL T2XMUL(XFRM14,XFRM23,3,XFRM24);
+         "IF P IS THE PROJECTION OPR,     Z1    Z1/Z3
+                                        P Z2  = Z2/Z3
+                                          Z3
+          AND A IS A 2D TRANSFORM A X1 = A01+A11X1+A21X2
+                                    X2   A02+A12X1+A22X2
+          THEN TO COMMUTE THEM, PB = AP, GIVES
+             APZ = A01 + A11Z1/Z3 + A21Z2/Z3
+                   A02 + A12Z1/Z3 + A22Z2/Z3
+
+
+                 = 1/Z3 ( A01Z3 + A11Z1 + A21Z2)
+                        ( A02Z3 + A12Z1 + A22Z2)
+
+                        ( A01Z3 + A11Z1 + A21Z2)
+                 =  P   ( A02Z3 + A12Z1 + A22Z2)
+                        (          Z3          )
+
+                        ( A11   A21   A01 )
+                 =  P   ( A12   A22   A02 )  Z
+                        (  0     0     1  )
+
+          AND       ( 0   A11   A21   A01 )
+              B  =  ( 0   A12   A22   A02 )
+                    ( 0    0     0     1  )
+         "
+      "COMBINE 12 AND 23 1--->3 Data to text"
+         CALL T2XMUL(XFRM23,XFRM12,3,XFRM13);
+      "COMBINE 12 AND 24 1--->4 Data to device"
+         CALL T2XMUL(XFRM24,XFRM12,3,XFRM14);
+      "ALL DONE. SET FLAG THAT DATA COORD SYSTEM IS OK"
+         $DEF DATA = .TRUE.;
+   ENDIF;
+   IF (.NOT.$DEF DATA) THEN;         "COULDNT DO IT"
+      ERROR STRING;
+         ('*** ERROR *** Data system not defined');
+      CALL TRACE;
+   ENDIF;
+END;
+%E  SUBROUTINE TXEND - End plot and close device
+SUBROUTINE TXEND;
+   $TXCOM;
+   $SPECIFICATION;
+   $DATA;
+   IF ($OPEN) THEN;
+      CALL TXVOID;    "Flush buffers?"
+      CALL TXXCLO;    "Close the graphic device"
+   ENDIF;
+   $OPEN=.FALSE.; FLAGS(1)=.TRUE.;
+END;
+%E  $BOOLEAN FUNCTION T2SCIS(XY)
+$BOOLEAN FUNCTION T2SCIS(XY);
+   $TXCOM;
+   REAL XY(2);
+   T2SCIS=XY(1) .ge. CCSCIS(1) .and. XY(1) .le. CCSCIS(2) .and.
+          XY(2) .ge. CCSCIS(3) .and. XY(2) .le. CCSCIS(4);
+END;
+%E  SUBROUTINE TD2SCS - Scissoring routine
+SUBROUTINE TD2SCS(XLIM,NC,XYZ1,XYZ2,IHIT);
+   "  COPYRIGHT (C) 1978 ROGER B. CHAFFEE,  KILOWORD COMPUTING
+      P.O. BOX 7495, MENLO PARK CALIFORNIA 94025
+      THIS ROUTINE IS COPIED FROM THE PLOT PACKAGE FOR TRENDATA
+      TERMINALS, 11/15/78.  USED BY PERMISSION.
+   "
+   INTEGER NC,IHIT;
+   REAL XYZ1(*),XYZ2(*),XLIM(2,*);
+  "INPUT   NC    = NUMBER OF COORDINATES, PROBABLY 2 OR 3
+           XLIM  = CLIPPING WINDOW COORDINATES
+              *** WATCH OUT ***
+                THE STANDARD LAYOUT FOR COORDINATES IS
+                XMIN,YMIN,XMAX,YMAX.  THIS ROUTINE EXPECTS
+                XMIN,XMAX,YMIN,YMAX(,ZMIN,ZMAX,...)
+
+   OUTPUT  IHIT  = FLAG FOR ACTION TAKEN
+                       0--OUTPUT POINT SAME AS INPUT
+                       1--POINT 2 MOVED
+                       2--POINT 1 MOVED
+                       3--BOTH MOVED
+                       4--NO POINT FOUND (XYZ IS NOT CHANGED)
+
+   I/O     XYZ   = A PAIR OF POINTS.  VALUES RETURNED ARE COORDS
+                     OF POINTS ON THE ORIGINAL LINE, AND WITHIN
+                     THE (HYPER-)RECTANGLE DEFINED BY XLIM
+  "
+   REAL FT1,FT2,F1,F2,T,DXY(3);
+
+   FT1=1.; FT2=0.; IHIT=4;  "START WITH 'NO HIT'"
+   <IC=1,NC;
+      DXY(IC) = XYZ1(IC)-XYZ2(IC);
+      IF (DXY(IC).EQ.0.) THEN;
+         IF (SIGN(1.,XYZ1(IC)-XLIM(1,IC)).NE.
+             SIGN(1.,XLIM(2,IC)-XYZ1(IC))) RETURN;
+         F1=1.; F2=0.;
+      ELSE;
+         F1=(XLIM(1,IC)-XYZ2(IC))/DXY(IC);
+         F2=(XLIM(2,IC)-XYZ2(IC))/DXY(IC);
+         IF (F1.LT.F2) THEN;
+            T=F1; F1=F2; F2=T;
+         ENDIF;
+      ENDIF;
+      IF (FT1.GT.F1) FT1=F1;
+      IF (FT2.LT.F2) FT2=F2;
+      IF (FT2.GT.FT1) RETURN;
+   >
+   IHIT=0;
+   IF (FT1.LT.1.0-$DELTA) THEN;
+      IHIT = 2; <IC=1,NC; XYZ1(IC) = XYZ2(IC)+DXY(IC)*FT1;>
+   ENDIF;
+   IF (FT2.gt.$DELTA) THEN;
+      IHIT = IHIT+1;
+      <IC=1,NC; XYZ2(IC) = XYZ2(IC)+DXY(IC)*FT2;>
+   ENDIF;
+END;
+%E  SUBROUTINE TXLINX - Draw lines from 1 array
+SUBROUTINE TXLINX(XY,N,INPTEX);
+   $TXCOM;
+   INTEGER N,INPTEX; REAL XY(2,*);
+"
+	This is equivalent to TXLINE, except it takes a 2-by-N input
+	array instead of 2 separate arrays.
+"
+   $SPECIFICATION;
+   REAL XY1(2),XY2(2);
+   NP=IABS(N);
+   IF (INPTEX.EQ.5) THEN;   "FUNNY"
+      <I=1,NP; CALL TXDOT(XY(1,I),XY(2,I));>
+   ELSEIF (NP.GE.1) THEN;
+      IMIN=1;
+      IF(N.gt.0) THEN;
+         IMIN=2; CALL TXSPLT(XY(1,1),XY(2,1),$MOVE); "Move to start"
+         IPAT=0;
+      ENDIF;
+      IF ( NPAT.gt.1) THEN;      "patterned ?"
+         <I=IMIN,NP; CALL TXLPAT(XY(1,I),XY(2,I));>
+      ELSE;                      "not patterned"
+         <I=IMIN,NP; CALL TXSPLT(XY(1,I),XY(2,I),$DRAW);>
+      ENDIF;
+   ENDIF;
+END;
+%E  SUBROUTINE TXLINZ - Draw lines
+SUBROUTINE TXLINZ(X,Y,Z,ISK,N,XFRM);
+   IMPLICIT NONE;
+   $SPECIFY NONE;
+   $TXCOM;
+   $SPECIFICATION;
+   INTEGER ISK,N,NP,I,IMIN;
+   $BOOLEAN ZEXIST;
+   REAL X(ISK,*),Y(ISK,*),Z(ISK,*),ZV,XFRM;
+      REAL XYZ1(3);
+      REAL XY1(2),XY2(2);
+
+   "            The input data
+    X(N),Y(N) - Data to plot
+    N > 0     - Move, then draw
+      < 0     - Draw to first point
+    LINTEX: 1 DOT
+            2 DASH
+            3 DOTDASH
+            4 SOLID
+            5 FUNNY
+            6 PATTERNED
+            7 DAASH (LONG DASH)
+   "
+
+   NP=IABS(N);
+
+   XYZ1(3)=0;
+   IF (FLAGS(31)) XYZ1(3)=XYZLIM(3,1);         "Text mode?"
+
+   ZEXIST=Z(1,1).ne.HNONE;
+   IF (LINTEX.EQ.5) THEN;   "FUNNY"
+      <I=1,NP;
+         XYZ1(1)=X(1,I);
+         XYZ1(2)=Y(1,I);
+         IF (ZEXIST) XYZ1(3)=Z(1,I);
+         CALL T2XFRM(3,2,XYZ1,NONLIN,XFRM,2,XY1);
+         CALL TXDOT(XY1(1),XY1(2));
+      >
+   ELSEIF (NP.GE.1) THEN;
+      IMIN=1;
+      IF(N.gt.0) THEN;
+        IF (ZEXIST) XYZ1(3)=Z(1,1);
+        CALL TXLPAT3(X(1,1),Y(1,1),XYZ1(3),0);
+        IPAT=0;
+        IMIN=2;
+      ENDIF;
+      IF (NPAT.gt.1 ) THEN;                    "Patterned"
+         <I=IMIN,NP;
+             IF (ZEXIST) XYZ1(3)=Z(1,I);
+             CALL TXLPAT3(X(1,I),Y(1,I),XYZ1(3),1);
+         >
+      ELSE;    "This is what happens most of the time"
+         <I=IMIN,NP;
+            XYZ1(1)=X(1,I);
+            XYZ1(2)=Y(1,I);
+            IF (ZEXIST) XYZ1(3)=Z(1,I);
+            CALL T2XFRM(3,2,XYZ1,NONLIN,XFRM,2,XY1);
+            CALL TXSPLT(XY1(1),XY1(2),$DRAW);
+         >
+      ENDIF;
+   ENDIF;
+END;
+%E  SUBROUTINE TXLPAT3 - Draw patterned lines
+SUBROUTINE TXLPAT3(X,Y,Z,ID);
+   IMPLICIT NONE;
+   $TXCOM;
+   $SPECIFICATION;
+   REAL X,Y,Z;
+   INTEGER ID;
+   INTEGER I,IDRAW,ISEED;
+   REAL XYZ1(3),XYZ2(3,3);
+   REAL XY1(2);
+   REAL DXY,DX,DY,DZ,DSUM,D;
+   REAL RAN;
+   $DATA;
+   XYZ1(1)=X;
+   XYZ1(2)=Y;
+   XYZ1(3)=Z;
+   IF (ID.eq.0) THEN;
+      ISEED=0;
+      DSUM=0;
+      IPAT=0;
+             "Text or data mode ?"
+      IF (.not. FLAGS(31)) CALL T2XFRM(3,1,XYZ1,NONLIN,XFRM12,3,XYZ2);
+      CALL T2XFRM(3,1,XYZ2,LINEAR,XFRM24,2,XY1);
+      CALL TXSPLT(XY1(1),XY1(2),$MOVE); "Move to start"
+      FLAGS(1)=.FALSE.;    "Yes, we have output."
+   ELSE;
+      CALL T2XFRM(3,1,XYZ1,NONLIN,XFRM12,3,XYZ2(1,2));
+      DX=XYZ2(1,2)-XYZ2(1,1);
+      DY=XYZ2(2,2)-XYZ2(2,1);
+      DZ=XYZ2(3,2)-XYZ2(3,1);
+      DXY=SQRT(DX**2+DY**2+DZ**2);
+      IF (DXY.gt.0.0) THEN;
+         DX=DX/DXY; DY=DY/DXY;   "SINE AND COSINE"
+         DZ=DZ/DXY;
+      ENDIF;
+      FLAGS(1)=.FALSE.;    "Yes, we have output."
+      IF (IPAT.le.0) THEN;
+         IPAT=1; PATTOT=PAT(IPAT); IF(PATTOT.lt.0) PATTOT=-PATTOT*RAN(ISEED);
+      ENDIF;
+      <LOOP> <
+         IDRAW=MOD(IPAT,2);  "1 FOR DRAW, 0 FOR MOVE"
+         IF(DXY.lt.PATTOT) THEN;
+            PATTOT=PATTOT-DXY;
+            IF(IDRAW.eq.0) <EXIT>;    "If move exit (optimization)"
+            D=0.0; DXY=-1.0;
+         ELSE;
+            DXY=DXY-PATTOT; D=DXY; IPAT=IPAT+1;
+            IF(IPAT.gt.NPAT) IPAT=1; PATTOT=PAT(IPAT);
+            IF(PATTOT.lt.0) PATTOT=-PATTOT*RAN(ISEED);
+         ENDIF;
+         XYZ2(1,3)=XYZ2(1,1)+DX*D;
+         XYZ2(2,3)=XYZ2(2,1)+DY*D;
+         XYZ2(3,3)=XYZ2(3,1)+DZ*D;
+         CALL T2XFRM(3,1,XYZ2(1,3),LINEAR,XFRM24,2,XY1);
+         IF (IDRAW.EQ.0) THEN;
+            CALL TXSPLT(XY1(1),XY1(2),$MOVE);
+         ELSE;
+            CALL TXSPLT(XY1(1),XY1(2),$DRAW);
+         ENDIF;
+         FLAGS(1)=.FALSE.;    "Yes, we have output."
+         IF (DXY.le.0.0) <EXIT>;
+      >
+      XYZ2(1,1)=XYZ2(1,2);
+      XYZ2(2,1)=XYZ2(2,2);
+      XYZ2(3,1)=XYZ2(3,2);
+   ENDIF;
+END;
+%E  SUBROUTINE TXLPAT - Draw patterned lines
+SUBROUTINE TXLPAT(X,Y);
+   $TXCOM;
+   $SPECIFICATION;
+   REAL XY1(2),XY2(2),DSUM,X,Y;
+   REAL RAN;
+   $DATA;
+   XY1(1)=XLLINE; XY1(2)=YLLINE;
+   XY2(1)=X;      XY2(2)=Y;
+   CALL TD2SCS(CCSCIS,2,XY1,XY2,IHIT);   "SCISSOR IT"
+   IF (IHIT.NE.4) THEN;
+      FAC=XFRMFC*REDUCE(2);
+      DX=XY2(1)-XY1(1); DY=XY2(2)-XY1(2);
+      DXY=SQRT( DX**2 + DY**2 );
+      IF (DXY.gt.0.0) THEN;
+         DX=DX/DXY; DY=DY/DXY;   "SINE AND COSINE"
+      ENDIF;
+      FLAGS(1)=.FALSE.;    "Yes, we have output."
+      IF (IPAT.le.0) THEN;
+         ISEED=0;
+         IPAT=1; PATTOT=FAC*PAT(IPAT);
+         IF(PATTOT.lt.0) PATTOT=-PATTOT*RAN(ISEED);
+      ENDIF;
+      <LOOP> <
+         IDRAW=MOD(IPAT,2);  "1 FOR DRAW, 0 FOR MOVE"
+         IF(DXY.lt.PATTOT) THEN;
+            PATTOT=PATTOT-DXY;
+            IF(IDRAW.eq.0) <EXIT>;    "If move exit (optimization)"
+            D=0.0; DXY=-1.0;
+         ELSE;
+            DXY=DXY-PATTOT; D=DXY; IPAT=IPAT+1;
+            IF(IPAT.gt.NPAT) IPAT=1; PATTOT=FAC*PAT(IPAT);
+            IF(PATTOT.lt.0) PATTOT=-PATTOT*RAN(ISEED);
+         ENDIF;
+         XTLINE=XY2(1)-DX*D; YTLINE=XY2(2)-DY*D;
+         IF (IDRAW.EQ.0) THEN;
+            CALL TXSPLT(XTLINE,YTLINE,$MOVE);
+         ELSE;
+            CALL TXSPLT(XTLINE,YTLINE,$DRAW);
+         ENDIF;
+         FLAGS(1)=.FALSE.;    "Yes, we have output."
+         IF (DXY.le.0.0) <EXIT>;
+      >
+   ENDIF;
+   XLLINE=X; YLLINE=Y;
+END;
+%E  SUBROUTINE TXNEXT - Start new plot
+SUBROUTINE TXNEXT;
+   $TXCOM;
+   $SPECIFICATION;
+   DATA NOWSET /0/;   "Character set undefined"
+
+   IF ($TRAP) RETURN;                 "Interrupt?"
+   NPLOTS=NPLOTS+1;
+   IF ($OPEN) THEN;                       "A device is already open ?"
+      IF (.NOT.FLAGS(1)) THEN;            "Something has been put out ?"
+         CALL TXVOID;                     "Flush graphic buffer"
+         CALL TXXCLR;                     "Clear screen/get new page"
+      ENDIF;
+   ELSE;                                  "Must open a device"
+      CALL TXXOPN(ZSCRN);                 "Pick up units"
+      IF (.NOT.($TRAP)) $OPEN=.TRUE.;     "Device is open"
+   ENDIF;
+   FLAGS(1)=.TRUE.;   "NEW PICTURE"
+          "FLAG FOR TXLINE (NOT IN MIDST OF LINE"
+END;
+%E  SUBROUTINE TXQUIK - Set device for speed
+SUBROUTINE TXQUIK;
+   $TXCOM;
+   "Set the graphic device for speed, not quality
+    (This is particularly useful for GenCom, Trendata, etc.
+"
+   $SPECIFICATION;
+   $DATA;
+   I=2; IF (FLAGS(83)) I=-2;
+   CALL TXXOPT(4,I,DUMMY,IERR);
+END;
+%E  SUBROUTINE TXSCIS - Set which coordinate system
+SUBROUTINE TXSCIS(ISCIS);
+"
+	ISCIS=	1 -- Installs text coordinate system
+		2 -- Installs data coordinate system
+"
+   IMPLICIT NONE;
+   $TXCOM;
+   $SPECIFICATION;
+   $DATA;
+   INTEGER I,J,ISCIS;
+   INTEGER FLGPNT(2) /73,75/;        "Pointer in flags"
+
+   IF ($TRAP) RETURN;                "Interrupt?"
+   I=ISCIS;
+   IF (I.LT.1 .OR. I.GT.2) THEN;
+      I=1;
+      ERROR STRING;('*** ERROR *** Bad parameter to TXSCIS');
+   ENDIF;
+   J = FLGPNT(I);                     "Point to proper flag"
+   IF (.NOT.FLAGS(J)) THEN;           "System not defined"
+      ERROR MESSAGE I;('*** ERROR *** Coord system',i2,' not defined');
+      CALL TXDEF2;
+   ENDIF;
+   CCSCIS(1)=PLIM($XMIN,I);           "Setup up the scissoring"
+   CCSCIS(2)=PLIM($XMAX,I);
+   CCSCIS(3)=PLIM($YMIN,I);
+   CCSCIS(4)=PLIM($YMAX,I);
+END;
+%E  SUBROUTINE TXSPLT - Plot lines
+SUBROUTINE TXSPLT(X,Y,LPEN);
+"
+	Move the pen to (X,Y), perhaps with draw.
+	This draws scissored lines
+	Current pen position is (XLLINE,YLLINE).
+"
+   IMPLICIT NONE;
+   REAL X,Y,XLINE,YLINE;
+   INTEGER LPEN,IHIT;
+   REAL XY1(2),XY2(2),TEMP,TEMP1,TEMP2,TEMP3;
+   $SPECIFICATION;
+   $TXCOM;
+   XY1(1)=XLLINE; XY1(2)=YLLINE;  "Current position"
+   XY2(1)=X;      XY2(2)=Y;       "New position"
+   IF(LPEN.eq.$DRAW) THEN;        "Draw the line ?"
+      CALL TD2SCS(CCSCIS,2,XY1,XY2,IHIT); "Scissor the line"
+      IF (IHIT.LT.4) THEN; "At least some left in the window"
+         IF (IHIT.GE.2.or.LMOVE.ne.$DRAW) THEN;
+              "Start of line moved from current position."
+            TEMP=ABS(XY2(1))+ABS(XY1(1))/2;   "Sum and difference of position"
+            TEMP1=ABS(XY2(2))+ABS(XY1(2))/2;
+            TEMP2=ABS(XY2(1)-XY1(1));
+            TEMP3=ABS(XY2(2)-XY1(2));
+            IF(TEMP2.le. $DELTA*TEMP.and.TEMP3.le.$DELTA*TEMP1) THEN; "Same ?"
+               LMOVE=$MOVE;
+               CALL TXDOT(XY1,XY1(2));            "Do only single dot"
+            ELSE;
+               LMOVE=$DRAW;
+               FLAGS(1)=.FALSE.;                  "Yes, we have output."
+               CALL TXXPLT(XY1(1),XY1(2),$MOVE);  "Move to start"
+               CALL TXXPLT(XY2(1),XY2(2),$DRAW);  "Draw to end of line."
+            ENDIF;
+         ELSE;
+            FLAGS(1)=.FALSE.;                     "Yes, we have output."
+            CALL TXXPLT(XY2(1),XY2(2),$DRAW); "Draw to end of line."
+         ENDIF;
+      ELSE;
+         LMOVE=$MOVE;                        "Next time move"
+      ENDIF;
+   ELSE;
+      LMOVE=$MOVE;
+   ENDIF;
+   XLLINE=X; YLLINE=Y;                       "Remember new position of pen"
+END;
+%E  SUBROUTINE TXVOID - Flush plot to device
+SUBROUTINE TXVOID;
+   IMPLICIT NONE;
+   $TXCOM;
+"
+	Subroutine to flush the buffers of the graphic package.
+	Called from main routine before returning to calling program
+	(user program or interactive driver)
+"
+   $SPECIFICATION;
+   $DATA;
+   CALL TXXMT;         "Empty the graphic buffers"
+   XLLINE=-$LARGE REAL; YLLINE=XLLINE;  "Unlikely values"
+END;
+%E  SUBROUTINE TXFILL --- Fills a curve
+	SUBROUTINE TXFILL(X,Y,Z,ISTEP,ISIZE,INFLAG);
+"
+	Input:
+		X(ISTEP,ISIZE),Y(ISTEP,ISIZE),Z(ISTEP,ISIZE)
+		ISIZE	= number of points in the curve
+			< 0 then X,Y,Z are in DATA frame (Device otherwise)
+		INFLAG	= Hide flag  (Hides the fill pattern)
+			= &4 Draw only visible part
+			= &2 Draw
+			= &1 Save the new horizon
+			= 0 No hidden line removal
+"
+	IMPLICIT NONE;
+	$SPECIFICATION;
+	$SPECIFYNONE;
+	INTEGER ISTEP,ISIZE,NBUFSIZ,NP,ITX,INFLAG;
+	REAL	Y(ISTEP,*),X(ISTEP,*),Z(ISTEP,*),XYZ(3);
+	INTEGER I,IORG/0/;
+	REAL WIDTH;
+	IF (IORG .ne. 0) THEN;
+	   CALL T2_FREE_MEMORY(BUFFER,IORG,NP);
+	   IORG=0;
+	ENDIF;
+	NP=ABS(ISIZE);
+	IF (NP .le. 2) RETURN;			"Need 3 or more points"
+	IF (ISIZE .lt. 0) THEN;			"Data frame ?"
+	   IORG=0;
+	   IF (NP .gt. $BUFSIZ/2) THEN;         "Not enough space ???"
+		CALL T2_GET_MEMORY(BUFFER,2*NP,IORG);   "Get more"
+              IF (IORG .eq. 0) THEN;                       "Can't get more"
+               ERROR STRING;'*** ERROR Number of points exceeds max for fill';
+               RETURN;
+              ENDIF;
+            ENDIF;
+            XYZ(3)=0;
+            <I=1,NP; XYZ(1)=X(1,I);XYZ(2)=Y(1,I);
+               IF (Z(1,1) .ne. HNONE) XYZ(3)=Z(1,I);
+               IF (FLAGS(31)) THEN;
+                  CALL T2XFRM(2,1,XYZ,NONLIN,XFRM34,2,BUFFER(2*I-1+IORG));
+               ELSE;
+                  CALL T2XFRM(3,1,XYZ,NONLIN,XFRM14,2,BUFFER(2*I-1+IORG));
+               ENDIF;
+            >
+	ENDIF;
+%FORTRAN
+	DO I=1,2
+	    WIDTH=FILL_WIDTH(I)
+	    IF (WIDTH .ne. 0) THEN	! Width ok ??
+		IF (ISIZE .lt. 0) THEN
+		   CALL TXSHADE(BUFFER(IORG+1),BUFFER(IORG+2),2,NP,	! Now perform the fill
+     1		WIDTH,FILL_ANGLE(I),INFLAG,FILL_TEX(I))
+		ELSE
+		   CALL TXSHADE(X,Y,ISTEP,NP,	! Now perform the fill
+     1		WIDTH,FILL_ANGLE(I),INFLAG,FILL_TEX(I))
+		ENDIF
+	    ENDIF
+	ENDDO
+	IF (IORG .ne. 0) THEN
+	   CALL T2_FREE_MEMORY(BUFFER,IORG,2*NP)
+	   IORG=0
+	ENDIF
+	END
+	SUBROUTINE TXSHADE(X,Y,ISTEP,ISIZE,WIDTH,SLOPE,INFLAG,INFLAG2)
+C
+C	Subroutine to produce shaded picture (Cross hatch)
+C
+C	Input:
+C	X,Y	= Array of coordinates forming a closed polygon
+C	ISTEP	= Number of points to skip
+C	ISIZE	= Number of points
+C	WIDTH	= Step along the angle
+C	SLOPE	= SIN(Line angle) 0=horizontal
+C	INFLAG	= Hide flag  (Hides the fill pattern)
+C		= &4 Draw only visible part
+C		= &2 Draw
+C		= &1 Save the new horizon
+C		= 0 No hidden line removal
+C	INFLAG2	= Line texture, color etc.
+C		= &1 Do No plot alternate areas.
+C
+	IMPLICIT NONE
+%MORTRAN
+   $TXCOM;
+   $SPECIFICATION;
+%FORTRAN
+	REAL	WIDTH,SLOPE
+	REAL	TEMP,XS,XMIN,XMAX,XP,XP1,XP2,YP1,YP2,COST,SINT
+	INTEGER I,J,ISZ,ISTEP,ISIZE,INFLAG,INFLAG2,ISAVE,IDUM
+	INTEGER MAX_SIZE			! Max number of areas
+	PARAMETER (MAX_SIZE=50)
+	REAL	Y(ISTEP,*),X(ISTEP,*)
+	REAL	A(2,MAX_SIZE),XY(3,2)/6*0.0/,XWIDTH
+	LOGICAL	L_ALTERNATE
+%MORTRAN
+IF ($TRAP .or. WIDTH .eq. 0) RETURN;
+%FORTRAN
+C
+C	Now get line angle
+C
+	CALL T2CWTS(INFLAG2,ISAVE)	! Set color, inten, texture
+        CALL TXSDEF
+	L_ALTERNATE=IAND(INFLAG2,1) .ne. 0
+	COST=-MIN(MAX(SLOPE,-1.0),1.0)
+	SINT=SQRT(1.-COST**2)
+C
+C	Initial point
+C
+	I	= 1
+	XP1	= COST*X(1,I)+SINT*Y(1,I)
+	XMIN	= XP1				!Set up to find min,max
+	XMAX	= XP1
+	DO 10 I	= 1,ABS(ISIZE)			!Search thru all points
+	   XP1	= COST*X(1,I)+SINT*Y(1,I)
+	   IF(XP1 .LT. XMIN) XMIN	= XP1	! Find min
+	   IF(XP1 .GT. XMAX) XMAX	= XP1	! Find the MAX
+10	CONTINUE
+	IF (XMIN .ge. XMAX) RETURN
+	XWIDTH=SQRT((COST*RESOL(1))**2+(SINT*RESOL(2))**2)
+	IF (WIDTH .lt. 0) THEN			! Multiple of resolution ?
+		XS=XWIDTH
+	ELSE
+		XS=1				! In 0.1 inches
+	ENDIF
+	XS=ABS(XS*REDUCE(2)*WIDTH)		! Scale it
+	IF (XS .le. 0) XS=(XMAX-XMIN)/100	!Correct it
+	XMIN=XMIN-MOD(XMIN,XS)-XS		!Move it over to nearest step
+c
+C	Now do steps in X
+C
+	DO 100 XP	= XMIN,XMAX,XS		!Shade over all values
+	   ISZ	= 0				!Will be # of segments
+C
+C	Hunt over all line segments for an intersection with X
+C		I Is the current point
+C
+	   I=ISIZE
+	   XP1= COST*X(1,I)+SINT*Y(1,I)
+	   YP1= COST*Y(1,I)-SINT*X(1,I)
+	   DO 80 I	= 1,ISIZE		!Look for horiz. boundaries
+%MORTRAN
+IF ($TRAP) GOTO 9999
+%FORTRAN
+	      XP2= COST*X(1,I)+SINT*Y(1,I)
+	      YP2= COST*Y(1,I)-SINT*X(1,I)
+	      IF(XP .GE. MIN(XP1,XP2) .AND.
+     1	 XP .LT. MAX(XP1,XP2)) THEN
+		 ISZ	= ISZ+1			!Number of boundaries found
+		 TEMP = YP1 + (YP2-YP1)*(XP-XP1)/(XP2-XP1)	!Y boundaries
+                 A(2,ISZ) = TEMP
+		 IF(ISZ .EQ. MAX_SIZE) GOTO 81	!Done
+		 IF (L_ALTERNATE) THEN		! Color not alternate ?
+                    IF (ISZ .eq. 1) THEN	! first time ?
+                       A(2,2)=A(2,1)		! Make 2=1
+		    ELSE
+		       IF (TEMP .lt. A(2,1)) A(2,1)=TEMP
+		       IF (TEMP .gt. A(2,2)) A(2,2)=TEMP
+		    ENDIF
+		    ISZ=2
+		 ENDIF
+	      ENDIF
+	   XP1=XP2				! New first point
+	   YP1=YP2
+80	   CONTINUE
+C
+C	Put the points in order
+C
+81	   DO 82 I = 1,ISZ-1			!Put y values into ascending order
+	      DO 82	J	= I+1,ISZ	!Hunt over rest
+	      IF(A(2,J) .LT. A(2,I)) THEN	!If lower index value not smaller
+	        TEMP	= A(2,J)		!Swap them
+	        A(2,J)	= A(2,I)
+	        A(2,I)	= TEMP
+	      ENDIF
+82	   CONTINUE
+C
+C	Now make "short" segments zero
+C
+	   DO 83 I	= 1,ISZ,2
+		IF ( A(2,I+1)-A(2,I) .lt. XWIDTH/2) THEN
+			A(2,I+1)=A(2,I)
+		ENDIF
+83	   CONTINUE
+C
+C	Convert back to X,Y coordinates
+C
+	   DO 86 I	= 1,ISZ
+	      A(1,I)= COST*XP-SINT*A(2,I)
+	      A(2,I)= COST*A(2,I)+SINT*XP
+86	   CONTINUE
+	   IF (INFLAG .gt. 0) THEN
+	      DO 89 I	= 1,ISZ,2		!Plot all segments
+		 IF (	A(1,I+1) .ne. A(1,I) .or.
+     1		A(2,I+1) .ne. A(2,I) ) then
+			CALL T2_MESH_DRAW(A(1,I),2,INFLAG) !Plot 2 point segment
+		 ENDIF
+89	      CONTINUE
+	   ELSE
+	      DO 90 I	= 1,ISZ,2		!Plot all segments
+		 IF (	A(1,I+1) .ne. A(1,I) .or.
+     1		A(2,I+1) .ne. A(2,I) ) THEN
+			CALL TXLINX(A(1,I),2,LINTEX)	!Plot 2 point segment
+		 ENDIF
+90	      CONTINUE
+	   ENDIF
+100	CONTINUE
+9999	IF (INFLAG .gt. 0 .and. ISZ .gt. 1) THEN
+		CALL T2_MESH_FLUSH
+	ENDIF
+	CALL T2CWTS(ISAVE,IDUM)			! Restore old color etc.
+	CALL TXSDEF				! And set them
+	END

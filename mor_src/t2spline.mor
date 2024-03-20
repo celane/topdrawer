@@ -1,0 +1,385 @@
+%N
+%U+ TDMACROS.MOR
+%L
+<TOKEN USING INFOIN,CARDIN>;
+%';SUBROUTINE'=';<RESET> <SET> ;"SUBROUTINE"'
+<SET>;                      "Ready for reset"
+%E  SUBROUTINE T2_SPLINE - Routine to do spline fits
+SUBROUTINE T2_SPLINE($INFO,$CARD);
+"
+	Subroutine to interpolate data via local fitting procedures
+	OPTIONS:
+		POINTS/COLUMNS, SETS, APPEND, LOG, LIMITED, LEVEL, SELECT
+		NAME
+
+		GENERAL, SPLINE		Type of fit
+		LEVEL=n			Intervals
+		CLOSED=YES/NO		Close the curve ?
+"
+   IMPLICIT NONE;
+   INTEGER $INFO(10);
+   CHARACTER*(*) $CARD;
+   CHARACTER*1 CXYZ(3) /'X','Y','Z'/;
+   $SPECIFICATION;
+   $SELECTSPEC;
+   $POINT ARRAYS($NPOINTS);
+   $SPECIFYNONE;
+   $MAINSPEC;
+   $BOOLEAN ZEXIST, CLOSED, LTEST;
+   REAL TWOPI;
+   PARAMETER (TWOPI=6.2831 85307 18 D0);
+   INTEGER I,J,K,L,M,N, NJ, JJTYPE, ICLOSED;
+   INTEGER NLIM,ISET;
+   INTEGER MINX, MINY, MAXX, MAXY, MAXM1, MAXPNT, NBUFF;
+   INTEGER FIRST, LAST, FIRSTJ, OVERLP, IMIN, IMAX, JMAX;
+   INTEGER IXMONO, IXB, IYB, IZB, ISB, IYP, II, NXYZ;
+   EQUIVALENCE (ISB,ISETC(NSDATA)), (IXB,ISETC(NXDATA)), (IYB,ISETC(NYDATA));
+   EQUIVALENCE (IZB,ISETC(NZDATA));
+   INTEGER JPOINTS, JSETS, IDSETS, LEVEL, ISETC(NSETD);
+   REAL XYZ($MAXCOR);
+   REAL X, Y, Z, YP, YPP, YPPP, ZP, ZPP, ZPPP, DX, DXX, TEMP1, TEMP2;
+   JJTYPE=2;
+   JPOINTS=0; JSETS=0;				"Counts the results"
+   N_NAME=8;   C_NAME='Spline %';
+   LEVEL=2;					"Default is general fit"
+   IDSETS=NDSETS;				"Save current number of sets"
+   ICLOSED=0;
+   <TOKEN KEY LOOP> <
+      APPEND:Y      <LAPPEN=LTOKEN;>
+      CLOSED:Y      <ICLOSED=1; IF (LTOKEN) ICLOSED=-1; >
+      GENERAL:2,SPLINE:1 <JJTYPE=INTEG;>
+      LEVEL:2:10:2 <LEVEL=INTEG; >
+      LIMITED       <CALL T2XYZC($INFO,$CARD,TLIM,2,NLIM); >
+"
+      LINES,ROWS    <CALL T2ROWS($INFO,$CARD,N3,N4);>
+"
+      LOG:Y         <LLOG=LTOKEN;>
+      MONITOR:Y      <LMONITOR=LTOKEN; >
+      NAME:S        <N_NAME=MAX(1,NSTRNG); C_NAME=STRNG(:N_NAME); >
+      POINTS,COLUMNS  <CALL T2PNTS($INFO,$CARD,N1,N2);>
+      SETS          <CALL T2NSET($INFO,$CARD,NS1,NS2);>
+      SELECT:S      <C_SELECT=STRNG; N_SELECT=MAX(1,NSTRNG); >
+   >
+   IF ($ERROR) RETURN;				"Fatal errors in syntax ?"
+   <ISET=NS1,NS2;
+	CALL T2GDSET(ISET,N1,N2,N3,N4,ISETD,TLIM,C_SELECT(:N_SELECT));
+	IF (IBTYPE .ne. 1) <NEXT>;
+	JMAX=NP-N1+1;
+	IF (JMAX .le. 0) <NEXT>;
+	CALL T2NEWS(LEVEL*(JMAX-1)+1,c_name(:N_NAME));
+	IF ($ERROR) GOTO :RET:;			"No data set"
+	<I=1,$MAXCOR; XYZ(I)=0; >
+	CALL T2GDSET(ISET,N1,N2,N3,N4,ISETC,TLIM,C_SELECT(:N_SELECT));
+	CALL T2GDSET(NDSETS,1,$LARGE INTEGER,1,$LARGE INTEGER,ISETD,HNONE,'*');
+	JSETS=JSETS+1;				"New data sets"
+        ZEXIST=ISETC(NZDATA) .ne. 1;		"True if Z coord exists"
+	IF (JJTYPE.EQ.1) THEN;
+"
+	Spline fit.  Need 5 buffers (x,y,3 derivs) of length
+	NBUFF.  LOCS used are pointer+0 to POINTER+NBUFF-1.
+	also 2 of size LEVEL+1, for subpoints in each segment.
+	LOCS used are pointer+0 to pointer+level.
+"
+	   IF (JMAX.LT.4) THEN;			"Can't do spline"
+	      ERROR OUT;
+	      ('*** WARNING *** Spline fit needs 4 points. General fit used.');
+	      GOTO :GENERAL:;
+	   ENDIF;
+"
+		Check that either X or Y is monotonic
+"
+	   MINX=ISETC(NXDATA); MAXX=MINX+NINCR0*(JMAX-2);
+	   MINY=ISETC(NYDATA); MAXY=MINY+NINCR0*(JMAX-2);
+	   :CHECK:
+	   <BLOCK> <
+	     <I=MINX,MAXX,NINCR0;
+	       IF (DATBUF(I+NINCR0).LE.DATBUF(I)) THEN;		"X not incr"
+		 <J=MINX,MAXX,NINCR0;
+		   IF (DATBUF(J+NINCR0).GE.DATBUF(J)) THEN;	"X not decr"
+		     <K=MINY,MAXY,NINCR0;
+		       IF (DATBUF(K+NINCR0).LE.DATBUF(K)) THEN;
+			 <L=MINY,MAXY,NINCR0;
+			   IF (DATBUF(L+NINCR0).GE.DATBUF(L)) THEN;
+				ERROR OUT;
+				'*** WARNING *** Spline fit needs '
+				//'monotonic points.  '
+				//'General fit used.';
+			     GOTO :GENERAL:;
+			   ENDIF;
+			 >
+			 IXMONO=0;
+			 <EXIT>:CHECK:;			"Y DECREASING"
+		       ENDIF;
+		     >
+		     IXMONO=0;				"Y INCREASING"
+		     <EXIT>:CHECK:;
+		   ENDIF;
+		 >
+		 IXMONO=1; 				"X DECREASING"
+		 <EXIT>:CHECK:;
+	       ENDIF;
+	     >
+	     IXMONO=1;					"X INCREASING"
+	   >    "End of :check: block"
+"
+		More buffer pointers, for x-spline or y-spline
+"
+	    IF (IXMONO.NE.1)				"Y-spline ?"
+	    THEN;
+		<J=NXDATA,NXDATA+1;
+		   I=ISETC(J); ISETC(J)=ISETC(NCSIZE+J); ISETC(NCSIZE+J)=I;
+		   I=ISETD(J); ISETD(J)=ISETD(NCSIZE+J); ISETD(NCSIZE+J)=I;
+		>
+	    ENDIF;
+"
+		Assign space in 'buffer'
+"
+	    N=3; IF (ZEXIST) N=6;
+	    IYP=IENDAT-N*JMAX+1;
+"
+		Now get spline
+"
+	    CALL T2SPLN(NINCR0,JMAX,DATBUF(IXB),DATBUF(IYB)
+		,N,DATBUF(IYP),
+		DATBUF(IYP+1),DATBUF(IYP+2)); "GET DERIVATIVES"
+	    IF (ZEXIST)
+		CALL T2SPLN(NINCR0,JMAX,DATBUF(IXB),DATBUF(IZB)
+		,N,DATBUF(IYP+3),
+		DATBUF(IYP+4),DATBUF(IYP+5)); "GET DERIVATIVES"
+"
+		Now join each pair of points in turn
+"
+	   <I=1,JMAX-1;				"Now generate the spline"
+	      IF ($TRAP) GOTO :RET:;
+	      X=DATBUF(IXB);			"X1"
+	      DXX=(DATBUF(IXB+NINCR0)-X)/FLOAT(LEVEL);	"(X2-X1)/LEVEL"
+	      <L=1,$MAXCOR;
+		    IF(ISETC(L+NSDATA-1) .ne. 1) THEN;
+			XYZ(L)=DATBUF(ISETC(L+NSDATA-1));
+			ISETC(L+NSDATA-1)=ISETC(L+NSDATA-1)+NINCR0;
+		    ENDIF;
+	      >
+	      Y=XYZ(N_YDATA);				"Y1"
+	      XYZ(N_DXDATA)=DXX/2;
+	      XYZ(N_NDXDATA)=DXX/2;
+	      YP=DATBUF(IYP);		IYP=IYP+1;
+	      YPP=DATBUF(IYP);		IYP=IYP+1;
+	      YPPP=DATBUF(IYP);		IYP=IYP+1;
+	      IF (ZEXIST) THEN;
+		ZP=DATBUF(IYP);		IYP=IYP+1;
+		ZPP=DATBUF(IYP);	IYP=IYP+1;
+		ZPPP=DATBUF(IYP);	IYP=IYP+1;
+		Z=XYZ(N_ZDATA);				"Z1"
+	      ENDIF;
+	      <J=1,LEVEL;			"Calculate the spline"
+		DX=(J-1)*DXX;
+		XYZ(N_XDATA)=X + DX;
+		XYZ(N_YDATA)=Y + DX*(YP+DX*(YPP+DX*YPPP));
+		IF (ZEXIST)
+		    XYZ(N_ZDATA)=Z + DX*(ZP+DX*(ZPP+DX*ZPPP));
+		JPOINTS=JPOINTS+1;
+		<L=1,$MAXCOR;
+		    IF(ISETD(L+NSDATA-1) .ne. 1) THEN;
+			DATBUF(ISETD(L+NSDATA-1))=XYZ(L);
+			ISETD(L+NSDATA-1)=ISETD(L+NSDATA-1)+NINCR0;
+		    ENDIF;
+		>
+	      >
+	   >
+	   IF (ISETD(NSDATA) .GT. IENDAT) THEN;
+		ERROR OUT;'*** ERROR *** Data overrun'; GOTO :RET:;
+	   ENDIF;
+	   JPOINTS=JPOINTS+1;
+	   <L=1,7;
+		IF(ISETC(L+NSDATA-1) .ne. 1) THEN;
+			XYZ(L)=DATBUF(ISETC(L+NSDATA-1));
+			ISETC(L+NSDATA-1)=ISETC(L+NSDATA-1)+NINCR0;
+		ENDIF;
+	   >
+	   XYZ(N_DXDATA)=DXX/2;
+	   XYZ(N_NDXDATA)=DXX/2;
+	   <L=1,7;
+		IF(ISETD(L+NSDATA-1) .ne. 1) THEN;
+			DATBUF(ISETD(L+NSDATA-1))=XYZ(L);
+			ISETD(L+NSDATA-1)=ISETD(L+NSDATA-1)+NINCR0;
+		ENDIF;
+	   >
+%E  --- General fit
+	ELSE;
+:GENERAL:
+"
+	general fit.  need 2 buffers (x and y), for both
+	sub- and superpoints.  locs used are POINTER+0 to
+	POINTER+NBUFF-1.
+"
+	   CLOSED=JMAX.GT.2 .and. LEVEL.gt.1;	"Indicates a closed curve"
+"
+
+	Check to see if first point=last
+
+"
+		TEMP1=DATBUF(ISETC(NXDATA));
+		TEMP2=DATBUF(ISETC(NXDATA)+(JMAX-1)*NINCR0);
+		IF ($POLAR) THEN;		"Check polar angles"
+			TEMP1=MOD(TEMP1*RADANG,TWOPI);
+			TEMP2=MOD(TEMP2*RADANG,TWOPI);
+			IF(TEMP1.lt.0) TEMP1=TEMP1+TWOPI;
+			IF(TEMP2.lt.0) TEMP2=TEMP2+TWOPI;
+		ENDIF;
+		IF (ABS(TEMP1-TEMP2) .gt. $DELTA*(ABS(TEMP1)+ABS(TEMP2)))
+			CLOSED=.FALSE.;
+"	Check Y values"
+		TEMP1=DATBUF(ISETC(NYDATA));
+		TEMP2=DATBUF(ISETC(NYDATA)+(JMAX-1)*NINCR0);
+		IF (ABS(TEMP1-TEMP2) .gt. $DELTA*(ABS(TEMP1)+ABS(TEMP2)))
+			CLOSED=.FALSE.;
+"	Check Z  values"
+	   IF (ZEXIST) THEN;
+		TEMP1=DATBUF(ISETC(NZDATA));
+		TEMP2=DATBUF(ISETC(NZDATA)+(JMAX-1)*NINCR0);
+		IF ($POLAR.AND.$SPHERICAL) THEN;     "Check polar angles ?"
+		    TEMP1=MOD(TEMP1*RADANG,TWOPI);
+		    TEMP2=MOD(TEMP2*RADANG,TWOPI);
+		    IF(TEMP1.lt.0) TEMP1=TEMP1+TWOPI;
+		    IF(TEMP2.lt.0) TEMP2=TEMP2+TWOPI;
+		ENDIF;
+		IF (ABS(TEMP1-TEMP2) .gt. $DELTA*(ABS(TEMP1)+ABS(TEMP2)))
+			CLOSED=.FALSE.;
+	   ENDIF;
+	   OVERLP= 2;				"Number of points overlap"
+	   NXYZ=2;
+	   IF (ZEXIST) NXYZ=4;
+	   NBUFF= $BUFSIZ/(NXYZ);			"Buffer size"
+	   MAXM1=(NBUFF-1)/LEVEL;		"Max numbr of superpoints (-1)"
+	   CLOSED= CLOSED .and. ICLOSED .le. 0;
+	   IF (CLOSED .or. ICLOSED .eq. -1) THEN;	"Closed curve ??"
+"
+	If closed curve, must pick up
+	more points from beginning of array
+	START AT first point-1 (SAME AS LAST, SO I WONT USE IT)
+"
+		FIRST=JMAX-OVERLP;		"First superpoint"
+		IF (CLOSED) JMAX=JMAX-1;	"Skip last=first"
+		LAST=2*JMAX+OVERLP+1;		"Last superpoint"
+		FIRSTJ=OVERLP*LEVEL;		"First value to join"
+		CLOSED=.true.;
+	   ELSE;
+		FIRST=1;			"Do only first point--->last"
+		LAST=JMAX;
+		FIRSTJ=0;			"Plot first generated point"
+	   ENDIF;
+	   MAXPNT=MAXM1-2*OVERLP;		"Maximum number of super points"
+	   XYZ(N_SYMBOL)=SYMBOL;		"New symbol"
+	   TEMP1=0; TEMP2=0;			"Used for POLAR coord"
+	   IF ($POLAR .and. CLOSED) THEN;
+		TEMP1=-DATBUF(IXB+NINCR0*JMAX)+DATBUF(IXB);
+		IF ($SPHERICAL .and. ZEXIST)
+		    TEMP2=-DATBUF(IZB+NINCR0*JMAX)+DATBUF(IXB);
+	   ENDIF;
+	   <IMIN=FIRST,LAST,MAXPNT;		"First point to get"
+	      II=1;				"Buffer"
+	      IMAX=MIN(LAST,IMIN+MAXM1-1);	"Last point to get"
+	      <I=IMIN,IMAX;			"Get the points"
+		J=MOD(I-1,JMAX)+1;		"Element of array"
+		IF ($POLAR .and. CLOSED .and. J.eq.1) THEN;	"Polar ?"
+		    IF ((I-1)/JMAX .eq. 1) THEN;
+			TEMP1=0; TEMP2=0;
+		    ELSE;
+			TEMP1=DATBUF(IXB+NINCR0*JMAX)-DATBUF(IXB);
+			IF ($SPHERICAL .and. ZEXIST)
+			     TEMP2=DATBUF(IZB+NINCR0*JMAX)-DATBUF(IXB);
+		    ENDIF;
+		ENDIF;
+		BUFFER(II)=DATBUF(ISETC(NXDATA)+NINCR0*(J-1))+TEMP1;
+		II=II+1;			"Next X value"
+		BUFFER(II)=DATBUF(ISETC(NYDATA)+NINCR0*(J-1));
+		II=II+1;			"Next Y value"
+		IF (ZEXIST) THEN;
+		    BUFFER(II)=DATBUF(ISETC(NXDATA)+NINCR0*(J-1));
+		    II=II+1;			"Next X value"
+		    BUFFER(II)=DATBUF(ISETC(NZDATA)+NINCR0*(J-1))+TEMP2;
+		    II=II+1;			"Next XY value"
+		ENDIF;
+	      >
+	      N=IMAX-IMIN+1;			"Number of points"
+	      NJ=(N-1)*LEVEL+1;			"Number to generate"
+	      IF (ZEXIST)
+		CALL T2CFIT(NXYZ,N,BUFFER(3),BUFFER(4),
+	             LEVEL,NJ,BUFFER(3),BUFFER(4));
+	      CALL T2CFIT(NXYZ,N,BUFFER(1),BUFFER(2),
+	             LEVEL,NJ,BUFFER(1),BUFFER(2));
+	      IF (IMAX .LT. LAST .OR. CLOSED)	"Not Last time, or closed?"
+			NJ=NJ-OVERLP*LEVEL;	"Remove end overlap points"
+	      NJ=NJ-FIRSTJ;			"Remove begin overlap"
+	      II=1+NXYZ*FIRSTJ;			"First point (overlap removed)"
+	      <I=1,NJ;
+		XYZ(N_XDATA)=BUFFER(II);
+		II=II+1;
+		XYZ(N_YDATA)=BUFFER(II);
+		II=II+1;
+		IF (ZEXIST) THEN;
+		    II=II+1;
+		    XYZ(N_ZDATA)=BUFFER(II);
+		    II=II+1;
+		ENDIF;
+	      IF (ISETD(NSDATA) .GT. IENDAT) THEN;
+		ERROR OUT;'*** ERROR *** Data overrun'; GOTO :RET:;
+	      ENDIF;
+		JPOINTS=JPOINTS+1;
+		<L=1,7;
+		    IF(ISETD(L+NSDATA-1) .ne. 1) THEN;
+			DATBUF(ISETD(L+NSDATA-1))=XYZ(L);
+			ISETD(L+NSDATA-1)=ISETD(L+NSDATA-1)+NINCR0;
+		    ENDIF;
+		>
+	      >
+	      FIRSTJ=OVERLP*LEVEL;		"Next First value to join"
+		IF (IMAX .ge. LAST) <EXIT>;	"Done ??"
+	>
+      ENDIF;
+      IF (LMONITOR .and. IBTYPE .eq. 1) THEN;
+	CALL TXVOID;
+	IF (NDSETS .gt. IDSETS+1) CALL T2WAIT('Interpolate:',LTEST);
+	CALL TXNEXT;
+	CALL T2REST;		"Reset flags"
+	NXYLIM(3,1)=NDSETS; NXYLIM(3,2)=NDSETS;
+	<I=1,2; <J=1,3; EXYZLIM(J,I)=TLIM(J,I); > >
+	CALL T2GDSET(ISET,N1,N2,N3,N4,ISETD,TLIM,C_SELECT(:N_SELECT));
+	CALL T2JOIN(DATBUF(I1),DATBUF(I2),DATBUF(I3),
+		0,1,NP-N1+1,NINCR0);
+	CALL T2GDSET(NDSETS,1,$LARGE INTEGER,1,$LARGE INTEGER,ISETD,HNONE,'*');
+	CALL T2JOIN(DATBUF(I1),DATBUF(I2),DATBUF(I3),
+		ITXSEC,1,NP,NINCR0);
+	CALL T2_PLOT_TITLE(ISET,.false.);
+	CALL TXVOID;		"Flush all plot info"
+      ENDIF;
+	IF (.NOT. LAPPEN) THEN;
+	     CALL T2GDSET(ISET,1,$LARGE INTEGER
+		,1,$LARGE INTEGER,ISETD,HNONE,'*');
+	     CALL T2GDSET(NDSETS,1,$LARGE INTEGER
+		,1,$LARGE INTEGER,ISETC,HNONE,'*');
+	     N=$ILASTPTR-IBGDAT;			"Distance to move"
+	     K=IENDAT-IBGDAT+1;				"Orig data size"
+	     IENDAT=IBGDAT+$INEXTPTR-$ILASTPTR-1;	"New end of data"
+	     $INEXTPTR=$INEXTPTR-K;			"New End of data"
+	     NDSETS=NDSETS-1;				"Kill last data set"
+	     NPOINT=NPOINT-NP;				"Adjust points"
+	     IF (N .eq. K) K=IENDAT-IBGDAT+1;		"No saved data ?"
+	     <I=IBGDAT,IENDAT,K;
+		<J=I,MIN(I+K-1,IENDAT);
+		     DATBUF(J)=DATBUF(J+N);
+		>					"Move down new set"
+		L=MIN(K,IENDAT-J+1);			"Number to move"
+		IF ( L .gt. 0) THEN;
+		    <M=J+L+N-K-1,J+L,-1;		"Move old data up"
+			DATBUF(M)=DATBUF(M-L); >
+		ENDIF;
+	     >
+	ENDIF;
+   >
+:RET:
+      IF (JPOINTS .ne. 0) DATDAT(1,1)=HNONE;
+      IF ($TRAP .OR. LLOG .or. JPOINTS .le. 0)
+	WRITE($TERMINAL OUT,*) '  Interpolate ',JPOINTS,' points ',
+	JSETS,' Sets by ',level;
+END;

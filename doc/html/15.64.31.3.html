@@ -1,0 +1,39 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.31.3</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.31.3  AREA|DIRECTORY</H4></B>    - This   selects   the   histogram  AREA  or
+DIRECTORY.  If you specify "//"  or  "/"  then  the  "root"  directory  or
+"//PAWC"  is  selected.  If the area begins with "/" then it is considered
+to be a subdirectory of the root.   ""  moves  down  the  directory  tree.
+"AAAA"  move  up  the tree to subdirectory AAAA.  and "aAAA" moves over to
+the adjacent subdirectory AAAA.  Note that "" may need to be  enclosed  in
+quotes,  unless  you  have SET CHAR ALPHA "".  Unfortunately if you modify
+the meaning of "" then dates must be entered  enclosed  in  angle  brakets
+&lt;1989523&gt;.   This  is  generally not necessary unless you have directories
+which consist entirely of numbers.
+
+If  you use "wild" characters in an area name then a directory tree search
+is automatically done using the wild characters to select  subdirectories.
+Wild  characters  are  "*" which means and string, and "%" which means any
+character.
+
+                                  example
+Assume you are in directory "//PAWC/X"
+     TD:SET HIST AREA Y
+moves you to //PAWC/X/Y
+     TD:SET HIST AREA "q"
+moves to //PAWC/X/Q
+     TD:SET HIST AREA /A
+moves to //PAWC/A
+     TD:SET HIST AREA //
+moves to //PAWC
+     TD:SET HIST AREA /E* ID=2
+Gets   the   first   histogram   with  ID=2  from  area  //PAWC/ENERGY  or
+//PAWC/ERROR...
+
+
+</PRE>
+</BODY>

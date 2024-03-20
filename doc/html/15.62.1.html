@@ -1,0 +1,19 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.62.1</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.62.1  DATA</H4></B> 
+
+<U>RE</U>STORE   <U>DA</U>TA   [<U>FI</U>LE=file_name]   [<U>AP</U>PEND[=<U>ON</U>|<U>OF</U>F]]   [<U>CO</U>NFIRM[=<U>ON</U>|<U>OF</U>F]]
+          [<U>LO</U>G[=<U>ON</U>|<U>OF</U>F]] [<U>SET</U>S=[<U>FR</U>OM] n1 [<U>TO</U>] [n2]] [<U>SEL</U>ECT="name"]
+Restores data from the specified file.  If no file is specified TDSAVE.TDB
+is assumed.  If you have unplotted data then the new data is automatically
+appended to the end of the current data as a new data set.  The LOG option
+types the number of points and sets of data restored.  When  restored  the
+data name is in lexical S_DATA_NAME.
+
+
+</PRE>
+</BODY>

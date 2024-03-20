@@ -1,0 +1,24 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.17</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.17  DATE</H4></B> 
+
+<U>SE</U>T <U>DA</U>TE [YYYY\MM\DD] [<U>MO</U>NTH=n] [<U>YE</U>AR=n] [<U>DA</U>Y=n] [<U>JA</U>NUARY,...,<U>DE</U>CEMBER]
+This  sets  the  base  date  for  date\time values.  Date\time is normally
+expressed in hours.  However since it  is  only  single  precision  it  is
+accurate  to  only  7  digits or about 1 day on the date 1900.  If greater
+accuracy is needed you may set the base date to a value within  the  range
+<A NAME="128">of  time  you need to express.  If you do not specify any options the base </A>
+date is reset to the original default.
+(Default:0\1\1)
+
+Options  YEAR,MONTH,  or  DAY  allow you to reset just the selected value.
+Instead of MONTH=3 you may also specify <U>MAR</U>CH.   All  3  may  be  modified
+using the standard YEAR\MONTH\DAY notation.
+
+
+</PRE>
+</BODY>

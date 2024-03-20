@@ -1,0 +1,26 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.72.6</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.72.6  Lexicals</H4></B> 
+
+You may include a lexical value in your title.   A  title  lexical  is  an
+option in the form T_xxxx, where xxxx is the value to plot.  The number of
+significant digits in the number is normally 4.  You may alter  this  with
+the  DIGITS=n  option  or the SET DIGITS command.  For example you wish to
+show the sum of the data in the top title:
+     TD:<U>TITLE</U> <U>TOP</U> <U>'My</U> <U>data</U> <U>-</U> <U>Sum=',T_SUM</U>
+You  may  wish  to limit the sum to a portion of the data so you first use
+show data to calculate the sum for a limited portion, then put it  in  the
+title:
+     <U>TD</U> <U>SHOW</U> <U>DATA</U> <U>LIMITED</U> <U>FROM</U> <U>X=5</U> <U>to</U> <U>X=10</U>
+     TD:<U>TITLE</U> <U>BOTTOM</U> <U>'Sum='</U> <U>T_SUM</U> <U>'X</U> <U>from</U> <U>'</U> <U>T_XMIN</U> <U>'</U> <U>to</U> <U>'</U> <U>T_XMAX</U>
+
+     TD:<U>TITLE</U> <U>TOP</U> <U>'Sum='</U> <U>T_SUM</U> <U>'</U> <U>'+'</U> <U>CASE'M'</U> <U>T_ESUM</U>
+For more information SEE:TOPDRAWER LEXICALS.
+
+
+</PRE>
+</BODY>

@@ -1,0 +1,43 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.59.3</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.59.3  DIRECTION</H4></B>  - 
+     DIRECTION=xv,yv,zv
+Direction vector from CENTER to eye.
+     THETA=angle  PHI=angle  br;Alternate  specification  of  DIRECTION in
+polar coordinates.  This is probably an easier  number  to  specify.   You
+should specify either the DIRECTION or THETA and PHI.  These are specified
+<A NAME="180">relative to the VERTICAL vector. </A>
+
+PHI is the angle in degrees from vertical to line through the eye.  PHI is
+the azimuthal angle of the viewers eye.
+(Default:60.0)
+
+
+                                  <U>WARNING</U>
+
+     The  alogorithm  used  in  Histogramming  or  Joining  the  data
+     requires that the viewpoint can  not  be  "over"  the  structure
+     being  plotted.  The hidden line removal algorithm will not work
+     for an improperly placed viewpoint.  You should avoid  PHI=0  or
+     PHI=180.
+
+
+
+THETA  is  the  angle  between  projections in the horizontal plane of the
+X-Axis and the line to the viewing position.  THETA is the polar angle  of
+the viewers eye.
+(Default:30.0)
+
+                                  Example
+You wish to look at the plot from the +X axis:
+     TD:<U>SET</U> <U>THREE</U> <U>THETA=0</U>
+You wish to lood at the plot from the +Y axis:
+     TD:<U>SET</U> <U>THREE</U> <U>THETA=90</U>
+
+
+</PRE>
+</BODY>

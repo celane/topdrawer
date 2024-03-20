@@ -1,0 +1,17 @@
+#!/bin/sh
+
+HERE=`pwd`
+OUTFILE=${HERE}/td_rtl_patch.diff
+
+if [ -e ${OUTFILE} ]; then
+  mv ${OUTFILE} ${OUTFILE}~
+fi
+
+# touch ${OUTFILE}
+
+for i in src/*.orig
+do
+  NEW_FILE=`echo $i | sed s/.orig//g`
+  echo $i ${NEW_FILE}
+  diff -a --unified $i ${NEW_FILE} >> ${OUTFILE}
+done

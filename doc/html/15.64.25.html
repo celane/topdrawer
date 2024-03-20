@@ -1,0 +1,38 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.25</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.25  FILL</H4></B> 
+
+<U>SE</U>T <U>FIL</U>L [<U>EN</U>TRY[=n]] [<U>FU</U>LL] [<U>SI</U>ZE[=n]] [<U>AN</U>GLE[=n]] [<U>AL</U>TERNATE=[<U>ON</U>|<U>OF</U>F]]
+          [<U>WID</U>TH|<U>IN</U>TENSITY=n] [<U>NOC</U>OLOR|<U>WH</U>ITE|<U>RE</U>D|<U>GR</U>EEN|<U>BL</U>UE|<U>YE</U>LLOW|
+          <U>MA</U>GENTA|<U>CY</U>AN] [<U>NOTE</U>XTURE|<U>SO</U>LID|<U>DO</U>TS|<U>DA</U>SHES|<U>DAA</U>SHES|<U>DOTD</U>ASH|
+          <U>PA</U>TTERNED|<U>FU</U>NNY|<U>SP</U>ACE]
+This  selects  a  fill  attributes to be used when the FILL option is used
+with HISTOGRAM, JOIN, or PLOT.  This selects the type of cross hatch fill.
+Up to 4 different lines may be used.
+     1.  ALTERNATE  selects  filling  alternate  areas.  If off the entire
+         area bounded by the outside of the curve is filled.  (Default:ON)
+     2.  ENTRY selects the fill entry to change.  If n is omitted the next
+         entry is selected.
+     3.  FULL  sets the fill size to be the same as the screen resolution,
+         the angle is set to 90, and the WIDTH is set to 1.
+     4.  SOLID...  selects the line texture to use.  (Default:NONE)
+     5.  WHITE...  selects the line color to use.  (Default:NONE)
+     6.  ANGLE  the  angle  that  the  line  is  to  be  drawn  at.   0 is
+         horizontal, while 90 is straight up and down.
+         (Default:+-45 degrees)
+     7.  SIZE  the  separation  between  the  lines.   If negative this is
+         specified in pixels.  If positive it is specified in inch.
+         (Default:0.1)
+     8.  WIDTH  selects  the  line  width  to  use (0 to 5).  A width of 0
+         indicates no width is selected.
+         (Default:NONE)
+IF  no  options  are specified, the fill patterns are reset to the default
+value.
+
+
+</PRE>
+</BODY>

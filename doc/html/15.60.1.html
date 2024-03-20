@@ -1,0 +1,33 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.60.1</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.60.1  POINTS</H4></B> 
+
+     <U>REA</U>D <U>PO</U>INTS [<U>AP</U>PEND=<U>ON</U>|<U>OF</U>F]] [<U>SE</U>T]
+
+This reads in data to be plotted.  Once data is read, it is retained until
+it  has  been used to generate a plot.  It is then discarded when new data
+is read.  Normally you plot the data immediately after reading  it.   When
+<A NAME="113">you  start  a  new  plot,  the  data  last  plotted is still available for </A>
+replotting.  It is not discarded until  new  data  is  read.   The  option
+APPEND  allows  you  to append more data to the already plotted data.  The
+option SET starts a new data set.  If you do not  specify  a  symbol  when
+reading points, the default is determined by the last SET SYMBOL command.
+
+This  command  is not necessary, since TOPDRAWER assumes that a number not
+preceded by a command is automatically a point.  If you wish to read  data
+with the symbol as the first item, you must use the READ DATA command, and
+terminate the data with a blank line.
+
+Values that are omitted are initially set to 0.0, or to the previous value
+for that field.
+
+When reading in data &lt;XVALUE&gt;, &lt;DXVALUE&gt;, &lt;YVALUE&gt;, ...  are the X, DX, Y,
+...  values from the previous point.
+
+
+</PRE>
+</BODY>

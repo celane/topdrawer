@@ -1,0 +1,26 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.35.2</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.35.2  CURSOR</H4></B>  - CURSOR puts a cursor on the screen.  Move the cursor
+to the desired first limits.  Then hit the space bar.  Next move the
+cursor to the desired second limits, and again hit the space bar.  A new
+set of limits are now set for the next graph.  If you wish to set only the
+X limit hit "X" instead of "space".  Likewise hit "Y" or "Z" if you wish
+to set only Y or Z limits.  The new limits are entered into the journal
+file.
+
+If both X limits are the same, then they are ignored.  Likewise identical
+Y or Z limits are ignored.  For 3-d data the limits are not changed.
+Instead the parameters SCRD, THETA, PHI, and CENTER are adjusted.  The
+CURSOR option should be the last option in the command line for 3-d plots.
+
+For example the following command will set new limits, and replot the
+current data:
+     TD:<U>SET</U> <U>LIM</U> <U>CUR;NEW;PLOT</U>
+
+
+</PRE>
+</BODY>

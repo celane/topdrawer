@@ -1,0 +1,25 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.20.2.10</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.20.2.10  SETS</H4></B>        - Creates histograms from TOPDRAWER data sets.  It
+selects the range of data sets to use in creating  some  histograms.   The
+MESH  and  SELECT options may be used to select the data set.  This allows
+you to take Topdrawer data and put it into the HBOOK structures.  The data
+used  must be strictly monotonic in x.  Mesh data must have equally spaced
+bins.  If you wish to store Mesh data without  equally  spaced  bins  then
+specify  CHECK=OFF  to  turn  off the bin checking.  The PROFILE option is
+ignored.
+
+If you specify SETS then you may not specify X or Y ranges or ZERO.
+                                  EXAMPLE
+     DEFINE HIST SETS 5 APPEND PR
+Puts data set number 5 into an HBOOK histogram.
+     DEFINE HIST SETS APPEND
+Puts all data sets into HBOOK histograms.
+
+
+</PRE>
+</BODY>

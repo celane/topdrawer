@@ -1,0 +1,805 @@
+"  ------------- START OF TOPDRAWER/VAX PACKAGE ----------"
+%K                       N O T I C E
+%K 
+%K This  program and  associated  documentation,  and  the
+%K material and  data contained  therein,  were  developed
+%K under the sponsorship of the U. S. government.  Neither
+%K the U.S.  nor the U.S.D.O.E.,   nor the Leland Stanford
+%K Junior  University,  nor  their  employees,  nor  their
+%K respective  contractors,   subcontractors,    or  their
+%K employees, even unto the seventh generation,  makes any
+%K warranty, express or implied,  or assumes any liability
+%K or  responsibility   for  accuracy,    completeness  or
+%K usefulness of any information,   apparatus,  product or
+%K process disclosed,  or represents that its use will not
+%K infringe  privately-owned  rights.     Mention  of  any
+%K product, its manufacturer, or suppliers shall not,  nor
+%K is it  intended to,  imply approval,   disapproval,  or
+%K fitness for any particular use.   A royalty-free,  non-
+%K exclusive right  to use  and disseminate  same for  any
+%K purpose whatsoever  is expressly  reserved to  the U.S.
+%K and the University.
+%N
+%U+ TDMACROS.MOR
+%L
+%E  MAIN PROGRAM TD <==================
+PROGRAM TD;
+   IMPLICIT NONE;
+$VAX;
+"   include	'($fordef)'"
+   INTEGER CLI$DCL_PARSE;
+   INTEGER IENUM(9);
+   DATA IENUM/63,70,71,72,73,74,82,83,84/;
+   INTEGER ICOMMAND,INLEN,ISTAT,T2_GET_LOGICAL;
+   INTEGER Lib$get_foreign;
+   CHARACTER*256	command_line;
+   INTEGER	CLI_GET_VALUE;
+   external	cli_table;
+$END;
+$UNIX;
+   INTEGER PUTENV;
+   INTEGER IARGC ;    " Intrinsic, number of command line arguments "
+   INTEGER NCARG ;  " Number of command line arguments "
+   INTEGER T2BTRIM ;
+$END;
+   LOGICAL ISAFILE ;
+   REAL CPUTIM,RELTIM;
+   INTEGER I,J,N,IOSTAT,ICODE;
+   INTEGER INFO(10)/10*0/;
+   CHARACTER DEFLT*16, TEXT*80, EXT*4, TDDEV*80 ;
+   DATA EXT/'.TOP'/;	"Default extension"
+   DATA DEFLT/'4013 INTERACTIVE'/;
+   $SPECIFICATION;
+   $SPECIFYP;
+   $BOOLEAN LTEMP,INTRAC;
+   EXTERNAL INTRAC;
+
+	"CALL DEBUG;      THIS WILL TURN ON THE DEBUG FLAG *FIRST*"
+
+   $VM;
+      CALL GOPARM(N,TEXT);	"PICK UP CALLING COMMAND"
+      CALL TXDEVC(INFO,DEFLT);	"SET DEFAULT DEVICE"
+	"LOOK AT THE CALLING SEQUENCE AND MAYBE USE IT FOR THE DEVICE"
+   $END;
+
+   $VAX;
+	CALL TDVAX_OPEN;	"J.Clement - Mar 1986 - Vax open routines"
+   $END;
+
+   $UNIX;
+   $END;
+
+   $TOPS;
+      <LOOP> <	"OPEN INPUT FILE"
+	<W,$TERMINAL OUT>; ('$Input File? ');
+	 ACCEPT 5,TEXT; 5FORMAT(A);
+		"CLEAN UP THE FILE NAME"
+	    <IRF=1,80; IF (TEXT(IRF:IRF).NE.' ') <EXIT>;>
+	    <FALL THRU> <IRF=1; TEXT(1:1)='T'>
+	    IDOT=0;	"IDOT points to the '.' for the extension"
+	    <IL=IRF,80;
+		IF (INFILE(IL).EQ.' ') <EXIT>;
+		IF (INFILE(IL).EQ.'.') IDOT=IL;
+	    >
+		"PUT ON THE DEFAULT EXTENSION"
+	    IF (IDOT.EQ.0) THEN;
+		IDOT=IL+1;
+		TEXT(IL:IL+3)=; IL=IL+4;
+	    ENDIF;
+		"IS THIS THE TERMINATOR?"
+	    <I=1,5; IL=IL+1; TEXT(IL:IL)=0;>
+		"OPEN THE INPUT FILE"
+	    ENCODE(80,8,TEXT) (TEXT(K:K),K=IRF,IL); 8 FORMAT(80A1);
+	    <W,$TERMINAL OUT> TEXT; (' Input  -',8A5);
+	    OPEN (UNIT=$INPUT FILE,FILE=TEXT,READONLY
+		,CARRIAGECONTROL='NONE',STATUS='OLD',ERR=:ERR:);
+	 <EXIT>;	"GOT IT"
+	 :ERR:	"DIDNT GET IT"
+	    <W,$TERMINAL OUT> EXT,EXT;
+	  ( ' Give the file specification for input to Top Drawer.'/
+	    ' (<CR> gives T',4A1,', and default type is ',4A1,')');
+      >
+	"OPEN OUTPUT FILE"
+      CALL TXDEVC(INFO,DEFLT);	"SET DEFAULT "
+	"This could allow a device specification.
+	 TYPE 40;40 FORMAT ('$Device? ');
+	 INFO(1)=0;
+	 ACCEPT 60, TEXT;60 FORMAT (A);
+	 <I=1,80; IF (TEXT(I:I).NE.' ') INFO(1)=I;>
+	 IF (INFO(1).GT.0) CALL TXDEVC(INFO,TEXT);
+      End of device specification"
+   $END;
+
+"FORMAT FOR READING INPUT LINE"
+
+   OUTFIL=-$OUTPUT FILE;
+   INPFIL=$INPUT FILE;
+   DBGFIL=$OUTPUT FILE;
+   ERRFIL=$TERMINAL OUT;
+   IF(INTRAC(I)) THEN;
+      JOUFIL=-$JOURNAL FILE;		"Interactive ?"
+
+$VAX;
+      OPEN(	UNIT=$TERMINAL OUT,
+		FILE='TT:',
+		RECL=$TTRECL,
+		IOSTAT=IOSTAT,
+		STATUS='UNKNOWN');
+:ERR1:
+      OPEN(	UNIT=$ERR FILE,
+		ERR=:NOOPENERR:,
+		FILE='topdrawer_errors.dat',
+		STATUS='NEW',
+		IOSTAT=IOSTAT,
+		SHARED,
+		DISPOSE='DELETE');
+:NOOPENERR: CONTINUE
+$END;
+
+   ELSE;
+
+$VAX;
+      OPEN(	UNIT=$TERMINAL OUT,
+		FILE='SYS$OUTPUT',
+		IOSTAT=IOSTAT,
+		STATUS='UNKNOWN');
+$END;
+
+      JOUFIL=0;
+   ENDIF;
+
+$UNIX;
+    NCARG = IARGC () ;
+    IF ( NCARG .LT. 1 ) THEN ;
+       WRITE (*,*) ' Topdrawer command line invalid ' ;
+       WRITE (*,*) ' Usage:   TD  inputfile  device ' ;
+    ENDIF ;
+
+    CALL GETARG ( 1 , TEXT ) ;
+    N = T2BTRIM ( TEXT ) ;
+    INQUIRE ( FILE = TEXT(:N) , EXIST = ISAFILE ) ;
+    IF ( .NOT.ISAFILE ) THEN ;
+       TEXT(N+1:) = '.top' ;
+       N          = N + 4 ;
+       INQUIRE ( FILE = TEXT(:N) , EXIST = ISAFILE ) ;
+       IF ( .NOT.ISAFILE ) THEN ;
+          WRITE (*,*) ' Input file not found ' ;
+          WRITE (*,*)  ' >',TEXT(:N),'<' ;
+          STOP ;
+       ENDIF ;
+    ENDIF ;
+    OPEN (  UNIT = $INPUT FILE
+          , FILE = TEXT(:N)
+          , READONLY
+          , STATUS = 'OLD'
+          , FORM = 'FORMATTED'
+         );
+
+    TDDEV = ' ' ;
+    CALL GETENV ( 'TD_DEV_PSP' , TDDEV ) ;
+    IF ( TDDEV .EQ. ' ' ) I =
+         PUTENV ( 'TD_DEV_PSP=postscr,orient=3' );
+
+    TDDEV = ' ' ;
+    CALL GETENV ( 'TD_DEV_PSL' , TDDEV ) ;
+    IF ( TDDEV .EQ. ' ' ) I =
+         PUTENV ( 'TD_DEV_PSL=postscr' );
+
+    TDDEV = ' ' ;
+    CALL GETENV ( 'TD_DEV_P' , TDDEV ) ;
+    IF ( TDDEV .EQ. ' ' ) I =
+         PUTENV ( 'TD_DEV_P=postscr' );
+
+    TDDEV = ' ' ;
+    CALL GETENV ( 'TD_DEV_F' , TDDEV ) ;
+    IF ( TDDEV .EQ. ' ' ) I =
+         PUTENV ( 'TD_DEV_F=postscr' );
+
+    TDDEV = ' ' ;
+    CALL GETENV ( 'TD_DEV_X' , TDDEV ) ;
+    IF ( TDDEV .EQ. ' ' ) I =
+         PUTENV ( 'TD_DEV_X=xwindow' );
+
+    TDDEV = ' ' ;
+    CALL GETENV ( 'TD_DEV_W' , TDDEV ) ;
+    IF ( TDDEV .EQ. ' ' ) I =
+         PUTENV ( 'TD_DEV_W=xwindow' );
+
+    TDDEV = ' ' ;
+    CALL GETENV ( 'TD_DEV_D' , TDDEV ) ;
+    IF ( TDDEV .EQ. ' ' ) I =
+         PUTENV ( 'TD_DEV_D=xwindow' );
+
+    TDDEV = ' ' ;
+    CALL GETENV ( 'TD_DEV_POR' , TDDEV ) ;
+    IF ( TDDEV .EQ. ' ' ) I =
+         PUTENV ( 'TD_DEV_POR=qms1200,portrait' );
+
+    TDDEV = ' ' ;
+    CALL GETENV ( 'TD_DEV_TA' , TDDEV ) ;
+    IF ( TDDEV .EQ. ' ' ) I =
+         PUTENV ( 'TD_DEV_TA=qms1200' );
+
+    TDDEV = ' ' ;
+    CALL GETENV ( 'TD_DEV_TE' , TDDEV ) ;
+    IF ( TDDEV .EQ. ' ' ) I =
+         PUTENV ( 'TD_DEV_TE=tektronix' );
+
+    TDDEV = ' ' ;
+    CALL GETENV ( 'TD_DEV_T' , TDDEV ) ;
+    IF ( TDDEV .EQ. ' ' ) I =
+         PUTENV ( 'TD_DEV_T=tektronix' );
+
+    TDDEV = ' ' ;
+    CALL GETENV ( 'TD_DEV_M' , TDDEV ) ;
+    IF ( TDDEV .EQ. ' ' ) I =
+         PUTENV ( 'TD_DEV_M=tektronix' );
+
+    TDDEV = ' ' ;
+    CALL GETENV ( 'TD_DEV_S' , TDDEV ) ;
+    IF ( TDDEV .EQ. ' ' ) I =
+         PUTENV ( 'TD_DEV_S=tektronix' );
+
+    TDDEV = ' ' ;
+    CALL GETENV ( 'TD_DEV_V' , TDDEV ) ;
+    IF ( TDDEV .EQ. ' ' ) I =
+         PUTENV ( 'TD_DEV_V=tektronix' );
+
+    TDDEV = ' ' ;
+    CALL GETENV ( 'TD_DEV_4' , TDDEV ) ;
+    IF ( TDDEV .EQ. ' ' ) I =
+         PUTENV ( 'TD_DEV_4=tektronix' );
+
+    TDDEV = ' ' ;
+    CALL GETENV ( 'TD_DEV_C' , TDDEV ) ;
+    IF ( TDDEV .EQ. ' ' ) I =
+         PUTENV ( 'TD_DEV_C=tektronix' );
+
+    TDDEV = ' ' ;
+    CALL GETENV ( 'TD_DEV_2' , TDDEV ) ;
+    IF ( TDDEV .EQ. ' ' ) I =
+         PUTENV ( 'TD_DEV_2=tektronix' );
+
+    TEXT    = 'PERMANENT,'     ;
+    CALL GETARG ( 2 , TEXT(11:) )  ;
+    N       = T2BTRIM ( TEXT ) ;
+
+    DEFLT = TEXT(11:)                             ;
+    CALL T2UPCS(DEFLT)                            ;
+    TDDEV = ' '                                   ;
+    CALL GETENV ( 'TD_DEV_'//DEFLT(:N-10),TDDEV ) ;
+    IF ( TDDEV .NE. ' ' ) THEN                    ;
+       TEXT(11:) = TDDEV                          ;
+       N         = T2BTRIM ( TEXT )               ;
+    ENDIF                                         ;
+
+    INFO(1) = N;   <J=2,10; INFO(J)=0; > ;
+    CALL TXDEVC(INFO,TEXT)        ;
+
+" =========== do not open here ============
+    INQUIRE ( FILE = 'tdlogl' , EXIST = ISAFILE ) ;
+    IF ( ISAFILE ) CALL RENAME ( 'tdlogl' , 'tdlogl.bak' ) ;
+    OPEN (  UNIT = $OUTPUT FILE
+          , FILE = 'tdlogl'
+          , STATUS = 'NEW'
+          , FORM = 'FORMATTED'
+         );
+
+    INQUIRE ( FILE = 'tdlogj' , EXIST = ISAFILE ) ;
+    IF ( ISAFILE ) CALL RENAME ( 'tdlogj' , 'tdlogj.bak' ) ;
+    OPEN (  UNIT = $JOURNAL FILE
+          , FILE = 'tdlogj'
+          , STATUS = 'NEW'
+          , FORM = 'FORMATTED'
+         );
+"
+
+$END;
+
+$VAX;
+   IF (INTRAC(I)) THEN;
+      CALL T2_TRAP;			"set up for Control C traps"
+   ENDIF;
+"
+	Here we parse an input command line
+"
+   ISTAT=LIB$GET_FOREIGN(COMMAND_LINE,,ICOMMAND);
+   IF (ISTAT.AND.ICOMMAND.GT.0) THEN;	"Command line ?"
+					"Parse the commands"
+
+      ISTAT=CLI$DCL_PARSE('TOPDRAWER '//command_line(:icommand),cli_table);
+      IF (.NOT.ISTAT) THEN;
+	 CALL T2_CONCEAL_PASSWORD(command_line,icommand);
+	 WRITE ($TERMINAL OUT,*) ' ',command_line(:icommand);
+	 CALL EXIT(ISTAT);	"Bad commands ?"
+      ENDIF;
+
+      CALL CLI_OPEN('FILENAME','td.top','OLD',ISTAT,INPFIL,0);
+      IF (ISTAT .NE.0) THEN;		"Input file ??"
+	 OUTFIL=0;
+	 JOUFIL=0;
+      ELSE;
+	IF (.not.INTRAC(I)) CALL EXIT(0);	"Bad commands ?"
+      ENDIF;
+
+					"Open the requested list file"
+      CALL CLI_OPEN('LIST','td.lis','NEW',OUTFIL,$OUTPUT FILE,0);
+
+					"Open the requested journal file"
+      CALL CLI_OPEN('JOURNAL','td.tdj','NEW',JOUFIL,$JOURNAL FILE,0);
+
+					"Open the requested init. file"
+      CALL CLI_OPEN('COMMAND','td_init.top','OLD',INPFIL,INPFIL+1
+		      ,-$INPUT FILE);
+
+      <I=1,7;				"Setup up to 7 devices"
+	 ISTAT = CLI_GET_VALUE('devname'//CHAR(ICHAR('0')+I),TEXT,N);
+	 IF (N .le. 0) <NEXT>;		"No more devices ?"
+	 IF (I .eq. 1) THEN;
+	    TEXT = 'PERMANENT,'//TEXT(:N);
+	    N    =  N + 10;
+	 ELSE;
+	    TEXT = 'ADD,'//TEXT(:N);
+	    N    =  N + 4;
+	 ENDIF;
+	 INFO(1)=N; <J=2,10; INFO(J)=0; >
+	 CALL TXDEVC(INFO,TEXT);
+      >
+
+   ENDIF;
+		"Set up initial file if any"
+   IF (INPFIL .eq. $INPUT FILE) THEN;
+
+      ISTAT=T2_GET_LOGICAL('TOPDRAWER_INIT',c_file,n_file);	"Init file ?"
+      IF (n_file.le.0) ISTAT=.FALSE.;
+      IF (.NOT.ISTAT) THEN;
+	 ISTAT=T2_GET_LOGICAL('TD$INIT',c_file,n_file);
+	 IF(n_file.le.0) ISTAT=.FALSE.;
+      ENDIF;
+				"Initial file requested?"
+      IF(ISTAT) THEN;	"Open it"
+	INPFIL=INPFIL+1;
+	CALL T2_SET_DEFAULT_FILE(C_FILE,N_FILE,'tdinit.top');
+	OPEN(	UNIT=INPFIL,
+		FILE=c_file(:n_file),
+		STATUS='old',
+		$READONLY
+		RECL=$MAXSTR,
+		IOSTAT=IOSTAT,
+		ERR=:OPERR:);
+	JOUFIL=0; OUTFIL=0;	"No journal/output"
+	GOTO :NOERR:;
+:OPERR:		INPFIL=INPFIL-1;	"No inital file"
+		CALL T2_TYPE_ERROR(0,' ',c_file(:n_file),IOSTAT);
+:NOERR: CONTINUE;
+      ENDIF;
+   ENDIF;
+
+%'$CARR'='carriagecontrol=''list'','
+   INPFIL=ABS(INPFIL);
+   IF(JOUFIL.lt.0) THEN;
+      JOUFIL=0;			"In case of error"
+      OPEN(	UNIT=$JOURNAL FILE,
+		FILE='td.tdj',
+		STATUS='NEW',
+		$CARR
+		RECL=$MAXSTR,
+		IOSTAT=IOSTAT,
+		ERR=:JOUERR:);
+      JOUFIL=$JOURNAL FILE;	"Interactive ?"
+:JOUERR: CONTINUE;
+      IF (IOSTAT .NE. 0)
+	 CALL T2_TYPE_ERROR(0,' ','td.tdj',IOSTAT);
+   ENDIF;
+   IF (OUTFIL.lt.0) THEN;
+      OUTFIL=0;
+      OPEN(	UNIT=$OUTPUT FILE,
+		FILE='td.lis',
+		STATUS='NEW',
+		$CARR
+		IOSTAT=IOSTAT,
+		ERR=:OUTERR:);
+      OUTFIL=$OUTPUT FILE;
+:OUTERR:   CONTINUE;
+      IF (IOSTAT .NE. 0)
+	 CALL T2_TYPE_ERROR(0,' ','td.lis',IOSTAT);
+   ENDIF;
+$END;
+
+"HERE WE GO"
+   FLAGS(59)=.TRUE.;	"INTERACTIVE"
+   FLAGS(57)=.FALSE.;	"BUT NOT UNDER ORVYL"
+   CALL T2_VIRT(5120);	"Get initial 5120 words of memory"
+				"Do not Write introductory note"
+   OREAL=RELTIM(0.0);
+   OCPU=CPUTIM(0.0);	"Current time"
+   <LOOP> <
+      $ERROR=.FALSE.;	"Error file empty"
+      CALL T2MAIN(ICODE,' ');
+      CALL TXVOID;		"Flush the buffers so whole picture shows"
+      IF ($WARN .and.	"Error file used?"
+	  ERRFIL.eq.$ERR FILE) THEN;	"Deferred errors"
+	 <W,$TERMINAL OUT>; (' ===> Error messages');
+	 REWIND $ERR FILE;
+	 IF (FLAGS(53)) THEN;
+	    LTEMP=.false.;
+	    CALL T2WAIT(PRMP2(1:NPRMP2),LTEMP);
+	    IF(.not.LTEMP) goto :LIST END:;
+	 ENDIF;
+	 CALL TDSHOW('ERRORS');
+	 <W,$TERMINAL OUT>; (' ===> End of error messages');
+	 IF (FLAGS(53)) THEN;
+	    LTEMP=.false.;
+	    CALL T2WAIT(PRMP2(1:NPRMP2),LTEMP);
+	 ENDIF;
+:LIST END:
+      ENDIF;
+      IF (.not.FLAGS(53)) THEN;
+	 <W,$TERMINAL OUT> NPLOTS; (' Plot',I3,' Done.');
+      ELSE;
+	 IF(.not. $INTERACTIVE) THEN;	"Pause when new file ?"
+	    LTEMP=.true.;
+	    CALL T2WAIT(PRMP2(1:NPRMP2),LTEMP);
+	    IF (.not.LTEMP) THEN;
+		IF (INPFIL.eq.$INPUT FILE) ICODE=1;
+		<I=INPFIL,$INPUT FILE+1,-1;CLOSE(UNIT=I);>
+		INPFIL=$INPUT FILE;
+	    ENDIF;
+	 ENDIF;
+      ENDIF;
+      IF (ICODE.eq.1) <EXIT>;	"If end of file on input, or STOP command"
+      IF ($WARN) THEN;
+	 REWIND $ERR FILE; $WARN=.false.;
+      ENDIF;
+      CALL TXNEXT;
+      CALL T2REST;
+   >
+   CALL TXEND;
+   CALL EXIT(0);
+END;
+$VAX;
+INTEGER FUNCTION CLI_GET_VALUE(LABEL,STRING,N_STRING);
+   IMPLICIT NONE;
+   EXTERNAL CLI$_NEGATED,cli$_present;
+   CHARACTER*(*) LABEL,STRING;
+   INTEGER N_STRING,T2BTRIM,ISTAT;
+   INTEGER CLI$PRESENT,CLI$GET_VALUE;
+   $SPECIFICATION;
+   N_STRING=0;
+   ISTAT=CLI$PRESENT(LABEL);
+   IF (ISTAT .eq. %LOC(CLI$_NEGATED)) THEN;	"Negated qualifier"
+	CLI_GET_VALUE=0;
+   ELSEIF (ISTAT.eq. %LOC(CLI$_PRESENT)) THEN;	"Qualifier /LABEL ?"
+	CLI_GET_VALUE =Cli$Get_Value(LABEL,STRING,N_STRING); 	"Value ?"
+   ELSE;
+	CLI_GET_VALUE=0;
+   ENDIF;
+END;
+SUBROUTINE CLI_OPEN(LABEL,DEF,TYPE,IFILE,ISUCCESS,IFAIL);
+"
+	Open a file requested on the command line
+	Input:
+		LABEL	= Option (/JOURNAL=...)
+		DEF	= Default file name
+		TYPE	= File type (NEW,OLD...)
+		ISUCCESS= Unit number to open
+		IFAIL	= Unit number if none opened
+	Output:
+		IFILE	= Actual Unit number openend
+"
+   IMPLICIT NONE;
+   EXTERNAL CLI$_NEGATED,cli$_present;
+   CHARACTER*(*) LABEL,DEF,TYPE;
+   INTEGER IFILE,ISUCCESS,IFAIL,ISTAT,IOSTAT;
+   INTEGER CLI$PRESENT,CLI$GET_VALUE;
+   $SPECIFICATION;
+   ISTAT=-1;
+   ISTAT=CLI$PRESENT(LABEL);
+   IF (ISTAT .eq. %LOC(CLI$_NEGATED)) THEN;	"Negated qualifier"
+      IFILE=IFAIL;
+   ELSEIF (ISTAT.eq. %LOC(CLI$_PRESENT)) THEN;	"Qualifier /LABEL ?"
+      IF (Cli$Get_Value(LABEL,C_FILE,N_FILE)) THEN;	"Value ?"
+	 CALL T2_SET_DEFAULT_FILE(C_FILE,N_FILE,DEF);
+	 IFILE=ISUCCESS;			"Successful"
+	 IF (N_FILE.eq.0) THEN;
+	    C_FILE=DEF; N_FILE=LEN(DEF);
+	 ENDIF;
+	 IF (TYPE .eq. 'NEW') THEN;
+	    OPEN(	UNIT=IFILE,			"Open the file"
+			FILE=C_FILE(:N_FILE),
+			SHARED,
+			TYPE=TYPE,
+			IOSTAT=IOSTAT,
+			carriagecontrol='list',
+			ERR=:ERR:);
+	 ELSE;
+	    OPEN(	UNIT=IFILE,			"Open the file"
+			FILE=C_FILE(:N_FILE),
+			READONLY,
+			TYPE=TYPE,
+			IOSTAT=IOSTAT,
+			ERR=:ERR:);
+	 ENDIF;
+      ENDIF;
+   ENDIF;
+   RETURN;
+:ERR:
+   IFILE=IFAIL;
+   CALL T2_TYPE_ERROR(0,' ',C_FILE(:N_FILE),IOSTAT);
+END;
+$END;
+%E  SUBROUTINE DEBUG - Sets DEBUG flag
+SUBROUTINE DEBUG;
+   $SPECIFICATION;
+   $DEBUG=.TRUE.;
+END;
+%E  SUBROUTINE TRACER - Does not do much
+SUBROUTINE TRACER(ID);
+   $SPECIFICATION;
+   $EQUIVALENCE;
+   IF (FLAGS(15)) <<W>ID; ('T',I4);>
+   IF (FLAGS(14)) PAUSE;
+END;
+FUNCTION LEFT1(DUMMY); LEFT1=0; END;
+INTEGER FUNCTION CLOCK1(IDUM); CLOCK1=0; END;
+%E  T2_GET_LOGICAL - Get a logical symbol
+LOGICAL FUNCTION T2_GET_LOGICAL(STR1,STR2,N_STR2);
+   IMPLICIT NONE;
+   CHARACTER*(*) STR1,STR2;
+   INTEGER N_STR2;
+$VAX;
+   LOGICAL LIB$SYS_TRNLOG;
+   T2_GET_LOGICAL=LIB$SYS_TRNLOG(STR1,n_STR2,STR2);
+   IF ( STR2 .EQ. STR1 ) THEN;
+        STR2 = ' ';
+      N_STR2 = 0;
+   ENDIF;
+$ELSE;
+   LOGICAL T2_GET_ENV;
+   T2_GET_LOGICAL = T2_GET_ENV(STR1,STR2,n_STR2);
+$END;
+RETURN;
+END;
+%E  SUBROUTINE T2WAIT - Wait for user (SHOW,SET commands allowed)
+<TOKEN USING INFO,LINE>;
+SUBROUTINE T2WAIT(prompt,LTEST);
+	"Call T2WAIT(prompt_string,LTEST)"
+	" Ltest=.false. if end of file or STOP typed"
+   $SPECIFICATION;
+   INTEGER $INFO(10);
+   CHARACTER*(*) prompt;
+   CHARACTER*80 LINE;
+   CHARACTER*4 WORDS(2);
+   DATA WORDS/' ','SET,'/;
+   $BOOLEAN INTRAC,LTEST,LSAVE;
+   LSAVE=LTEST;
+   JOUSAV=JOUFIL; JOUFIL=0;	"Stop journaling"
+   :AGAIN:
+      LTEST=.true.;
+      IF (.not.INTRAC(I)) GOTO :RET:;
+      LINE=' ';
+      <I=1,10; $INFO(I)=0;>
+      CALL READPR(prompt,line,$INFO(1));
+      NINP($TERMINAL IN)=NINP($TERMINAL IN)+1;
+      IF($INFO(1).lt.0) THEN;
+	 IF (.not. FLAGS(100)) GOTO :NOSET:;
+	 LTEST=.false.; GOTO :RET:;
+      ENDIF;
+      IF (LINE.eq.' ') GOTO :RET:;
+      <TOKEN> <
+	 KEY:: <
+	    HALT,STOP,QUIT,EXIT,END < LTEST=.false.; GOTO :RET:; >
+	    CONTINUE < GOTO :RET:; >
+	    HELP <
+		IF ($INFO(3) .lt. $INFO(1)) THEN;
+		  CALL HELP('TOPDRAWER '//$CARD($INFO(3):$INFO(1)));
+		ELSE;
+		  CALL HELP('TOPDRAWER');
+		ENDIF;
+	    >
+	    SHOW < CALL T2SHOW($INFO,$CARD); >
+	    SET < IF (.not.LSAVE) GOTO :NOSET:;
+		   CALL T2SET($INFO,$CARD); >
+	 >
+	 ELSE:: <
+:NOSET:  I=1; IF (LSAVE) I=2;
+	    WRITE($TERMINAL OUT,'(A,A,A//)')
+		' Commands are:'
+	      ,WORDS(I)
+	      ,'SHOW,HELP,CONTINUE,END,EXIT,HALT,STOP,QUIT or	"Return"';
+	    NINP($TERMINAL OUT)=NINP($TERMINAL OUT)+1;
+	 >
+      >
+      GOTO :AGAIN:;
+:RET:
+   JOUFIL=JOUSAV;		"Restore journaling"
+END;
+%E  SUBROUTINE T2PAUS - Wait for user to type return
+SUBROUTINE T2PAUS;
+	"Call T2WAIT(prompt_string,LTEST)"
+	" Ltest=.false. if end of file or STOP typed"
+   IMPLICIT NONE;
+   $SPECIFICATION;
+   $SPECIFYP;
+   CHARACTER*20 LINE;
+   integer I;
+   $BOOLEAN INTRAC;
+   IF (.not.INTRAC(I)) RETURN;
+   CALL READPR(prmp2(1:NPRMP2),line,I);
+   NINP($TERMINAL IN)=NINP($TERMINAL IN)+1;
+END;
+%E  SUBROUTINE ERRTRA - Dummy subroutine
+SUBROUTINE ERRTRA; RETURN;END;
+$VAX;
+%E  SUBROUTINE T2_TRAP - Trap CTRL/C
+SUBROUTINE T2_TRAP;
+   EXTERNAL T2_CTRL_C;
+   INCLUDE '($SYSSRVNAM)';
+   INCLUDE '($iodef)';
+   INTEGER*4 TT_CHAN;
+   DATA TT_CHAN/0/;
+   IF (.not. INTRAC(I)) RETURN;
+   IF(TT_CHAN.eq.0) THEN;
+      ISTAT=SYS$ASSIGN('TT',TT_CHAN,,);
+      IF(.not.ISTAT) CALL LIB$signal(%VAL(ISTAT));
+   ENDIF;
+   ISTAT=sys$QIOW(,%VAL(TT_CHAN)
+      ,%VAL(IO$_SETMODE .or. IO$M_CTRLCAST)
+      ,,,,T2_CTRL_C,,%VAL(3),,,);
+   IF(.not.ISTAT) CALL LIB$signal(%VAL(ISTAT));
+END;
+%E  SUBROUTINE T2_CTRL_C - Executed when CTRL/C pressed
+SUBROUTINE T2_CTRL_C;
+   $SPECIFICATION;
+   CHARACTER*10 str;
+   INTEGER SYS$CANWAK,SYS$WAKE;
+   TIM=SECNDS(OTIME);
+   OTIME=SECNDS(0.0);
+   ISTAT=SYS$CANWAK(,);
+   ISTAT=SYS$WAKE(,);
+   IF (TIM .lt. 1.5.and.$TRAP) THEN;
+      CALL READPR('Do you wish to exit(Y,N)',str,I);
+      CALL T2UPCS(str);
+      IF(INDEX(str,'Y').ne.0) STOP;
+   ENDIF;
+   $TRAP=.true.;
+   CALL T2_USER_TRAP;
+   CALL T2_TRAP;
+END;
+%E  SUBROUTINE T2_USER_TRAP - Dummy routine for user response to CTRL/C
+SUBROUTINE T2_USER_TRAP;
+END;
+$END;
+SUBROUTINE PDUMP(F,L,I);  BYTE F(1);
+$DBG;
+   M=%LOC(L)-%LOC(F);
+   <L=0,M,40; <DEBUG:(L,F(L+K),K=0,39); (1X,I8,10(1X,4Z2));>>
+$END;
+END;
+%E  SUBROUTINE T2DTBF - Get virtual memory + setup data pointer
+SUBROUTINE T2DTBF(ISIZE);
+"ISIZE=Number of words of storage desired
+ Sets up a data buffer $IVTEMP1 points to first location
+ NPTMAX to last location"
+   $SPECIFICATION;
+   CALL T2_VIRT(ISIZE);
+   $IVTEMP1=$INEXTPTR;
+END;
+%E  LOGICAL FUNCTION T2_VIRT - Get virtual memory if needed
+LOGICAL FUNCTION T2_VIRT(ISIZE);
+"
+	This gets virtual memory and sets it up
+	ISIZE = The amount of memory needed
+		.true. is returned if memory allocated
+	The routine gets the memory and adjusts the pointers
+"
+   $SPECIFICATION;
+   $POINT ARRAYS($NPOINTS);
+   T2_VIRT=.true.;
+   ID=0;
+   ID=$INEXTPTR-LISTPT;
+   IDSIZE=ID+ISIZE;
+   IF (IDSIZE .le. NPTMAX-LISTPT) RETURN;
+   T2_VIRT=.false.;
+$VIRT;
+
+$VAX;
+   ISTAT=LIB$GET_VM(IDSIZE*4,IBASE);
+   IF (.not.ISTAT) THEN;
+	"CALL LIB$SIGNAL(%VAL(ISTAT));"
+      RETURN;
+   ENDIF;
+$END;
+$UNIX;
+   IBASE = MALLOC ( IDSIZE*4 )
+$END;
+
+   IOFF=(IBASE-%LOC(DATBUF(LISTPT)))/4;
+   IF (MOD(IBASE-%LOC(DATBUF(LISTPT)),4) .ne.0)
+      CALL T2STOP('Error in T2_VIRT');
+   <I=1,NPTMAX-LISTPT+1;
+      DATBUF(I+IOFF+LISTPT-1)=DATBUF(I+LISTPT-1);>	"Transfer old data"
+   LISTPT=LISTPT+IOFF;
+   NPTMAX=LISTPT+IDSIZE-1;
+   <I=1,$MAXVPTR; IF(IVRPTR(I).ne.1)IVRPTR(I)=IVRPTR(I)+IOFF; >
+	"$ILASTPTR=NPTMAX;"
+   IF (IBASE_OLD.ne.0) THEN;
+      ISTAT=LIB$FREE_VM(ISIZE_OLD,IBASE_OLD);
+      IF (.not.ISTAT) CALL LIB$SIGNAL(%VAL(ISTAT));
+   ENDIF;
+   ISIZE_OLD=IDSIZE*4; IBASE_OLD=IBASE;
+   T2_VIRT=.true.;
+$END;
+END;
+%E  SUBROUTINE T2_GET_MEMORY - Get virtual memory if needed
+SUBROUTINE T2_GET_MEMORY(BUFFER,ISIZE,ILOC);
+"
+	This gets virtual memory and sets it up
+	ISIZE = The amount of memory needed
+	The routine gets the memory and returns
+	ILOC the relative index in array BUFFER
+	IF ILOC is 0 then no memory allocated
+"
+$VIRT;
+   IMPLICIT NONE;
+   INTEGER ISIZE,ILOC,BUFFER;
+   INTEGER IBASE,ISTAT;
+$VAX;
+   INTEGER LIB$GET_VM,LIB$FREE_VM;
+$END;
+
+   ILOC=0; 
+
+$VAX;
+   ISTAT=LIB$GET_VM(ISIZE*4+4,IBASE);
+   IF (.not.ISTAT) THEN;
+	"CALL LIB$SIGNAL(%VAL(ISTAT));"
+      ERROR STRING;'*** ERROR *** Failure to allocate memory';
+      RETURN;
+   ENDIF;
+   ILOC=(IBASE-%LOC(BUFFER))/4;
+   IF (MOD(IBASE-%LOC(BUFFER),4) .ne.0) THEN;
+      IF (.not.ISTAT) CALL LIB$SIGNAL(%VAL(ISTAT));
+   ENDIF;
+$END;
+
+$UNIX;
+   IBASE = MALLOC ( ISIZE*4 + 4 ) ;
+   IF ( IBASE.EQ.0 ) THEN ;
+      ERROR STRING;'*** ERROR *** Failure to allocate memory';
+      RETURN;
+   ENDIF;
+   ILOC=(IBASE-%LOC(BUFFER))/4;
+   IF (MOD(IBASE-%LOC(BUFFER),4) .ne.0) THEN;
+      WRITE (*,*) ' NOT QUAD ALIGNED IN MALLOC ' ;
+      RETURN;
+   ENDIF;
+$END;
+
+$END;
+END;
+SUBROUTINE T2_FREE_MEMORY(BUFFER,ILOC,ISIZE);
+"
+	This returns virtual memory to the pool
+"
+$VIRT;
+   IMPLICIT NONE;
+   INTEGER ISIZE,ILOC,BUFFER;
+   INTEGER IBASE,ISTAT;
+
+$VAX;
+   INTEGER LIB$GET_VM,LIB$FREE_VM;
+
+   IBASE=4*ILOC+%LOC(BUFFER);
+   ISTAT=LIB$FREE_VM(ISIZE*4+4,IBASE);
+$END;
+
+$UNIX;
+   IBASE=4*ILOC+%LOC(BUFFER);
+   CALL FREE ( IBASE );
+$END;
+
+$END;
+
+RETURN;
+END;

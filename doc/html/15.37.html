@@ -1,0 +1,46 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.37</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.37  FIT</H4></B> 
+
+<U>FIT</U> [<U>AG</U>AIN[=<U>ON</U>|<U>OF</U>F]]
+                                  Coordinate to fit
+          [<U>Y</U>|<U>Z</U>]
+                                     Type of fit
+          [<U>PO</U>LYNOMIAL| <U>LE</U>GENDRE| <U>SI</U>NE| <U>COS</U>INE| <U>EX</U>PONENTIAL| <U>GA</U>USSIAN|
+          <U>IN</U>NVERSE| <U>US</U>ER=n| <U>EQ</U>UATION "term1;term2;..."]
+     [<U>SC</U>ALE] [<U>OR</U>DER|<U>TE</U>RMS=n] [<U>OF</U>FSET=n]
+     [<U>NONLIN</U>EAR[=<U>ON</U>|<U>OF</U>F]]
+     [<U>COE</U>FFICIENTS|<U>ECO</U>EFFICIENTS|<U>CMI</U>NIMUM|<U>CMA</U>XIMUM [<U>I</U>NDEX=n] N1,N2,N3...]
+          [<U>CON</U>STRAIN[=<U>ON</U>|<U>OF</U>F]]
+     [<U>IN</U>CLUDE|<U>EX</U>CLUDE [<U>NO</U>NE|<U>EV</U>EN|<U>OD</U>D] [n1,n2...] ]
+                                   Data generation
+     [<U>CU</U>RVE [<U>AP</U>PEND[=<U>ON</U>|<U>OF</U>F]] [[<U>X</U>|<U>Y</U>] [<U>FR</U>OM xmin] [<U>TO</U> xmax] [<U>BY</U> dx]
+          [N=steps]] [<U>BI</U>NS|<U>VA</U>LUES]] [<U>NAM</U>E="name"]
+                                   Data selection
+     [<U>LIM</U>ITED [<U>VL</U>OG[=<U>ON</U>|<U>OF</U>F]] [[<U>FR</U>OM]|<U>TO</U> [[<U>X</U>=]nx,[[<U>Y</U>=]ny[,[<U>Z</U>=]nz]]]
+          [<U>RE</U>CURSOR] [<U>CU</U>RSOR] ]
+     [<U>PO</U>INTS=[<U>FR</U>OM] n1 [<U>TO</U>] [n2]]
+     [<U>SET</U>S=[<U>FR</U>OM] n1 [<U>TO</U>] [n2]]
+     [<U>SEL</U>ECT="name"]
+     [<U>ME</U>SH[=<U>ON</U>|<U>OF</U>F]]
+                                  Output selection
+     [<U>LO</U>G[=<U>ON</U>|<U>OF</U>F]] [<U>FU</U>LL[=<U>ON</U>|<U>OF</U>F]] [<U>MO</U>NITOR[=<U>ON</U>|<U>OF</U>F]]
+                                NONLINEAR=ON options
+     [<U>ECH</U>ISQ=n] [<U>MIN</U>UIT] [<U>GR</U>AD[=<U>ON</U>|<U>OF</U>F]] [<U>PRI</U>NTLEVEL=n] [<U>REP</U>EAT=n]
+          [<U>TOL</U>ERANCE=n]
+
+Fits  data  and  optionally  produces  a  curve  containing  the fit.  The
+coefficients are typed on the terminal and placed as comments in  the  log
+file.  Data points with zero or negative values of DY are omitted from the
+fit.  If DY does not exist or is 0.0 for all specified  data  then  DY  is
+assumed  to  be  1.0.   If all coefficients are constrained, no fitting is
+done, but you may generate the curve  for  those  coefficients.   You  may
+subtract the FIT from a data set with the SUBTRACT command.
+
+
+</PRE>
+</BODY>

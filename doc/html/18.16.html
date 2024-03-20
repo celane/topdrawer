@@ -1,0 +1,32 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 18.16</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>18.16  TDCRCL</H4></B> 
+
+This draws either a BOX, DIAMOND, or ELLIPSE.
+     CALL TDCRCL(XY,DXY,ITYPE,[IDATA,[MODE[,ANGLES]]]);
+     1.  XY(3) is the array of XYZ to specify the center of the figure.
+     2.  DXY(3) is the array of XYZ to specify the width of the figure.
+     3.  ITYPE
+                1        2       3
+              BOX  DIAMOND ELLIPSE
+     4.  IDATA
+              0 - XYZ specified in text coordinates
+              1 - Center in Data, width in text coordinates.
+<A NAME="227">              3 - Both Center and width are in data coordinates. </A>
+     5.  MODE      -      Specifies     Texture,     intensity,     color.
+         See:Subroutine TDHIST.
+     6.  ANGLES(2) - Range of angles for circle
+
+                                  example
+     REAL XY(3),DXY(3)
+     DATA XY/1.,1.,1./,DXY/.5,.5,.5/
+     CALL TDCRCL(XY,DXY,3,3)
+Draws an ellipse centered at 1,1,1 of size 0.5 in the data frame.
+
+
+</PRE>
+</BODY>

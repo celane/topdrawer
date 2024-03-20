@@ -1,0 +1,104 @@
+0. Preparation
+
+
+Expand  "topdrawer.tar.gz"  under  an appropriate directory.  The
+subdirectory  named  "topdrawer",   containing   an   executable,
+sources, documents, and examples, will be made.  If you are using
+Linux-2.0.x and installed f2c, the executable "td"  is  ready  to
+run.  If you are not sure of the circumstances, type
+
+    % ldd td
+
+and  see messages returned.  If all the shared-libraries (libf2c,
+libc, and libm) are resolved, "td" will be executed.  In case you
+are using Slackware-3.1 (aka Slackware-96), ldd may complain that
+libf2c is not found.  A remedy can be found in "README.binaries".
+
+There  is no default location of topdrawer.  You can move "td" to
+the directory included in PATH, or make a symbolic link there, or
+define  an  alias, for the method to invoke topdrawer.  But alias
+is not adequate to use "td.el" described later.  In order to  use
+on-line  help,  the  location of "doc/topdrawer4.0.gih" should be
+specified by the "TD_HELP" shell-variable.
+
+"doc/topdrawer.doc" is the reference manual in  ASCII-format  and
+"doc/topdrawer.html"  is  its automatic translation to HTML.  But
+be careful that they are for the old VMS-version  and  contradict
+with   the  present  version  for  some  features.   Please  read
+"README.Linux" and make sure the difference.   Some  enhancements
+of the present port will be demonstrated by
+
+    % td examples/whatsnew.top
+
+In  release-1.2 or later, an Emacs-Lisp "td.el", which allows one
+to invoke "td" from  within  Emacs  without  saving  buffers,  is
+available.  Look up "contrib/elisp/README.elisp" for details.
+
+
+1. Making an executable
+
+
+You  have to re-make an executable if you are using a UNIX-system
+other than Linux-2.0.x.  But, before proceeding to the  make-pro-
+cedure,  it will be worth noting that binaries for some platforms
+discussed in the next section are available at the following URL:
+
+    ftp://iris.riken.go.jp/pub/topdrawer/td-<System>.gz
+
+
+A  library "UGS" (Unified Graphics System) ver. 2.10d is required
+to make "td".  UGS is available at the following URL:
+
+    ftp://iris.riken.go.jp/pub/ugs.ugs.tar.gz
+
+After installing UGS, edit "Imakefile.def" under the subdirectory
+"topdrawer".   You have to describe the name of your platform and
+the location of the UGS library.
+
+Then type the following commands and the executable will be made:
+
+    % xmkmf
+    % make Makefiles   # make sure the last 's'.
+    % make clean
+    % make all
+
+Unlike ordinary free softwares, there is no 'make install'.
+
+
+2. Platforms on which the topdrawer is ready to run
+
+
+Binaries  of topdrawer for the following platforms are available,
+simply because they are available to me ;-).   Porting  to  other
+platforms,  if they are ordinary UNIX + X11 systems, will be easy
+and straightforward, although some modification of the source may
+be needed.
+
+o Linux (1.2.13-aout/ELF, 2.0.x-ELF, MkOSF/PowerMac)
+
+Making  the topdrawer is straightforward, while making the UGS is
+somewhat tricky (see documents of UGS for details).
+
+o SunOS-4/5 (Solaris)
+
+Making the topdrawer is straightforward as other  X-applications.
+
+o OSF/1, Digital UNIX
+
+The  serious problem is the 64-bit architecture X-(.  In the UGS,
+the address of the graphics segment is stored in an array of  IN-
+TEGER  the size of which is 32-bit, while it SHOULD be 64-bit.  I
+don't know what happens in detail inside the UGS and the topdraw-
+er.  Anyway, the code works if compiled with the lowest optimize-
+level, -O1, but fails to work with  higher  optimize-level.   The
+best  procedure  is to link (ld) with -taso option so as the exe-
+cutable to be loaded in the lower 32-bit memory area.
+
+o FreeBSD
+
+The situation is almost the same with Linux, but there seem  some
+problems in the use of g77.  Please check INSTALL.FreeBSD
+
+o HPUX
+
+Please check INSTALL.HPUX (but written in Japanese, sorry).

@@ -1,0 +1,19 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.78.4.1</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.78.4.1  Errors</H4></B>   - The  error  is  generated  in a simple fashion.  The
+computation is repeated for the value+err.  For example you specify:
+     TD:Y="SIN(YV)"
+          then the result is:
+     NDY=-(SIN(Y-DY)-SIN(Y))
+     DY=SIN(Y+DY)-SIN(Y)
+     Y=SIN(Y)
+
+This  computation  may  not  be  correct,  so  the  error analysis must be
+carefully checked.  It will work for many simple cases.
+
+</PRE>
+</BODY>

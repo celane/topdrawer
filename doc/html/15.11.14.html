@@ -1,0 +1,29 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.11.14</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.11.14  Example</H4></B> 
+
+Say you wish to find the frequency distribution of a set of student grades
+in 5 point steps.  The following will do the job:
+     TD:<U>SET</U> <U>ORDER</U> <U>X</U>
+          (Enter grades)
+     TD:<U>Grade1;</U>  <U>Grade2;</U>  <U>Grade3.....</U>
+     TD:<U>Graden;.......</U>
+     TD:<U>BIN</U> <U>BY</U> <U>5</U> (now do the binning)
+     TD:<U>HISTOGRAM</U>
+Suppose  you  wish  to  add  together  2 HBOOK histograms.  Each histogram
+contains counts, but the X spacing is different.
+     TD:<U>SET</U> <U>HIST</U> <U>HBOOK</U> <U>ID=n1</U>
+     TD:<U>SET</U> <U>HIST</U> <U>ID=n2</U> <U>APPEND</U>
+          You now have both hists in memory.
+     TD:<U>BIN</U> <U>NORMAL=OFF</U>
+You  now  have both histograms added together.  If both histograms had the
+same X values/bin then the result will have  the  same  X  values  as  the
+original.
+
+
+</PRE>
+</BODY>

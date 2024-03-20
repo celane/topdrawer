@@ -1,0 +1,30 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.78.3</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.78.3  ERROR</H4></B> 
+
+This specifies the error on the value you  have  specified.   If  you  use
+NOERROR  the  error  analysis is turned off.  This only works when you are
+modifying X,Y,Z values.   The  specified  error  is  used  to  modify  the
+DX,DY,DZ value.
+                                  example
+     Y=Y * 5.0
+Will multiply each Y and DY value by 5.0.
+     Y=Y * 5.0 ERROR=0.1
+Will multiply each Y and DY value by 5.0.  The specified error of 0.1 Will
+be used to compute the actual DY value.
+     Y=Y * 5.0 NOERROR
+Will multiply each Y value by 5.0.  The DY values will remain unchanged.
+     Y="LOG(YV)" NOERROR
+Will  take  the LOG to base 10 of each Y value.  The DY values will remain
+unchanged.
+     Y="LOG(YV)"
+Will  take  the  LOG  to  base  10 of each Y value.  The DY values will be
+modified as:  DY=ABS(LOG(Y+DY)-LOG(Y)).
+
+
+</PRE>
+</BODY>

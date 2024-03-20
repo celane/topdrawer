@@ -1,0 +1,28 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.18.14.1</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.18.14.1  Options</H4></B>  - 
+     1.  COLOR=xxxxxxxx     This     specifies     the    color    mapping
+         (default:WRGBYMCD) You may modify this to suit your tastes.  This
+         corresponds  to  the  colors  White,  Red,  Green,  Blue, Yellow,
+         Magenta,  Cyan,  Dark(black).   The  eighth  color  "D"  is   the
+         background color.
+     2.  HARDST  or SOFTST to select hardware, or software line structure.
+         HARDST is faster, but SOFTST will give identical results  on  all
+         devices.
+
+                                  Example
+     TD:<U>SET</U> <U>DEVICE</U> <U>REGIS</U>
+Sets up to plot on a normal REGIS device
+     TD:<U>SET</U> <U>DEVICE</U> <U>REGIS</U> <U>"HARDST,COLOR=WWWWWWWD"</U>
+Sets up to plot quickly in black and white only.
+     TD:<U>SET</U> <U>DEVICE</U> <U>REGIS</U> <U>"COLOR=WRGBRGBD"</U>
+Plots  only  in  white,red,green, and blue.  Yellow, magenta, and cyan are
+mapped to red, green, and blue respectively.
+
+
+</PRE>
+</BODY>

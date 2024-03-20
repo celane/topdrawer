@@ -1,0 +1,11 @@
+#! /bin/csh -v
+set FORLIB = /home/common/forlib/\*.a
+set DUMMY  = /home/common/ugs/src/dummies/{x-window.f,tek4010.f}
+set prog   = $argv[1]
+f77 -o $prog $prog.f $DUMMY ../ugs.a $FORLIB
+rm  -v $prog.o x-window.o tek4010.o
+$prog  <<endfile
+  CSET=DUPLEX
+  POSTSCR,GENIL,DDNAME=$prog.ps
+endfile
+rm  -v $prog

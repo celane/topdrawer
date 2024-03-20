@@ -1,0 +1,36 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.18.14.3</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.18.14.3  Windows</H4></B>   - Normally  when you do plots in REGIS the cursor
+is left at the top of the screen.  If your terminal  is  capable  of  more
+than  24  lines,  you  may  wish  to freeze the top 24 lines, and create a
+scrolling region underneath the plot.  Assume your terminal has more  than
+24  lines  and  less  than  100.   This  is  possible if it is an emulated
+terminal using a windowing system.  To move the cursor to  the  bottom  of
+the screen:
+     TD:SET PROMPT BOTTOM,'TD:'
+To freeze or thaw the top few lines:
+     TD:define command freeze 'type 27,"7",27,"[24;r",27,"8",27,"M"'
+     TD:define command thaw 'type 27,"7",27,"[0;r",27,"8",27,"M"'
+You issue the command FREEZE to freeze the top lines, and THAW to unfreeze
+them.  You will want to FREEZE when you are doing plots, and the thaw when
+you are showing data, or parameters, so you can use the whole window.
+
+For your convenience you may do all of this by:
+     TD:SET FILE INPUT TOPDRAWER_ROOT:[EXAMPLES]FREEZE
+
+Now  when you do plot the top part of your screen is used to view the plot
+while the bottom is used to give the commands.
+
+<A NAME="135">If  your screen has only 24 lines you may wish to reduce the plot size and </A>
+freeze the top 22 lines.  This will give you a 2 line command window.   To
+do this:
+     SET FILE INPUT TOPDRAWER_ROOT:[EXAMPLES]FREEZE22
+Similarly there is a FREEZE30 and FREEZE40 file.
+
+
+</PRE>
+</BODY>

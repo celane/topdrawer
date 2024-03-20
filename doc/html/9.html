@@ -1,0 +1,36 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual Chapter 9</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>Chapter 9  SET_UP</H4></B>
+<A NAME="13"> </A>
+You may specify a setup file to initialize TOPDRAWER.   This  is  done  by
+specifying  the  logical name TOPDRAWER_INIT.  TOPDRAWER_INIT should point
+to a file with TOPDRAWER commands to be executed  when  TD  first  starts.
+The  default  file name is TDINIT.TOP.  If you have a setup file then then
+journal file and listing file are suppressed.  You must start them in  the
+setup file if you want them.
+
+                                  example
+     $ ASSIGN TDHBOOK TOPDRAWER_INIT
+
+The file TDHBOOK.TOP contains the commands:
+     TD:<U>SET</U> <U>HIST</U> <U>HBOOK</U> <U>FILE="hbook.dat"</U>
+     TD:<U>DEFINE</U> <U>KEY</U> <U>PF3</U> <U>"SET</U> <U>HIST</U> <U>TITLE</U> <U>PREV;NEW;HIST"/TERMINATE</U>
+     TD:<U>DEFINE</U> <U>KEY</U> <U>PF4</U> <U>"SET</U> <U>HIST</U> <U>TITLE</U> <U>NEXT;NEW;HIST"/TERMINATE</U>
+     TD:<U>SET</U> <U>FILE</U> <U>JOURNAL</U> <U>HISTS.TDJ</U>
+
+Now  when you start TOPDRAWER your hbook histograms are already available,
+and keypad keys are defined to easily access them.  Your journal  file  is
+HISTS.TDJ and you have no listing file.
+
+You assign:
+     $ ASSIGN TOPDRAWER_INIT SYS$LOGIN
+The  file  TDINIT.TOP  in your root default login directory is used as the
+TOPDRAWER initialization file.
+
+
+</PRE>
+</BODY>

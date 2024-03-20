@@ -1,0 +1,2355 @@
+%N
+%U+ TDMACROS.MOR
+%L
+"
+	Start of MESH surface package 'T2MESH'
+"
+%'$MESHDEBUG'='<NOGENERATE>;';	"Sets up checks"
+%'$MESHDEBUG1'='<NO GENERATE>;';	"Dump each segment for visiblity"
+%'<NEWCARD>'='CALL T2JOUR; <READ CARD>;
+     IF (END OF INPUT FILE) GOTO :ENDB2:; <PRINTCARD>;'
+%'$MESHCOM'='"
+    INTEGER IHSIZE,NPSTOR;
+    REAL TOLR;
+    PARAMETER (IHSIZE=2000);
+    PARAMETER (TOLR="$DELTX");
+    PARAMETER (NPSTOR=30);
+    INTEGER IBOLD,IB,IBT,MAJMIN,MAJMAX,MINMIN,MINMAX,MAJSTP,MINSTP
+	,MINMN,MINMX,MAJMN,MAJMX
+	,MAJAX,MINAX,IFREE,IHBTOP(2),ITXTOP(2),LEFT,IRIGHT,IPASS;
+	"$SHORT INTEGER" IHFWD(IHSIZE), IHBACK(IHSIZE);
+	"$BOOLEAN" LFREE,VFLG,LVANISH;
+    REAL ROTCOS,ROTSIN,PNT12(2,2),XX(2,4)
+	 ,BUFR(NPSTOR),HORXY(2,IHSIZE),VANISH_PNT(2);
+    COMMON /T2MSHC/
+	MAJMIN,MAJMAX,MINMIN,MINMAX,MAJSTP,MINSTP
+	,MINMN,MINMX,MAJMN,MAJMX
+	,MAJAX,MINAX,IB,IFREE,IHBTOP,ROTCOS,ROTSIN
+	,PNT12,XX,IBT,VFLG,LEFT,IRIGHT
+	,ITXTOP,IBOLD,LFREE
+	,BUFR,HORXY
+	,IHFWD,IHBACK,IPASS,LVANISH,VANISH_PNT;"
+    EXTERNAL T2_MESH_DATA;'
+%';SUBROUTINE'=';<RESET> <SET> ;"SUBROUTINE"'
+<SET>;			"Ready for reset"
+%E  BLOCK DATA T2_MESH_DATA;
+%'EXTERNALT2_MESH_DATA'=' ';
+   BLOCK DATA T2_MESH_DATA;
+      $MESHCOM;
+   END;
+%E  FUNCTION T2XMSH
+REAL FUNCTION T2XMSH(I);
+   $SPECIFICATION;
+   $SPECIFYNONE;
+   $POINT ARRAYS($NPOINTS);
+   IF (I .ge. 1 .and. I.lt.NMESH1) THEN;
+      T2XMSH=DATBUF($IMSPTR+I*NMESH0);
+   ELSE; T2XMSH=HNONE; ENDIF;
+END;
+%E  FUNCTION T2YMSH
+REAL FUNCTION T2YMSH(I);
+   $SPECIFICATION;
+   $SPECIFYNONE;
+   $POINT ARRAYS($NPOINTS);
+   IF (I .ge. 1 .and. I.lt.NMESH2) THEN;
+      T2YMSH=DATBUF($IMSPTR+I*NMESH0*NMESH1);
+   ELSE; T2YMSH=HNONE; ENDIF;
+END;
+%E  FUNCTION T2ZMSH
+REAL FUNCTION T2ZMSH(IX,IY);
+   $SPECIFICATION;
+   $SPECIFYNONE;
+   $POINT ARRAYS($NPOINTS);
+   IF (IX .ge. 1 .and. IX.lt.NMESH1 .and.
+       IY .ge. 1 .and. IY.lt.NMESH2) THEN;
+      T2ZMSH=DATBUF($IMSPTR+(IX+IY*NMESH1)*NMESH0);
+   ELSE; T2ZMSH=HNONE; ENDIF;
+END;
+%E  SUBROUTINE T23SMS --- Setup for mesh plot
+SUBROUTINE T23SMS(NSET);
+   IMPLICIT NONE;
+   $SPECIFICATION;
+   $SPECIFYNONE;
+   INTEGER NSET,I;
+   I=NSET;
+   IF (I.lt.6.or.I.gt.14.or.MOD(I,4).eq.0)I=1+2*4;
+   MESHN(2)=I/4;
+   MESHN(1)=MOD(I,4);
+   MESHN(3)=6-MESHN(1)-MESHN(2);
+END;
+%E  SUBROUTINE T23TLM --- Select indices from limits
+SUBROUTINE T23TLM(ARRAY,NDIM0,NDIM1,NDIM2,TLIM,N1,N2,N3,N4);
+   IMPLICIT NONE;
+   $SPECIFYNONE;
+   INTEGER I,IM,NDIM0,NDIM1,NDIM2,N1,N2,N3,N4,MM(3);
+   REAL ARRAY(NDIM0,NDIM1,NDIM2+1);
+   REAL T,TLIM(3,2),T2MSHX,T2MSHY,XBEG,XEND,XMIN,XMAX;
+   I=NINT(ARRAY(1,1,1));
+   IF (I.lt.6.or.I.gt.14.or.MOD(I,4).eq.0)I=1+2*4;
+   MM(2)=I/4;
+   MM(1)=MOD(I,4);
+   MM(3)=6-MM(1)-MM(2);
+   IF (N1.eq.0) N1=1;
+   IF (N2.eq.0) N2=NDIM1-1;
+   IF (N3.eq.0) N3=1;
+   IF (N4.eq.0) N4=NDIM2-1;
+   IF (TLIM(1,1).eq.HNONE) RETURN;
+   XBEG=T2MSHX(ARRAY,NDIM0,NDIM1,NDIM2,0);
+   XEND=T2MSHX(ARRAY,NDIM0,NDIM1,NDIM2,NDIM1);
+   XMIN=TLIM(MM(1),1);
+   XMAX=TLIM(MM(1),2);
+   T=SIGN(1.0,XEND-XBEG);
+   N1=1; N2=NDIM1-1;
+   T=SIGN(1.0,XEND-XBEG);
+   IF ((XMIN-XBEG)*T.ge.0 .and. (XMIN-XEND)*T.ge.0) N1=NDIM1; "Past end?"
+   IF ((XMAX-XBEG)*T.le.0 .and. (XMAX-XEND)*T.le.0) N2=1; "Before begin ?"
+   <I=1,NDIM1;			"Hunt for in between values"
+      XEND=T2MSHX(ARRAY,NDIM0,NDIM1,NDIM2,I+1);
+      IF ((XMIN-XBEG)*T.ge.0 .and. (XMIN-XEND)*T.lt.0)N1=I;
+      IF ((XMAX-XBEG)*T.gt.0 .and. (XMAX-XEND)*T.le.0)N2=I;
+      XBEG=XEND;
+   >
+   XBEG=T2MSHY(ARRAY,NDIM0,NDIM1,NDIM2,0);
+   XEND=T2MSHY(ARRAY,NDIM0,NDIM1,NDIM2,NDIM2);
+   XMIN=TLIM(MM(2),1);
+   XMAX=TLIM(MM(2),2);
+   T=SIGN(1.0,XEND-XBEG);
+   N3=1; N4=NDIM2-1;
+   T=SIGN(1.0,XEND-XBEG);
+   IF ((XMIN-XBEG)*T.ge.0 .and. (XMIN-XEND)*T.ge.0) N3=NDIM2; "Past end?"
+   IF ((XMAX-XBEG)*T.le.0 .and. (XMAX-XEND)*T.le.0) N4=1;	"Before begin ?"
+   <I=1,NDIM2;			"Hunt for in between values"
+      XEND=T2MSHY(ARRAY,NDIM0,NDIM1,NDIM2,I+1);
+      IF ((XMIN-XBEG)*T.ge.0 .and. (XMIN-XEND)*T.lt.0)N3=I;
+      IF ((XMAX-XBEG)*T.gt.0 .and. (XMAX-XEND)*T.le.0)N4=I;
+      XBEG=XEND;
+   >
+END;
+%E  SUBROUTINE T23LIM;
+SUBROUTINE T23LIM(ARRAY,NDIM0,NDIM1,NDIM2);
+   IMPLICIT NONE;
+   INTEGER NDIM0,NDIM1,NDIM2;
+   REAL ARRAY(NDIM0,NDIM1,NDIM2+1);
+   $BOOLEAN LFLAG(2);
+   INTEGER IFLAG(2);			"FOR CALL TO T2STL1"
+   INTEGER I,I1,I2,IXYZ,IXXXXX,J,MM(3),NM(3),NLIM(3,2);
+   INTEGER IZFLAG;
+   REAL EXTREM(2),T,T2MSHX,T2MSHY;
+   $SPECIFICATION;
+   $SPECIFYD
+   $DATA;
+   $SPECIFYNONE;
+	"Check to see if any required"
+   LFLAG(1)=.true.;
+   <I=5,10; FLAGS(I)=FLAGS(I).OR.FLAGS(I+60).or.DFLAGS(I+60);
+	    FLAGS(I+60)=.false.;
+	    LFLAG(1)=LFLAG(1).and.FLAGS(I); >
+   IF (LFLAG(1)) goto :ret:;
+   NM(1)=NDIM1; NM(2)=NDIM2; NM(3)=0;
+   I=NINT(MOD(ARRAY(1,1,1),16.));
+   MM(1)=MOD(I,4);
+   MM(2)=I/4;
+   IF( .NOT. (MM(1).ge.1 .and. MM(1).le.3 .and. MM(1).ne.MM(2) .and.
+	      MM(2).ge.1 .and. MM(2).le.3) ) THEN;
+      MM(1)=1; MM(2)=2;
+   ENDIF;
+   MM(3)=6-MM(1)-MM(2);
+   IZFLAG=-2;
+   IF (MESH2D.ne.MM(3) .and. .not.$3D) IZFLAG=-1;
+   IF ((MESH2D.eq.MM(1).or.MESH2D.eq.MM(2)) .and.NDIMNS(1).eq.2) THEN;
+      MM(3)=2;
+      IF (MESH2D.eq.MM(2)) THEN; MM(1)=1; MM(2)=3;
+			   ELSE; MM(1)=3; MM(2)=1; ENDIF;
+   ENDIF;
+   <J=1,3;		"Find X,Y,Z limits"
+      IXYZ=MM(J);
+      <I=1,2;
+	 EXTREM(I)=0;
+	 NLIM(J,I)=1+(I-1)*(NM(J)-2);
+	 IF (NXYLIM(J,I) .gt.0) NLIM(J,I)=MIN(NXYLIM(J,I),NM(J)-1);
+	    IF    (J.eq.1) THEN;
+	       EXTREM(I)=T2MSHX(ARRAY,NDIM0,NDIM1,NDIM2,NLIM(J,I)+(I-1));
+	    ELSEIF(J.eq.2) THEN;
+	       EXTREM(I)=T2MSHY(ARRAY,NDIM0,NDIM1,NDIM2,NLIM(J,I)+(I-1));
+	    ENDIF;
+      >
+		"Put into correct order"
+      T=EXTREM(1);
+      EXTREM(1)=MIN(T,EXTREM(2));
+      EXTREM(2)=MAX(T,EXTREM(2));
+      <I=1,2;
+	 LFLAG(I)=.not.FLAGS(2*IXYZ+2+1);
+	 IF (LFLAG(I)) THEN;		"Set limits ??"
+	    IFLAG(I)=-3;
+	    IF (J.eq.3) IFLAG(I)=IZFLAG;
+	 ELSE;
+	    IFLAG(I)=1;
+	    EXTREM(I)=XYZLIM(IXYZ,I);
+	 ENDIF;
+      >
+      <CASE> J <OF> :D1:,:D2:,:D3: <
+	 :D1: <
+	    CALL T2STL1(ARRAY(1,2,1),HNONE,HNONE,HNONE,1,
+	       NONLIN(IXYZ),IFLAG,EXTREM,NDIM1,NLIM(1,1),NLIM(1,2),NDIM0);
+	 >
+	 :D2: <
+	    CALL T2STL1(ARRAY(1,1,NLIM(2,1)+1),
+	       HNONE,HNONE,HNONE,NLIM(2,2)-NLIM(2,1)+1,
+	       NONLIN(IXYZ),IFLAG,EXTREM,NDIM1,1,1,NDIM0);
+	 >
+	 :D3: <
+	    CALL T2STL1(ARRAY(1,2,NLIM(2,1)+1),
+	       HNONE,HNONE,HNONE,NLIM(2,2)-NLIM(2,1)+1,
+	       NONLIN(IXYZ),IFLAG,EXTREM,NDIM1,NLIM(1,1),NLIM(1,2),NDIM0);
+	 >
+      >
+      <I=1,2; IF (LFLAG(I)) XYZLIM(IXYZ,I)=EXTREM(I); >
+   >
+		"LIMITS ARE NOW SET"
+   <I=5,10; FLAGS(I)=.TRUE.;>
+:ret:
+   EXYZLIM(1,1)=HNONE;
+   <I=1,2; <J=1,3; NXYLIM(J,I)=0; >  >
+END;
+%E  SUBROUTINE TD3HST - User 3d histogram
+<TOKEN USING INFOIN,CARDIN>
+%';SUBROUTINE'=';<RESET> <SET> ;"SUBROUTINE"'
+<SET>;			"Ready for reset"
+SUBROUTINE TD3HST(ARRAY,NDIM1,NDIM2,IXYZ,ITXTUR,DXYZ,N1,N2,N3,N4);
+   IMPLICIT NONE;
+   $SPECIFICATION;
+   INTEGER    NDIM0 ;
+   PARAMETER (NDIM0=1);
+   INTEGER NDIM1,NDIM2,IXYZ,ITXTUR,N1,N2,N3,N4;
+   REAL ARRAY(NDIM0,NDIM1,NDIM2+1),DXYZ,DDXYZ;
+   INTEGER I,IPNT,JXYZ,JTXTUR,J1,J2,J3,J4;
+   $CHECK ARGS(3,10);
+	"START THE Z(X,Y) ARRAY"
+   I=NINT(MOD(ARRAY(1,1,1),16.));
+   MESH1=MOD(I,4);
+   MESH2=I/4;
+   IF( MESH1.ge.1 .and. MESH1.le.3 .and. MESH1.ne.MESH2 .and.
+       MESH2.ge.1 .and. MESH2.le.3 ) THEN;
+      MESH3=6-MESH1-MESH2;
+   ELSE;
+      MESH1=1; MESH2=2; MESH3=3;
+   ENDIF;
+   JXYZ=0; JTXTUR=0; DDXYZ=0; J3=0; J4=0; J1=0; J2=0;
+   IF (NARG.ge.4) JXYZ=IXYZ;
+   IF (NARG.ge.5) JTXTUR=ITXTUR;
+   IF (NARG.ge.6) DDXYZ=DXYZ;
+   IF (NARG.ge.7) J1=N1;
+   IF (NARG.ge.8) J2=N2;
+   IF (NARG.ge.9) J3=N3;
+   IF (NARG.ge.10) J4=N4;
+   CALL T23HST(ARRAY,1,NDIM1,NDIM2,JXYZ,JTXTUR,DDXYZ,J1,J3,J2,J4);
+END;
+%E  SUBROUTINE TD3JIN - User 3-d join
+SUBROUTINE TD3JIN(ARRAY,NDIM1,NDIM2,IXYZ,ITXTUR,N1,N2,N3,N4);
+   IMPLICIT NONE;
+   $SPECIFICATION;
+   INTEGER    NDIM0 ;
+   PARAMETER (NDIM0=1);
+   INTEGER NDIM1,NDIM2,IXYZ,ITXTUR,N1,N2,N3,N4;
+   REAL ARRAY(NDIM0,NDIM1,NDIM2+1);
+   INTEGER I,IPNT,JXYZ,JTXTUR,J1,J2,J3,J4;
+   $CHECK ARGS(3,9);
+	"START THE Z(X,Y) ARRAY"
+   I=NINT(MOD(ARRAY(1,1,1),16.));
+   MESH1=MOD(I,4);
+   MESH2=I/4;
+   IF( MESH1.ge.1 .and. MESH1.le.3 .and. MESH1.ne.MESH2 .and.
+       MESH2.ge.1 .and. MESH2.le.3 ) THEN;
+      MESH3=6-MESH1-MESH2;
+   ELSE;
+      MESH1=1; MESH2=2; MESH3=3;
+   ENDIF;
+   JXYZ=0; JTXTUR=0; J1=1; J2=0; J3=0; J4=0;
+   IF (NARG.ge.4) JXYZ=IXYZ;
+   IF (NARG.ge.5) JTXTUR=ITXTUR;
+   IF (NARG.ge.6) J1=N1;
+   IF (NARG.ge.7) J2=N2;
+   IF (NARG.ge.8) J3=N3;
+   IF (NARG.ge.9) J4=N4;
+   CALL T23JIN(ARRAY,1,NDIM1,NDIM2,JXYZ,JTXTUR,J1,J3,J2,J4);
+END;
+%E  SUBROUTINE T2_READ_MESH - Read mesh array
+SUBROUTINE T2_READ_MESH($INFO,$CARD);
+"
+	Create a mesh and fill it with values
+"
+   INTEGER $INFO(10);
+   CHARACTER*(*) $CARD;
+   $SPECIFICATION;
+   $POINT ARRAYS($NPOINTS);
+   $BOOLEAN LOVER , LERROR , LAPPEN , LMBIN ;
+
+   INTEGER ITOKEN;
+   $LONG INTEGER IPNT,ITEMP,ITEMP1,IREPT1,IREP2;
+
+
+   EQUIVALENCE (IPNT,$IVTEMP1),(ITEMP,$IVTEMP2),(ITEMP1,$IVTEMP3);
+   REAL WIDTH,WIDTH1,DEPTH,DEPTH1,DEPTH2;
+   REAL DBIN(4),PARM(4);
+   CHARACTER*1 XYZHOL(3);
+   DATA XYZHOL/'X','Y','Z'/;
+
+"	SYNTAX OF 'READ MESH' COMMAND IS
+	READ MESH [ERROR]
+	[FOR] X [=] X1 X2 ... XN
+	[FOR] Y [=] Y1 Z [=] Z1 [DZ1] Z2 [DZ2] ... ZN[DZN]
+	[FOR] Y [=] Y2 Z [=] Z1 [DZ1] Z2 [DZ2] ... ZN[DZN]
+	. . .
+	[FOR] Y [=] YM Z [=] Z1 [DZ1] Z2 [DZ2] ... ZN[DZN]
+	THE ENTIRE THING IS ONE COMMAND, AND END OF LINE IS IRRELEVANT
+
+	THIS CREATES AN ARRAY OF DIMENSION (N+1,M+1) IN DATBUF,
+	IN THE U.G. FORMAT, WHERE ARRAY(1,1,1)=DATBUF($IMSPTR).
+
+	THE CONTENTS ARE
+	ARRAY=  FLAG  X1 [DX1] X2  [DX2] X3  ...  XN  [DXN]
+		Y1   Z11 [DZ]  Z12 [DZ]  Z13 ...  Z1N [DZ]
+		Y2   Z21 [DZ]  Z22 [DZ]  Z23 ...  Z2N [DZ]
+		. . .
+		YM   ZM1 [DZ]  ZM2 [DZ]  ZM3 ...  ZMN [DZ]
+		X0   [] XN+1 [] Y0 [] YN+1
+
+	SET UP SOME PARAMS FOR THE DATA ARRAY
+"
+      LOVER=.false.;		"Not overflowed buffer"
+      LMBIN=.FALSE.;
+      NMESH0=1; NMESH1=0; NMESH2=0;
+      WIDTH=0; WIDTH1=0;
+      DEPTH=0; DEPTH1=0; DEPTH2=0;
+      <I=1,4;DBIN(I)=0; >
+      LERROR=.false.;
+      ITOKEN=1;
+      LAPPEN=(.not. FLAGS(28) .and. REVLEV.lt.3);
+	N_NAME=1; C_NAME=' ';
+"
+	START THE Z(X,Y) ARRAY
+	THE (1,1) LOCATION IS NOT USED
+	THE TOKEN MACROS AREN'T FLEXIBLE ENOUGH TO HANDLE
+	END OF LINE GRACEFULLY.  DO IT IN ALL GORY DETAIL
+
+	SKIP THE INITIAL OPTIONAL 'FOR' AND PICK UP THE FIRST VNAME
+"
+      <BLOCK> <
+	 CALL TOKEN($INFO,$CARD,
+       'NAME:-4:S,BINS:-1,FOR:0,X:1,Y:2,Z:3,WITH:0,ERRORS:-2:Y,APPEND:-3:Y,;');
+	 ITOKEN=ITOKEN+1;
+	 IF (INTERP.EQ.1) THEN; ITOKEN=0; <NEW CARD>; <NEXT>;
+	 ELSEIF (INTERP.EQ.2) THEN;	"KEYWORD"
+	    IF (INTEG.eq.-1) LMBIN=.true.;
+	    IF (INTEG.eq.-2) LERROR=LTOKEN;
+	    IF (INTEG.eq.-3) LAPPEN=LTOKEN;
+	    IF (INTEG.eq.-4) THEN;
+		N_NAME=MAX(NSTRNG,1); C_NAME=STRNG(:N_NAME);
+	    ENDIF;
+	    IF (INTEG.LE.0) <NEXT>;
+	       MESH1=INTEG;
+	 ELSE; <<TOKEN ERROR>;> GOTO :KILL:;
+	 ENDIF;
+      >
+"
+	Actually start the data block
+"
+
+	I=MESH1;
+	IF (.not.LAPPEN) CALL T2PNTR;
+	IF (LERROR) NMESH0=2;
+	MESH1=I;
+	IBLKTP=2;
+	IPNT=$INEXTPTR;			"Buffer pointer"
+	IF (IPNT+10.ge.NPTMAX) CALL T2_VIRT(250);
+
+	"Read the values of the first variable"
+      IF (IPNT+10.le.NPTMAX) THEN;
+	DATBUF(IPNT)=$MESHSEPARATOR;	"Sep,num,offs,0,1,2,array"
+	IPNT=IPNT+1;
+	ISTR=MIN((N_NAME+$CHARS-1)/$CHARS,100);
+	DATBUF(IPNT)=7+ISTR;		"Begin of data"
+	IPNT=IPNT+1;
+	DATBUF(IPNT)=0;			"Offset to next set"
+	IPNT=IPNT+1;
+	DATBUF(IPNT)=ISTR;
+	READ(C_NAME(:N_NAME),:FMT:)(DATBUF(K),K=IPNT+1,IPNT+ISTR);
+	IPNT=IPNT+ISTR+1;
+:FMT:	FORMAT(100A$CHARS);
+	<I=1,2+NMESH0; IPNT=IPNT+1; DATBUF(IPNT)=0;>
+      ENDIF;
+      $IMSPTR=IPNT-NMESH0+1;
+	 "Now get the columns"
+
+      IREPT1=0;
+      <BLOCK> <
+	 IF ($TRAP) GOTO :KILL:;
+	 IF (IREPT1.le.0) THEN;
+	    CALL TOKEN($INFO,$CARD,
+	       'ENDBINS:1,FROM,TO,BY,N,STEP,NUMBER,WIDTH,;');
+	    ITOKEN=ITOKEN+1;
+	 ELSE;
+	    IREPT1=IREPT1-1;
+	    FLOTNG=PARM(1);
+	    PARM(1)=FLOTNG+PARM(3);
+	 ENDIF;
+	 IF (INTERP.eq.2) THEN;
+	    IF (INTEG.eq.1) GOTO :ENDB1:;
+	    <READ SAME TOKEN>; ITOKEN=ITOKEN-1;
+	    CALL T2FTBY($INFO,$CARD,PARM,0);
+	    IF (.not. $ERROR) THEN;
+	       IREPT1=NINT(PARM(4));
+	       INTERP=4;
+	    ENDIF;
+	    <NEXT>;
+	 ELSEIF (INTERP.EQ.3 .OR. INTERP.EQ.4.or.INTERP.eq.7) THEN;
+	    IF (IPNT+10.ge.NPTMAX) CALL T2_VIRT(2*(IPNT-$IMSPTR));
+	    WIDTH=(FLOTNG-DBIN(2))/2.;
+	    IF (NMESH1.le.0) THEN;
+	       DBIN(1)=FLOTNG;	"Save initial bin"
+	    ELSEIF(IPNT .lt. NPTMAX) THEN;
+		  IPNT=IPNT+1;
+		  IF (LMBIN) THEN; DATBUF(IPNT)=DBIN(2)+WIDTH;
+			     ELSE; DATBUF(IPNT)=DBIN(2); ENDIF;
+		  IF (NMESH0.eq.2.and.IPNT.lt.NPTMAX) THEN;
+		     IPNT=IPNT+1; DATBUF(IPNT)=WIDTH;
+		  ENDIF;
+	       IF (NMESH1.eq.1) WIDTH1=WIDTH;
+	       IF (WIDTH1*WIDTH.le.0) THEN;
+		  ERROR TOKEN XYZHOL(MESH1);
+		     ('*** ERROR ***',A1,' Point out of order');
+	       ENDIF;
+	    ENDIF;
+	    NMESH1=NMESH1+1;
+	    DBIN(2)=FLOTNG;
+	    <NEXT>;
+	 ELSEIF (INTERP.EQ.1) THEN; ITOKEN=0;  <NEW CARD>; <NEXT>;
+	 ENDIF;
+      >
+      <READ SAME TOKEN>; ITOKEN=ITOKEN-1;
+	"HOW MANY DID I GET"
+:ENDB1:
+   IF (IPNT.lt.NPTMAX.and. .not. LMBIN)THEN;
+      IPNT=IPNT+1;
+      DATBUF(IPNT)=DBIN(2);
+      IF (NMESH0.eq.2.and.IPNT.lt.NPTMAX) THEN;
+	 IPNT=IPNT+1; DATBUF(IPNT)=WIDTH;
+      ENDIF;
+   ENDIF;
+   NMESH1=IPNT-$IMSPTR+1;
+	"Set values for first time thru"
+   ITEMP=$LARGE INTEGER;
+   ITEMP1=ITEMP;
+   <LOOP> <		"True value starts at 2"
+	 IF (IPNT+4*NMESH0.le.NPTMAX) THEN;
+	    NMESH2=NMESH2+1;
+	 ENDIF;
+	"FOR Y="
+	 <BLOCK> <
+	    CALL TOKEN($INFO,$CARD,'ENDBINS:-1,FOR,X:1,Y:2,Z:3,;');
+	    ITOKEN=ITOKEN+1;
+	    IF (INTERP.EQ.1) THEN;
+	       ITOKEN=0;
+	       <NEW CARD>; <NEXT>;
+	    ENDIF;
+	    IF (INTERP.EQ.2 .AND. INTEG.EQ.0) <NEXT>; " 'FOR'"
+	    IF (INTERP.eq.2 .and. INTEG.eq.0) GOTO :ENDB2:;	"ENDBINS?"
+	 >
+	 IF (NMESH2.EQ.1) THEN;	"FIRST TIME, REMEMBER NAME"
+	    IF (INTERP.EQ.2) THEN;	"GOT KEYWORD"
+	       MESH2=INTEG;
+	       IF (MESH1.EQ.MESH2) THEN;
+		  MESH2=MOD(MESH1,3)+1;
+		  ERROR TOKEN XYZHOL(MESH1),XYZHOL(MESH2);
+		     ('*** ERROR ***',A1,
+		      ' used already. ',A1,' assumed. ');
+	       ENDIF;
+	    ELSE;
+	       <TOKEN ERROR>; GOTO :KILL:;
+	    ENDIF;
+	 ELSE;	"THE REST OF THE TIME, CHECK NAME"
+	    IF (INTERP.NE.2 .OR. MESH2.NE.INTEG) THEN;
+	       <EXIT>;	"ALL DONE WITH READING MESH"
+	    ENDIF;
+	 ENDIF;
+	"YVALUE"
+	 IF (IPNT+NMESH0*(NMESH1+4).gt.NPTMAX)
+	    CALL T2_VIRT(NMESH0*NMESH1*MAX(10,NMESH2/2));
+	 <BLOCK> <
+	    CALL TOKEN($INFO,$CARD,'ENDBINS;');
+	    ITOKEN=ITOKEN+1;
+	    IF (INTERP.EQ.1) THEN; ITOKEN=0; <NEW CARD>; <NEXT>;
+	    ELSEIF (INTERP.EQ.3 .OR. INTERP.EQ.4.or.INTERP.eq.7) THEN;
+	       DEPTH=(FLOTNG-DBIN(4))/2.;
+	       IF(NMESH2.eq.1) THEN;
+		  DBIN(4)=FLOTNG;	"SAVE FOR ERROR MSG"
+		  DBIN(3)=FLOTNG;	"Save initial bin"
+	       ELSEIF (IPNT+4*NMESH0.le.NPTMAX) THEN;	"Too much data ?"
+		  DBIN(4)=FLOTNG;	"SAVE FOR ERROR MSG"
+		  ITEMP1=ITEMP;
+		  DEPTH2=DEPTH;
+		  IF(NMESH2.eq.2) DEPTH1=DEPTH;
+		  IF(DEPTH1*DEPTH.le.0) THEN;
+		    ERROR TOKEN XYZHOL(MESH2);
+		       ('*** ERROR ***',A1,' Point out of order');
+		  ENDIF;
+		  IF (ITEMP.lt.NPTMAX) THEN;
+		     IF (NMESH0.eq.2) DATBUF(ITEMP+1)=DEPTH;
+		     IF (LMBIN)DATBUF(ITEMP)=DEPTH+DATBUF(ITEMP);
+		  ENDIF;
+	       ENDIF;
+	       IPNT=IPNT+1;
+	       ITEMP=IPNT;
+	       IF (IPNT .lt. NPTMAX) DATBUF(IPNT)=FLOTNG;
+	       IF (NMESH0.eq.2) IPNT=IPNT+1;
+	    ELSE;
+	       GOTO :ENDB2:;
+	    ENDIF;
+	 >
+	"Z = "
+	 <BLOCK> <
+	    CALL TOKEN($INFO,$CARD,'ENDBINS:0,X:1,Y:2,Z:3,;');
+	    ITOKEN=ITOKEN+1;
+	    IF (INTERP.EQ.1) THEN; ITOKEN=0; <NEW CARD>; <NEXT>;
+	    ELSEIF (INTERP.eq.2.and.INTEG.gt.0) THEN;
+	       IF (NMESH2.EQ.1) THEN;	"First time"
+		  MESH3=INTEG;
+		  I=6-MESH1-MESH2;
+		  IF (MESH3.NE.I) THEN;
+		      ERROR TOKEN XYZHOL(MESH3),XYZHOL(I);
+		      ('*** ERROR ***',A1,' used already. ',A1,' assumed. ');
+		    MESH3=I;
+		  ENDIF;
+	       ELSEIF (MESH3.NE.INTEG) THEN;	"Rest of time"
+		  <TOKEN ERROR>;
+	       ENDIF;
+	    ELSE;
+	       IPNT=IPNT-NMESH0;
+	       GOTO :ENDB2:;
+	    ENDIF;
+	 >
+	"Z-values"
+	 IREPT1=0;			"Repeat count=0"
+	 <I=NMESH0+1,NMESH1;
+	    IF ($TRAP) GOTO :KILL:;
+	    <BLOCK> <
+	       FLOTNG=0;	"DZ ?"
+	       IF (IREPT1.le.0) THEN;
+		  IF (LERROR .or. MOD(I,NMESH0).eq.0) THEN; "error?"
+		     CALL TOKEN($INFO,$CARD,
+		       'SKIP:2,FROM,TO,BY,N,STEP,NUMBER,WIDTH,ERRORS:1:Y,;');
+		     ITOKEN=ITOKEN+1;
+		   ELSE; FLOTNG=0;
+		   ENDIF;
+	       ELSE;			"Repeated numbers ?"
+		  IREPT1=IREPT1-1;
+		  IF (MOD(I,NMESH0).eq.0) THEN;
+		     FLOTNG=PARM(1);	"Get Z value"
+		     PARM(1)=FLOTNG+PARM(3); "Next Z Value"
+		  ENDIF;
+	       ENDIF;
+	       IF (INTERP.EQ.1) THEN; ITOKEN=0;	"ENd of card ?"
+		  <NEW CARD>; <NEXT>;
+	       ELSEIF (INTERP.NE.3 .AND. INTERP.NE.4) THEN; "Not number ?"
+		  FLOTNG=0;		"Set next to 0"
+		  IF (INTERP.eq.2) THEN;
+		     IF (INTEG.eq.0) THEN;	"From,to...?"
+			<READ SAME TOKEN>; ITOKEN=ITOKEN-1;
+			PARM(4)=(NMESH1-I+1)/NMESH0;
+			CALL T2FTBY($INFO,$CARD,PARM,8);
+			IF (.not. $ERROR) THEN;
+			   IREPT1=NINT(PARM(4))*NMESH0;
+			   INTERP=4;
+			   <NEXT>;
+			ENDIF;
+		     ELSEIF (INTEG.eq.2) THEN;
+			IREPT1=NMESH1-I+1;
+			PARM(1)=0; PARM(3)=0; INTERP=4;
+		     ELSEIF (INTEG.eq.1) THEN;	"Error control ?"
+			LERROR=LTOKEN.and.NMESH0.eq.2;
+			<NEXT>;
+		     ENDIF;
+		  ELSEIF (I.EQ.NMESH1) THEN;			"?"
+		     <READ SAME TOKEN>; ITOKEN=ITOKEN-1;
+		     ERROR TOKEN XYZHOL(MESH3),XYZHOL(MESH2),DBIN(4);
+			 ('*** ERROR *** Not enough ',A1,
+			    '-values for ',A1,'=',G12.5);
+		  ENDIF;
+	       ENDIF;
+	    >
+	    IPNT=IPNT+1;
+	    IF(IPNT .le. NPTMAX) DATBUF(IPNT)=FLOTNG;		"Data"
+	 >
+	"HAVE ENOUGH Z-VALUES.  SKIP ANY MORE NUMBERS"
+	 <I=1,99999;
+	    CALL TOKEN($INFO,$CARD,';');
+	       ITOKEN=ITOKEN+1;
+	       IF (INTERP.EQ.1) THEN; ITOKEN=0;
+		  <NEW CARD>; <NEXT>;
+	       ENDIF;
+	    IF (INTERP.GT.4) <EXIT>;
+	    IF (I.EQ.1) THEN;
+	       ERROR TOKEN XYZHOL(MESH3),XYZHOL(MESH2),DBIN(4);
+	       ('*** ERROR *** Extra ',A1,'-values ignored for ',
+		 A1,'=',G12.5);
+	    ENDIF;
+	 >
+	 <READ SAME TOKEN>; ITOKEN=ITOKEN-1;
+   >
+   :ENDB2:         CONTINUE;
+   IF (INTERP.ne.2) THEN;
+      IF (ITOKEN.eq.1) THEN; <READ SAME CARD>;	"Start this card again?"
+		       ELSE; <TOKEN ERROR>; ENDIF; "Error ?"
+   ENDIF;
+   IF (IPNT+4*NMESH0.ge.NPTMAX) THEN;	"Too much data ?"
+      ERROR STRING;
+	('*** ERROR *** Mesh data exceeds maximum storage');
+      IF (ITEMP1.gt.NPTMAX) goto :KILL:;
+      IPNT=ITEMP1-1;
+   ELSEIF(ITEMP.lt.IPNT) THEN;
+      IF (LMBIN) DATBUF(ITEMP)=DATBUF(ITEMP)+DEPTH2;
+      IF (NMESH0.eq.2) DATBUF(ITEMP+1)=DEPTH;
+   ENDIF;
+   IF (.not. LMBIN) THEN;
+      DBIN(1)=DBIN(1)-WIDTH1;
+      DBIN(2)=DBIN(2)+WIDTH;
+      DBIN(3)=DBIN(3)-DEPTH1;
+      DBIN(4)=DBIN(4)+DEPTH2;
+   ENDIF;
+	 "Put some stuff in the data buffer"
+   <I=1,4; <J=1,NMESH0;
+      IPNT=IPNT+1; IF(IPNT .le. NPTMAX) DATBUF(IPNT)=DBIN(I);
+   >  >
+   NMESH1=NMESH1/NMESH0;
+   IPNT=IPNT+1;
+   IF (IPNT.ne.$IMSPTR+NMESH0*(NMESH1*NMESH2+4) .or.
+	 MESH1+MESH2+MESH3.ne.6        .or.
+	 NMESH1.lt.2 .or. NMESH2.lt.2    ) THEN;
+      ERROR STRING;('*** ERROR *** bad mesh');
+   ELSE;
+      NDSETS=NDSETS+1;				"One more data set"
+      I=$IMSPTR;				"The order"
+      DATBUF(I-ISTR-5)=IPNT-I+7+ISTR;		"Point to next data set"
+      DATBUF(I-3)=NMESH0;			"Step sizes"
+      DATBUF(I-2)=NMESH1;
+      DATBUF(I-1)=NMESH2;
+      DATBUF(I)=MESH1+MESH2*4;			"X/Y value"
+      $INEXTPTR=IPNT;
+      NPOINT=NPOINT+(NMESH1-1)*(NMESH2-1);	"Total number of points"
+   ENDIF;
+:KILL:
+END;
+%E  SUBROUTINE T23PLT - 3-d scatter plot
+SUBROUTINE T23PLT(ARRAY,NDIM0,NDIM1,NDIM2,IXYZ,SYM,
+      ITXTUR,SYSIZ,TLIM,N1,N2,N3,N4);
+   IMPLICIT NONE;
+   CHARACTER*2 SYTITL;
+   INTEGER NDIM0,NDIM1,NDIM2,IXYZ,ITXTUR,N1,N2,N3,N4;
+   REAL ARRAY(NDIM0,NDIM1,NDIM2+1),SYM,SYSIZ,SYM1;
+   INTEGER IXMIN,IXMAX,IYMIN,IYMAX,IX,IY,ILOOP,IDUM,ICYCLE;
+   INTEGER I,J,ISEED,NBINS,ITXSAV;
+   $BOOLEAN LLOG;
+   REAL XYZ(3),XY(2),TLIM(3,2),XYZ2(3,2),XY2(2,2),XUP(3,3),XYZW(3);
+   REAL X1,Y1,Z1,X2,Y2,Z2,XSIZE,YSIZE,SYNEW;
+   REAL XMIN,XMAX,YMIN,YMAX,ZMIN,ZMAX,ZDIFF,ZDIST,WIDTH,DEPTH,FAC;
+   REAL T2MSHX,T2MSHY;
+   REAL RAN;
+   EQUIVALENCE (XYZ2(1,1),X1),(XYZ2(2,1),Y1),(XYZ2(3,1),Z1);
+   EQUIVALENCE (XYZ2(1,2),X2),(XYZ2(2,2),Y2),(XYZ2(3,2),Z2);
+   $BOOLEAN LTEST,LOVER,LRAN,LLIMIT,LSIZE,LDOT,LCYCLE;
+   $SPECIFICATION;
+   $SPECIFYNONE;
+   $EQUIVALENCE;
+   $DATA;
+		"SET UP THE COORDINATE SYSTEMS"
+   IF (.NOT.$DEF DATA) THEN;
+      I=2*MESH3+3;
+      LTEST=FLAGS(I).or.FLAGS(60+I);
+      $3D=NDIMNS(1).eq.3;
+      CALL T23LIM(ARRAY,NDIM0,NDIM1,NDIM2);
+      IF(.not. LTEST		"Limit not previously set"
+	 .and. NONLIN(MESH3).eq.-1	"And scale is linear"
+	 .and. XYZLIM(MESH3,1).gt.0)THEN; "And low limit>0"
+	 FLAGS(I)=.true.;
+	 XYZLIM(MESH3,1)=0.0;	"For scatter bottom is zero"
+      ENDIF;
+   ENDIF;
+   CALL T2AXES;			"Draw axes"
+   IF (.not.$DEF DATA) RETURN;
+   FLAGS(28) = .TRUE.;	"POINTS HAVE BEEN TREATED"
+   LRAN=IAND(ITXTUR,1).eq.0;		"Random dots ?"
+   LSIZE=IAND(ITXTUR,2).eq.0;	"Size variation ?"
+   LLIMIT=TLIM(1,1) .ne. HNONE;	"Limit by the Z lims ?"
+   LCYCLE=IAND(ITXTUR,4).ne.0;
+   XMIN=T2MSHX(ARRAY,NDIM0,NDIM1,NDIM2,1);
+   XMAX=T2MSHX(ARRAY,NDIM0,NDIM1,NDIM2,NDIM1);
+   YMIN=T2MSHY(ARRAY,NDIM0,NDIM1,NDIM2,1);
+   YMAX=T2MSHY(ARRAY,NDIM0,NDIM1,NDIM2,NDIM2);
+   ZMIN=XYZLIM(MESH3,1);
+   ZMAX=XYZLIM(MESH3,2);
+   LLOG=NONLIN(MESH3).eq.-2 .or. NONLIN(MESH3).eq.-3;
+   NBINS=((NDIM1-1)*(NDIM2-1));	"Number of bins total"
+   ZDIFF=ZMAX-ZMIN;			"Max height"
+   IF (LLOG.and.ZMIN.ne.0.and.ZMAX.ne.0)
+      ZDIFF=ALOG10(ABS(ZMAX))-ALOG10(ABS(ZMIN));
+   IF (ZDIFF.eq.0) ZDIFF=1.0;	"Set to 1 if 0"
+   ZDIST=1.0;			"Default is exact"
+   SYM1=SYM;
+   CALL SYMTXT(SYM,SYTITL);
+   LDOT=SYTITL.eq.'  ';
+   IF ($3D .and. SYDIR(2).ge.0) THEN;
+      CALL T2GTDR(1.0,SYDIR,XUP);	"Get up directions"
+   ELSE;
+      XUP(1,1)=HNONE;
+   ENDIF;
+   IF(IXYZ .gt. 0) THEN;		"Requested number of counts"
+      IF(ZDIFF.gt.0) ZDIST=IXYZ/ZDIFF;"Counts/Z"
+   ELSEIF(IXYZ .eq. -1) THEN;
+      ZDIST=1.0;
+   ELSE;
+      IF(ZDIFF.lt. 1.0) ZDIST=2.0/ZDIFF; "ZDIST too small ?"
+      IF(ZDIFF.gt.10.) THEN;		"ZDIST too big ?"
+	 ZDIST=10./ZDIFF;
+      ENDIF;
+   ENDIF;
+   WIDTH=(XMAX-XMIN)/(NDIM1-1);	"Average width, depth"
+   DEPTH=(YMAX-YMIN)/(NDIM2-1);
+   IF(WIDTH*DEPTH.ne.0) ZDIST=ZDIST/(WIDTH*DEPTH);
+   CALL TXSCIS(2);	"SCISSORED AT WINDOW"
+   IF (FLAGS(122)) CALL TXXMT;	"New segment ?"
+   CALL T2CWTS(ITXTUR,ITXSAV);
+   CALL TXSDEF;
+   IF (SYSIZ.ne.0) THEN; SYNEW=SYSIZ; ELSE; SYNEW=SYMSIZ; ENDIF;
+   IXMIN=2; IXMAX=NDIM1; IYMIN=2; IYMAX=NDIM2;
+   IF(N1.gt.0) IXMIN=MIN(NDIM1,N1+1);
+   IF(N2.gt.0) IXMAX=MIN(NDIM1,N2+1);
+   IF(N3.gt.0) IYMIN=MIN(NDIM2,N3+1);
+   IF(N4.gt.0) IYMAX=MIN(NDIM2,N4+1);
+   XMIN=T2MSHX(ARRAY,NDIM0,NDIM1,NDIM2,IXMIN-1);
+   YMIN=T2MSHY(ARRAY,NDIM0,NDIM1,NDIM2,IYMIN-1);
+   ISEED=31415925;		"Initial seed for random numbers"
+   IF (LSIZE.AND.SYSIZ.EQ.0) THEN;
+      Y2=YMIN; X2=XMIN;
+      XSIZE=0; YSIZE=0;
+      <IX=IXMIN,IXMAX; X1=X2; X2=T2MSHX(ARRAY,NDIM0,NDIM1,NDIM2,IX);
+	 XSIZE=MAX(XSIZE,ABS(X2-X1));
+      >
+      <IY=IYMIN,IYMAX; Y1=Y2; Y2=T2MSHY(ARRAY,NDIM0,NDIM1,NDIM2,IY);
+	 YSIZE=MAX(YSIZE,ABS(Y2-Y1));
+      >
+      XYZ2(MESH1,1)=XMIN;       XYZ2(MESH2,1)=YMIN;      XYZ2(MESH3,1)=ZMIN;
+      XYZ2(MESH1,2)=XMIN+XSIZE; XYZ2(MESH2,2)=YMIN+YSIZE;XYZ2(MESH3,2)=ZMIN;
+      CALL T2XFRM(3,2,XYZ2,NONLIN,XFRM13,2,XY2);	"Transform to text"
+      XSIZE=MIN(ABS(XY2(1,2)-XY2(1,1)),ABS(XY2(2,2)-XY2(2,1)));
+      IF (.not.$3D.and.XSIZE.gt.0) SYNEW=XSIZE*10;
+   ENDIF;
+   Y2=YMIN;
+   <IY=IYMIN,IYMAX;	"Do the Y values"
+      Y1=Y2;
+      Y2=T2MSHY(ARRAY,NDIM0,NDIM1,NDIM2,IY);
+      DEPTH=Y2-Y1;
+      X2=XMIN;
+      FAC=1;
+      IF(LLIMIT .or. (Y1.GE.TLIM(MESH2,1) .and. Y2.LE.TLIM(MESH2,2))) THEN;
+	 <IX=IXMIN,IXMAX;	"Now loop over the X values"
+	    IF (FLAGS(126)) CALL TXXMT;	"New segment ?"
+	    X1=X2;
+	    X2=T2MSHX(ARRAY,NDIM0,NDIM1,NDIM2,IX);
+	    WIDTH=X2-X1;
+	    IF ($TRAP) GOTO :RET:;
+	    IF(LLIMIT .or.
+	       (X1.GE.TLIM(MESH1,1) .and. X2.LE.TLIM(MESH1,2))) THEN;
+	       Z1=ARRAY(1,IX,IY);
+	       Z2=Z1;
+	       IF( (Z1.GT.ZMIN .or. .not.(LRAN.or.LSIZE)) .and.
+		    (LLIMIT .or.
+		    (Z1.GE.TLIM(MESH3,1).and.Z1.LE.TLIM(MESH3,2)))) THEN;
+		  Z1=MIN(MAX(Z1,ZMIN),ZMAX);	"Limit range"
+		  IF (LSIZE .or. LRAN .or. LCYCLE) THEN;
+		     IF (LLOG) THEN;
+			IF( Z1 .ne. 0) THEN;
+			   Z1=ALOG10(ABS(Z1))-ALOG10(ABS(ZMIN));
+			ELSE; Z1=0; ENDIF;
+		     ELSE;
+			Z1=Z1-ZMIN;
+		     ENDIF;
+		     IF (LSIZE) THEN;
+			FAC=(Z1)/(ZDIFF);
+		     ENDIF;
+		     IF (LCYCLE) THEN;
+			ICYCLE=N_CYCLE*(Z1/ZDIFF)+1;
+			ICYCLE=MAX(MIN(N_CYCLE,ICYCLE),1);
+			CALL T2CWTS(ITX_CYCLE(ICYCLE),IDUM); "Set attributes"
+			CALL T2CWTS(ITXTUR,IDUM);		"Default attr"
+			CALL TXSDEF;			"Set them"
+			IF (SYM .eq. 0) THEN;
+			   SYM1=SYM_CYCLE(ICYCLE);
+			   CALL SYMTXT(SYM,SYTITL);
+			   LDOT=SYTITL.eq.'  ';
+			ENDIF;
+		     ENDIF;
+		  ENDIF;
+		  IF (XUP(1,1) .ne. HNONE) THEN;
+		     <J=1,3; XUP(J,3)=XUP(J,1)*SYNEW*FAC;>
+		  ENDIF;
+		  XYZ(MESH3)=ARRAY(1,IX,IY);
+		  IF(LRAN) THEN;				"Random dots ?"
+		     IF(IXYZ.ne.-1) THEN;
+			ILOOP=ZDIST*Z1*WIDTH*DEPTH+0.99999;	"Number of dots"
+		     ELSE; ILOOP=NINT(Z1);
+		     ENDIF;
+		     ILOOP=MAX(1,ILOOP);
+		     IF (LDOT.and..not.$3D.and..not.$POLAR) THEN;
+			CALL T2XFRM(3,2,XYZ2,NONLIN,XFRM14,2,XY2);
+			CALL TXRDOT(XY2(1,1),XY2(2,1),XY2(1,2),XY2(2,2),ILOOP);
+		     ELSE;
+		      <I=1,ILOOP;
+			XYZ(MESH1)=X1+WIDTH*RAN(ISEED);
+			XYZ(MESH2)=Y1+DEPTH*RAN(ISEED);
+				"PROJECT INTO DEVICE SYSTEM"
+			IF (XUP(1,1) .ne. HNONE) THEN;
+			   CALL T2XFRM(3,1,XYZ,NONLIN,XFRM12,3,XYZW);
+			   CALL TX3TXT(XYZW,XUP(1,3),XUP(1,2),
+			      SYTITL(1:1),SYTITL(2:2),0);
+			ELSE;
+			   CALL T2XFRM(3,1,XYZ,NONLIN,XFRM14,2,XY);
+			   CALL TXTSYM(XY(1),XY(2),SYM1,SYNEW*FAC);	"Plot sym"
+			ENDIF;
+			IF ($TRAP) GOTO :RET:;
+		      >
+		     ENDIF;
+		  ELSE;
+		     XYZ(MESH1)=(X1+X2)/2;
+		     XYZ(MESH2)=(Y1+Y2)/2;
+		     XYZ(MESH3)=ARRAY(1,IX,IY);
+		     IF (XUP(1,1) .ne. HNONE) THEN;
+			CALL T2XFRM(3,1,XYZ,NONLIN,XFRM12,3,XYZW);
+			CALL TX3TXT(XYZW,XUP(1,3),XUP(1,2),
+			   SYTITL(1:1),SYTITL(2:2),0);
+		     ELSE;
+			CALL T2XFRM(3,1,XYZ,NONLIN,XFRM14,2,XY);
+			CALL TXTSYM(XY(1),XY(2),SYM1,SYNEW*FAC);	"Plot sym"
+		     ENDIF;
+		  ENDIF;
+	       ENDIF;
+	    ENDIF;
+	 >
+      ENDIF;
+   >
+:RET:
+   IF (FLAGS(122).or.FLAGS(126)) CALL TXXMT;	"New segment ?"
+   CALL T2CWTS(ITXSAV,IDUM);
+   CALL TXSCIS(1);			"Reset scissoring to full screen"
+   CALL T2TCKS(8);			"And ticks"
+   END;
+%E  SUBROUTINE T23HST - 3-d histogram
+SUBROUTINE T23HST(ARRAY,NDIM0,NDIM1,NDIM2,IXYZ,ITXTUR,DXYZ,N1,N3,N2,N4);
+   INTEGER NDIM0,NDIM1,NDIM2,IXYZ;
+   REAL ARRAY(NDIM0,NDIM1,NDIM2+1);
+   REAL DXYZ(3);
+   $SPECIFICATION;
+   $MESHCOM;
+   REAL XYZ(3,20),			"Need 4 points for horizon calculation"
+	XY(2,20),			"And in 2-space"
+	ZD(4);				"Z points for line drawing"
+   REAL Z0,Z1,Z2,ZMIN,ZMAX,X0,X1,X2,Y0,Y1,Y2;
+   INTEGER NB;
+   INTEGER ID(4);
+   INTEGER    NXYZ ;
+   PARAMETER (NXYZ=16);
+   $BOOLEAN LMESH, LGRID, LCYCLE, LXYZ(NXYZ) , LTEST ;
+   EQUIVALENCE (LGRID,LXYZ(13));
+   $DATA;
+
+   IF (.NOT.$DEF DATA) THEN;		"Set up the coordinate systems"
+      I=2*MESH3+3;
+      LTEST=FLAGS(I).or.FLAGS(60+I);
+      $3D=NDIMNS(1).ne.2;
+      CALL T23LIM(ARRAY,NDIM0,NDIM1,NDIM2);	"Setup 3-d limits"
+      IF(.not. LTEST			"Limit not previously set"
+	 .and. NONLIN(MESH3).eq.-1	"And scale is linear"
+	 .and. XYZLIM(MESH3,1).gt.0)THEN;	"And low limit>0"
+	 FLAGS(I)=.true.;
+	 XYZLIM(MESH3,1)=0.0;		"For scatter bottom is zero"
+      ENDIF;
+   ENDIF;
+   CALL T2AXES;				"Draw axes"
+   IF (FLAGS(122)) CALL TXXMT;		"New segment ?"
+   IF ($DEF DATA) THEN;			"Reference Frame ok ?"
+"
+	Set up parms for mesh plot
+	The following stuff requires that the direction of
+	Joining be the major axis
+	If not, then exchange major and minor axis parms
+"
+      CALL T2_MESH_SETUP(ARRAY,NDIM0,NDIM1,NDIM2,N1,N2,N3,N4);
+      CALL T2CWTS(ITXTUR,ITXTOP(1));	"Set new color etc., save old"
+      CALL T2CWTS(0,ITXTOP(2));		"Save current color etc."
+      CALL TXSDEF;
+%E  -- Draw the histogram
+"
+	Set up face pointers
+	LXYZ=
+		1	X Plot this direction only
+		2	Y
+		3	Z
+		4	NODEPTH	(Plot each plane as a disconnected hist
+		5	NOHIDE	(Do not hide any lines)
+		6	NOFRAME	(Do not put a frame around the hist)
+		7	XY - Plane to fill
+		8	YZ - Plane to fill
+		9	ZX - Plane to fill
+		10	Fill with Cross
+		11	Fill with Random dots
+		13	Use scale to draw lines perp to Z axis.
+"
+      J=1;
+      <I=1,3;    LXYZ(MESHN(I))=IAND(IXYZ,J).ne.0; J=j*2;>
+      <I=4,NXYZ; LXYZ(I)=IAND(IXYZ,J).ne.0; J=j*2;>
+      IF (LGRID) THEN;
+	CALL T2STCK(NONLIN(MESH3),			"Scale type"
+		XYZLIM(MESH3,1),XYZLIM(MESH3,2),   	"MIN,MAX"
+		NXYZ1(MESH3),NXYZ2(MESH3),		"N1,N2 ticks"
+		SCLPRM(1,MESH3),			"BASE, ETC."
+		$BUFSIZ/2,				"ARRAY SIZ"
+		NB,BUFFER(1),IBUFFR(1));		"OUTPUT"
+	J=0;
+	<I=1,NB;
+	    IF (IBUFFR(I) .gt. 0) THEN;
+		J=J+1;
+		BUFFER(J)=BUFFER(I);
+	    ENDIF;
+	>
+	NB=J;
+      ENDIF;
+      IF (LXYZ(5)) THEN;			"NO Hidden ?"
+	 IDRAW=2; ISAVE=0; IDSAV=2;		"Draw, no save"
+      ELSE;
+	 IDRAW=6; ISAVE=5; IDSAV=7;		"Draw, save"
+      ENDIF;
+      MINFR=IDSAV; MAJFR=IDSAV;
+      IF (LXYZ(6)) THEN;			"NO frame ??"
+	 IF (.not.LXYZ(MINAX)) MINFR=4;		"Minor not required ?"
+	 IF (.not.LXYZ(MAJAX)) MAJFR=4;		"Major not required ?"
+      ENDIF;
+      IF (LXYZ(4)) MINFR=IAND(MINFR,NOT(3));	"Disconnect hists"
+      IF (.not.LXYZ(MAJAX) .and. LXYZ(MINAX)) THEN;	"only minor ?"
+	 I=MINAX;  MINAX=MAJAX;   MAJAX=I;	"Swap MAJOR,MINOR"
+	 I=MINMIN; MINMIN=MAJMIN; MAJMIN=I;
+	 I=MINMAX; MINMAX=MAJMAX; MAJMAX=I;
+	 I=MINMN;  MINMN=MAJMN;   MAJMN=I;
+	 I=MINMX;  MINMX=MAJMX;   MAJMX=I;
+	 I=MINSTP; MINSTP=MAJSTP; MAJSTP=I;
+	 LXYZ(MINAX)=.false.; LXYZ(MAJAX)=.true.;
+      ENDIF;
+      DEPTH=0.;					"Depth of bins"
+      LMESH=MINAX.eq.MESH1;			"True if minor is mesh1"
+      I=0;
+      IF(MAJMIN.gt.MAJMAX) I=1;
+      J=0;
+      IF(MINMIN.gt.MINMAX) J=1;
+	 "X refers to major axis, Y to minor axis"
+      XMIN=T2MSHY(ARRAY,NDIM0,NDIM1,NDIM2,1);		"Initialize function"
+      YMIN=T2MSHX(ARRAY,NDIM0,NDIM1,NDIM2,1);
+      IXOFF=0; IYOFF=0;
+      IF (MAJMIN.eq.2) IXOFF=-1;
+      IF (MINMIN.eq.2) IYOFF=-1;
+      MAJSAV=MAJMIN;
+      MAJMIN=MAJMN; MINMIN=MINMN;
+      MAJMAX=MAJMX; MINMAX=MINMX;
+      IF (LMESH) THEN;
+	 XMIN=T2MSHY(ARRAY,NDIM0,NDIM1,NDIM2,MAJMIN+IXOFF);
+	 IF (LXYZ(4)) THEN; YMIN=ARRAY(1,MINMIN,1);
+	 ELSE; YMIN=T2MSHX(ARRAY,NDIM0,NDIM1,NDIM2,MINMIN+IYOFF);
+	 ENDIF;
+      ELSE;
+	 XMIN=T2MSHX(ARRAY,NDIM0,NDIM1,NDIM2,MAJMIN+IXOFF);
+	 IF (LXYZ(4)) THEN; YMIN=ARRAY(1,1,MINMIN);
+	 ELSE; YMIN=T2MSHY(ARRAY,NDIM0,NDIM1,NDIM2,MINMIN+IYOFF);
+	 ENDIF;
+      ENDIF;
+      IXOFF=-1-IXOFF; IYOFF=-1-IYOFF;
+      ZMIN=XYZLIM(MESH3,1);
+
+"
+	Draw frame along minor horizon if either DEPTH or FRAME requested
+"
+      <I=1,10; XYZ(MINAX,I)=YMIN; XYZ(MAJAX,I)=XMIN; XYZ(MESH3,I)=ZMIN; >
+      Y1=YMIN;
+      <MINOR=MINMIN,MINMAX,MINSTP;
+	 XYZ(MINAX,1)=Y1;
+	 IF (LMESH) THEN; Z1=ARRAY(1,MINOR,MAJMIN);
+	    IF (LXYZ(4)) THEN; Y1=ARRAY(1,MINOR,1);
+			 ELSE; Y1=T2MSHX(ARRAY,NDIM0,NDIM1,NDIM2,MINOR+IYOFF);
+			 ENDIF;
+	 ELSE;            Z1=ARRAY(1,MAJMIN,MINOR);
+	    IF (LXYZ(4)) THEN; Y1=ARRAY(1,1,MINOR);
+			 ELSE; Y1=T2MSHY(ARRAY,NDIM0,NDIM1,NDIM2,MINOR+IYOFF);
+			 ENDIF;
+	 ENDIF;
+	 XYZ(MINAX,2)=Y1;
+	 CALL T2XFRM(3,2,XYZ,NONLIN,XFRM14,2,XY);
+	 I=MINFR;
+	 IF (Z1.ne.ZMIN) I=IDSAV;			"Z jumps ?"
+	 CALL T2_MESH_DRAW(XY,2,I);			"minor horizon"
+      >
+"
+	Draw frame along major horizon
+"
+      <I=1,2; XYZ(MINAX,I)=YMIN; >
+      X1=XMIN;
+      <MAJOR=MAJMIN,MAJMAX,MAJSTP;
+	 XYZ(MAJAX,1)=X1;
+	 IF (LMESH) THEN; X1=T2MSHY(ARRAY,NDIM0,NDIM1,NDIM2,MAJOR+IXOFF);
+			  Z1=ARRAY(1,MINMIN,MAJOR);
+		    ELSE; X1=T2MSHX(ARRAY,NDIM0,NDIM1,NDIM2,MAJOR+IXOFF);
+			  Z1=ARRAY(1,MAJOR,MINMIN);
+		    ENDIF;
+	 XYZ(MAJAX,2)=X1;
+	 CALL T2XFRM(3,2,XYZ,NONLIN,XFRM14,2,XY);
+	 I=MAJFR;
+	 IF (Z1.ne.ZMIN) I=IDSAV;			"Z jumps ?"
+	 CALL T2_MESH_DRAW(XY,2,I);			"major horizon"
+      >
+	"MAJFR=IOR(MAJFR,2); MINFR=IOR(MINFR,2);"		"Put back draw"
+      IF (.not. LXYZ(5)) THEN;				"Hide ?"
+	 "MAJFR=IOR(MAJFR,1); MINFR=IOR(MINFR,1);"	"Hide in behind"
+      ENDIF;
+
+      Y2=YMIN;
+      Y1=Y2;						"First Y value"
+
+"
+	Main loop step along minor axis
+"
+      <MINOR=MINMIN ,MINMAX, MINSTP;
+		"Find the Y values"
+	 Y0=Y1;
+	 Y1=Y2;
+	 IF (LMESH) THEN;				"Get Y value"
+	    IF(LXYZ(4)) THEN;				"NO DEPTH ?"
+	       IF(MINOR.ne.MINMAX)
+		  Y2=ARRAY(1,MINOR+MINSTP,1);		"Get medium value"
+	    ELSE;
+	       Y2=T2MSHX(ARRAY,NDIM0,NDIM1,NDIM2,MINOR+IYOFF);
+	    ENDIF;
+	 ELSE;
+	    IF(LXYZ(4)) THEN;
+	       IF(MINOR.ne.MINMAX)
+		  Y2=ARRAY(1,1,MINOR+MINSTP);
+	    ELSE;
+	       Y2=T2MSHY(ARRAY,NDIM0,NDIM1,NDIM2,MINOR+IYOFF);
+	    ENDIF;
+	 ENDIF;
+	 DEPTH=Y2-Y1;
+	 <I=1,10; XYZ(MINAX,I)=Y1 ;XYZ(MESH3,I)=ZMIN;>
+		"Reinitialize the Major axis"
+	 IF (LMESH) THEN;
+	    X2=T2MSHY(ARRAY,NDIM0,NDIM1,NDIM2,MAJSAV+IXOFF);
+	 ELSE;
+	    X2=T2MSHX(ARRAY,NDIM0,NDIM1,NDIM2,MAJSAV+IXOFF);
+	 ENDIF;
+		"Front of hist or Disconnected hists ?"
+	 IF (MINOR.eq.MINMIN.or.LXYZ(4)) THEN;
+		 "Draw a simple histogram along major axis"
+	    X2=XMIN; X1=XMIN;
+	    Z1=ZMIN;
+	    <MAJOR=MAJMIN, MAJMAX+MAJSTP, MAJSTP;
+	       IF ($TRAP) GOTO :RET:;
+	       X0=X1;
+	       X1=X2;
+	       Z0=Z1;
+	       IF(MAJOR .eq. MAJMAX+MAJSTP) THEN;	"Last time"
+		  Z1=ZMIN;				"Back to beginning"
+		  X2=XMIN;
+	       ELSE;
+		  IF (LMESH) THEN;
+		     X2=T2MSHY(ARRAY,NDIM0,NDIM1,NDIM2,MAJOR+IXOFF);
+		     Z1=ARRAY(1,MINOR,MAJOR);
+		  ELSE;
+		     X2=T2MSHX(ARRAY,NDIM0,NDIM1,NDIM2,MAJOR+IXOFF);
+		     Z1=ARRAY(1,MAJOR,MINOR);
+		  ENDIF;
+		  WIDTH=X2-X1;
+	       ENDIF;
+	       XYZ(MAJAX,1)=X1;
+	       XYZ(MAJAX,2)=X1;
+	       XYZ(MAJAX,3)=X1;
+	       XYZ(MAJAX,4)=X2;
+	       XYZ(MESH3,1)=Z0; XYZ(MESH3,2)=Z1;		"Vert line"
+	       IF (LXYZ(MESH3)) THEN;				"Draw Z?"
+		  XYZ(MESH3,1)=MIN(ZMIN,Z1,Z0);			"From min"
+		  XYZ(MESH3,2)=MAX(ZMIN,Z1,Z0);			"To max"
+	       ENDIF;
+	       IF(XYZ(MESH3,1) .ne. XYZ(MESH3,2)) THEN;
+		  CALL T2XFRM(3,2,XYZ,NONLIN,XFRM14,2,XY);
+			"PLOT front vert lines for block plot"
+		  CALL T2_MESH_DRAW(XY,2,IDRAW);		"Plot"
+	       ENDIF;
+	       IF (LXYZ(4).and..not.LXYZ(6)) THEN;		"NO depth"
+		  XYZ(MAJAX,3)=X1;
+		  XYZ(MAJAX,4)=X2;
+		  CALL T2XFRM(3,2,XYZ(1,3),NONLIN,XFRM14,2,XY);
+			"PLOT front horizontal lines"
+		  CALL T2_MESH_DRAW(XY,2,IDRAW);		"Plot"
+	       ENDIF;
+	    >
+	 ENDIF;
+		"Do front envelope of hist"
+	 <I=1,10; XYZ(MESH3,I)=ZMIN;>			"Bottom edge"
+	 X1=XMIN; X2=XMIN;
+	 Z1=ZMIN; Z8=ZMIN;
+	 IDONE=1; JDONE=1;
+	 <MAJOR=MAJMIN, MAJMAX, MAJSTP;
+	    IF ($TRAP) GOTO :RET:;
+	    X0=X1;
+	    X1=X2;
+	    Z0=Z1;
+	    Z7=Z8;
+	    IF (LMESH) THEN;
+	       X2=T2MSHY(ARRAY,NDIM0,NDIM1,NDIM2,MAJOR+IXOFF);
+	       IF(MINOR.ne.MINMIN)Z8=ARRAY(1,MINOR-MINSTP,MAJOR);
+	       Z1=ARRAY(1,MINOR,MAJOR);
+	    ELSE;
+	       X2=T2MSHX(ARRAY,NDIM0,NDIM1,NDIM2,MAJOR+IXOFF);
+	       IF(MINOR.ne.MINMIN)Z8=ARRAY(1,MAJOR,MINOR-MINSTP);
+	       Z1=ARRAY(1,MAJOR,MINOR);
+	    ENDIF;
+	    WIDTH=X2-X1;
+	    XYZ(MAJAX,1)=X1;			"left"
+	    XYZ(MAJAX,2)=X1;			"left"
+	    XYZ(MAJAX,3)=X2;			"right"
+	    XYZ(MESH3,1)=Z0;
+	    XYZ(MESH3,2)=Z1;
+	    XYZ(MESH3,3)=Z1;
+	    IDONE1=1; JDONE1=1;
+	    IF(Z1.ne.Z0.or.Z0.ne.Z8.or.LXYZ(4)) THEN;	"Depth or not Z0"
+	       IF(LXYZ(MINAX+6).and.Z1.ne.Z8)	"Fill minor face"
+		  CALL T2_MESH_FILL(X1,Y1,Z8,WIDTH,0.,Z1-Z8,IXYZ,DXYZ);
+	       IF (LGRID) THEN;
+		  CALL T2_MESH_GRID(X1,Y1,Z8,WIDTH,0.,Z1-Z8,BUFFER,NB);
+	       ENDIF;
+	       IDONE1=2; JDONE1=2;
+	       IF(Z0.ne.Z1)IDONE1=1;
+	       IF(Z1.ne.Z8.or.LXYZ(4))JDONE1=3;			"Depth or ?"
+	       J=JDONE1-IDONE1+1;
+	       IF(J.gt.1) THEN;
+		  I=IDONE1;
+		  CALL T2XFRM(3,J,XYZ(1,I),NONLIN,XFRM14,2,XY(1,I));
+		  IF(LXYZ(4))THEN;				"NO Depth ?"
+		    CALL T2_MESH_DRAW(XY(1,I),J,IDRAW);		"Plot"
+		  ELSEIF(JDONE1.eq.3) THEN;			"Data ?"
+		       CALL T2_MESH_DRAW(XY(1,2),2,IDRAW);	"Plot"
+		  ENDIF;
+	       ENDIF;
+	    ENDIF;
+	    IF (IDONE.ne.JDONE) THEN;
+	       CALL T2_MESH_DRAW(XY(1,IDONE+5),JDONE-IDONE+1,ISAVE);	"Save"
+	    ENDIF;
+	    IDONE=IDONE1; JDONE=JDONE1;
+	    <I=1,3; <J=1,2; XY(J,I+5)=XY(J,I);>>
+	 >
+	 IF (LXYZ(4).and.ZMIN.ne.Z1) THEN;		"No depth and ZMIN"
+		"Not solid so draw last line on hist"
+	    XYZ(MAJAX,1)=X2;				"left"
+	    XYZ(MAJAX,2)=X2;				"left"
+	    XYZ(MESH3,1)=Z1;
+	    XYZ(MESH3,2)=ZMIN;
+	    CALL T2XFRM(3,J,XYZ,NONLIN,XFRM14,2,XY);
+	    CALL T2_MESH_DRAW(XY,2,IDRAW);
+	 ENDIF;
+	 IF (IDONE.ne.JDONE) THEN;
+	    CALL T2_MESH_DRAW(XY(1,IDONE+5),JDONE-IDONE+1,ISAVE); "Save"
+	 ENDIF;
+"
+	Now draw in the front side ?
+
+
+"
+	 IF (LXYZ(4).and.ZMIN.ne.Z1)			"Depth and not ZMIN"
+	    CALL T2_MESH_DRAW(XY,2,ISAVE);		"Save"
+	    <I=1,2; XYZ(MINAX,I)=Y2;			"Back side Y"
+	       XYZ(MINAX,I+3)=Y2;>
+	    <I=1,10; XYZ(MAJAX,I)=XMIN;			"Initial left bottom"
+	       XYZ(MESH3,I)=ZMIN;>
+			"Now Y horizon"
+	    CALL T2XFRM(3,6,XYZ,NONLIN,XFRM14,2,XY);
+	    IF(.not.LXYZ(4).or.MINAX.ne.MINMAX)		"Last or Depth"
+	       CALL T2_MESH_DRAW(XY(1,5),2,MINFR);	"Draw to bottom"
+		"Draw in cross links"
+	 IF(.not.LXYZ(4))THEN;				"Depth ?"
+	    X1=XMIN; X2=XMIN;
+	    Z9=ZMIN;
+	    Z1=ZMIN;
+	    IF (LMESH) THEN; Z2=ARRAY(1,MINOR,MAJMIN);
+		       ELSE; Z2=ARRAY(1,MAJMIN,MINOR);
+		       ENDIF;
+	    <MAJOR=MAJMIN, MAJMAX+MAJSTP, MAJSTP;
+	       IF ($TRAP) GOTO :RET:;
+	       X0=X1; X1=X2;
+	       Z0=Z1; Z1=Z2;
+	       Z8=Z9;
+	       Z2=ZMIN; Z9=ZMIN;
+	       IF (MAJOR .ne. MAJMAX+MAJSTP) THEN;
+		  IF (LMESH) THEN;
+		     X2=T2MSHY(ARRAY,NDIM0,NDIM1,NDIM2,MAJOR+IXOFF);
+		     IF(MINOR.ne.MINMAX)Z9=ARRAY(1,MINOR+MINSTP,MAJOR);
+		     IF(MAJOR.ne.MAJMAX)Z2=ARRAY(1,MINOR,MAJOR+MAJSTP);
+		  ELSE;
+		     X2=T2MSHX(ARRAY,NDIM0,NDIM1,NDIM2,MAJOR+IXOFF);
+		     IF(MINOR.ne.MINMAX)Z9=ARRAY(1,MAJOR,MINOR+MINSTP);
+		     IF(MAJOR.ne.MAJMAX)Z2=ARRAY(1,MAJOR+MAJSTP,MINOR);
+		  ENDIF;
+		  WIDTH=X2-X1;
+	       ELSE;
+		  X2=X2+WIDTH;
+	       ENDIF;
+	       <I=1,4;XYZ(MAJAX,I)=X1;>
+	       XYZ(MAJAX,5)=X2;
+	       XYZ(MAJAX,6)=X2;
+			"ID(n)=ID(m)) for non adjacent side"
+	       ID(1)=1;  ID(2)=2; ID(3)=2; ID(4)=1;
+	       ZD(1)=Z0; ZD(2)=Z1; ZD(3)=Z8; ZD(4)=Z9;
+	       <I=1,3; TEMP=ZD(I); K=ID(I);
+		 <J=I,4;				"Order the Z's"
+		   IF(TEMP.gt.ZD(J))THEN;		"Current lower ?"
+		      TEMP =ZD(J); K=ID(J);		"Swap with first"
+		      ZD(J)=ZD(I); ID(J)=ID(I);
+		      ZD(I)=TEMP ; ID(I)=K;
+		   ENDIF;
+	       > >
+	       IF(LXYZ(MESH3).or.ID(1).eq.ID(2)) THEN;	"Draw vert lines ?"
+			"Whole vert by request, or necessary"
+		  XYZ(MESH3,1)=ZD(1); XYZ(MESH3,2)=ZD(4);
+		  IF(XYZ(MESH3,1).ne.XYZ(MESH3,2)) THEN;
+		     CALL T2XFRM(3,2,XYZ,NONLIN,XFRM14,2,XY(1,8));
+		     CALL T2_MESH_DRAW(XY(1,8),2,IDRAW); "PLOT vert line"
+		  ENDIF;
+	       ELSE;				"Do vert in 2 pieces."
+		  <I=1,3,2;
+		     XYZ(MESH3,1)=ZD(I); XYZ(MESH3,2)=ZD(I+1);
+		     IF(XYZ(MESH3,1).ne.XYZ(MESH3,2)) THEN;
+			CALL T2XFRM(3,2,XYZ,NONLIN,XFRM14,2,XY(1,8));
+			CALL T2_MESH_DRAW(XY(1,8),2,IDRAW); "PLOT vert line"
+		    ENDIF;
+		  >
+	       ENDIF;
+		  XYZ(MESH3,1)=Z0;
+		  <I=2,6;XYZ(MESH3,I)=Z1;>
+			 "Get 4,5,6 top face"
+		  CALL T2XFRM(3,3,XYZ(1,4),NONLIN,XFRM14,2,XY(1,4));
+			"Side face"
+		  IF(Z0.ne.Z1) THEN;
+		     IF(LXYZ(MAJAX+6))			"Fill major face ?"
+			CALL T2_MESH_FILL(X1,Y1,Z0,0.,DEPTH,Z1-Z0,IXYZ,DXYZ);
+		     IF (LGRID) THEN;
+			CALL T2_MESH_GRID(X1,Y1,Z0,0.,DEPTH,Z1-Z0,BUFFER,NB);
+		     ENDIF;
+		     <I=1,2;XY(I,2)=XY(I,4);>;		"Duplicate point"
+		     CALL T2XFRM(3,3,XYZ(1,1),NONLIN,XFRM14,2,XY(1,1));
+		     CALL T2_MESH_DRAW(XY(1,2),2,IDSAV);	"PLOT side face"
+		     CALL T2_MESH_DRAW(XY(1,1),2,ISAVE);	"SAVE side face"
+		  ENDIF;
+	       IF(MAJOR .ne. MAJMAX+MAJSTP) THEN;
+				"Now do TOP face"
+		  J=5;I=5;
+		  IF (Z1.ne.Z9.or.LXYZ(MAJAX).or.
+		     (MINOR.eq.minmax.and..not.LXYZ(6)))"Last and frame?"
+			   J=4;				"edge on back?"
+		  IF (Z1.ne.Z2.or.LXYZ(MINAX).or.
+		     (MAJOR.eq.MAJMAX.and..not.LXYZ(6)))"First and frame ?"
+			   I=6;				"edge on side?"
+		  I=I-J+1;
+		  IF(LXYZ(MESH3+6))			"Fill top face ?"
+		     CALL T2_MESH_FILL(X1,Y1,Z1,WIDTH,DEPTH,0.,IXYZ,DXYZ);
+		  IF(I.gt.1)
+		     CALL T2_MESH_DRAW(XY(1,J),I,IDRAW);	"PLOT"
+		  CALL T2_MESH_DRAW(XY(1,4),3,ISAVE);	"save"
+	       ENDIF;
+	    >
+	 ENDIF;
+      >
+"
+	End of main loop
+"
+      CALL T2_MESH_FLUSH;				"Flush the buffer"
+:RET:
+      IF (FLAGS(122)) CALL TXXMT;			"New segment ?"
+      CALL T2CWTS(ITXTOP(1),IDUM);			"Restore color etc."
+      CALL TXSCIS(1);					"Restore scissoring"
+      ITXTOP(1)=0;					"Kill alt color etc."
+      ITXTOP(2)=0;
+   ENDIF;
+   CALL T2TCKS(8);					"And ticks"
+END;
+%E  SUBROUTINE T23JIN - 3-d join
+SUBROUTINE T23JIN(ARRAY,NDIM0,NDIM1,NDIM2,IXYZ,ITXTUR,N1,N3,N2,N4);
+   INTEGER NDIM0,NDIM1,NDIM2,IXYZ;
+   REAL ARRAY(NDIM0,NDIM1,NDIM2+1);
+"
+	IXYZ=0 for mesh plot
+	Bit    Result
+	1,2,3	For plot along X,Y, OR Z direction only
+		(Entire mesh plotted if IXYZ=MESH3)
+	5	NOHIDE (16)
+	6	NOFRAME (32)
+	7	Plot errors (64)
+"
+   $SPECIFICATION;
+   $MESHCOM;
+   $BOOLEAN LERROR , LCROSS ;
+   REAL XYZ(3,4), "Need at least 4 points for horizon calculation"
+	XYZE(3,2),
+	XYE(2,2),
+	XY(2,4);	"Point store in 2-space"
+   REAL DZ,X1,Y1;
+   INTEGER I,J,MINOR,MAJOR,JXYZ,NMIN,IMIND,IMIND1,IMIND2,IMIND3;
+   $DATA;
+
+   IF (.not. $DEF DATA) $3D=NDIMNS(1).ne.2;
+   CALL T23LIM(ARRAY,NDIM0,NDIM1,NDIM2);
+   CALL T2AXES;
+   IF (FLAGS(122)) CALL TXXMT;	"New segment ?"
+   IF ($DEF DATA) THEN;	"COULD DO IT"
+      CALL T2_MESH_SETUP(ARRAY,NDIM0,NDIM1,NDIM2,N1,N2,N3,N4);
+      CALL T2CWTS(ITXTUR,ITXTOP(1));
+      CALL T2CWTS(0,ITXTOP(2));
+      CALL TXSDEF;
+	"SET UP PARMS FOR MESH PLOT"
+	"PUT BASE IN HORIZON, IF NOT DOING MESH"
+      JXYZ=IAND(IXYZ,3);
+      IF (JXYZ.gt.0) JXYZ=MESHN(JXYZ);
+      LERROR=IAND(IXYZ,64).ne.0 .and. NDIM0.eq.2;
+      LCROSS=JXYZ.ne.MAJAX .and. JXYZ.ne.MINAX;		"Mesh plot ?"
+      IF (.not.LCROSS .and. IAND(IXYZ,32).eq.0)
+	 CALL T2_MESH_HORIZ(ARRAY,NDIM0,NDIM1,NDIM2,0.);	"Set up horizon?"
+"
+	If Minor axis is direction of no mesh plot,
+	swap major and minor axes.
+"
+      MAJMIN=MAJMN; MAJMAX=MAJMX;
+      MINMIN=MINMN; MINMAX=MINMX;
+      IF (JXYZ.EQ.MINAX) THEN;
+	 I=MINAX;  MINAX=MAJAX;   MAJAX=I;
+	 I=MINMIN; MINMIN=MAJMIN; MAJMIN=I;
+	 I=MINMAX; MINMAX=MAJMAX; MAJMAX=I;
+	 I=MINSTP; MINSTP=MAJSTP; MAJSTP=I;
+      ENDIF;
+      IF (IAND(IXYZ,16).ne.0) THEN;
+	 IMIND1=2; IMIND2=2; IMIND3=2;	"No hide ?"
+      ELSE;
+	 IMIND1=3; IMIND2=7; IMIND3=3;	"Hide"
+      ENDIF;
+%E  -- Draw mesh
+      NMAX=2;
+      IF (MINAX.EQ.MESH1) THEN;
+	 <MINOR=MINMIN ,MINMAX ,MINSTP;
+	    IMIND=IMIND1;
+	    XYZ(MINAX,3)=Y1;
+	    Y1=ARRAY(1,MINOR,1);
+	    <I=1,2; XYZ(MINAX,I)=Y1;>
+	    XYZ(MAJAX,2)=ARRAY(1,1,MAJMIN);
+	    XYZ(MAJAX,3)=ARRAY(1,1,MAJMIN);
+	    NMIN=2;
+	    <MAJOR=MAJMIN ,MAJMAX ,MAJSTP;
+	       IF ($TRAP) GOTO :RET:;
+	       XY(1,1)=XY(1,2); XY(2,1)=XY(2,2);	"Previous point"
+	       X1=ARRAY(1,1,MAJOR);			"Next point"
+	       XYZ(MAJAX,2)=X1;
+	       XYZ(MESH3,2)=ARRAY(1,MINOR,MAJOR);
+	       IF (NMAX.eq.3) THEN;		"Cross piece ?"
+		  XYZ(MAJAX,3)=X1;
+		  XYZ(MESH3,3)=ARRAY(1,MINOR-MINSTP,MAJOR);
+	       ENDIF;
+	       CALL T2XFRM(3,NMAX-NMIN+1,XYZ(1,2),NONLIN,XFRM14,2,XY(1,2));
+	       IF (NMIN.ne.NMAX)
+		  CALL T2_MESH_DRAW(XY(1,NMIN),NMAX-NMIN+1,IMIND);
+	       NMIN=1;
+	       IMIND=IMIND3;
+	       IF (LERROR) THEN;
+		  DZ=ARRAY(2,MINOR,MAJOR);
+		  <I=1,2;
+		     <J=1,3; XYZE(J,I)=XYZ(J,2); >
+		     XYZE(MESH3,I)=XYZE(MESH3,I)+DZ;
+		     DZ=-DZ;
+		  >
+		  CALL T2XFRM(3,2,XYZE,NONLIN,XFRM14,2,XYE);
+		  CALL T2_MESH_DRAW(XYE,2,IMIND);
+	       ENDIF;
+	    >
+	    IMIND3=IMIND2;
+	    IF (LCROSS) NMAX=3;	"Put in cross-pieces?"
+	 >
+      ELSE;	"MINAX=MESH2"
+	 <MINOR=MINMIN ,MINMAX ,MINSTP;
+	    IMIND=IMIND1;
+	    XYZ(MINAX,3)=Y1;
+	    Y1=ARRAY(1,1,MINOR);
+	    <I=1,2; XYZ(MINAX,I)=Y1;>
+	    XYZ(MAJAX,2)=ARRAY(1,MAJMIN,1);
+	    XYZ(MAJAX,3)=ARRAY(1,MAJMIN,1);
+	    NMIN=2;
+	    <MAJOR=MAJMIN ,MAJMAX ,MAJSTP;
+	       IF ($TRAP) GOTO :RET:;
+	       XY(1,1)=XY(1,2); XY(2,1)=XY(2,2);	"Previous point"
+	       X1=ARRAY(1,MAJOR,1);
+	       XYZ(MAJAX,2)=X1;
+	       XYZ(MESH3,2)=ARRAY(1,MAJOR,MINOR);
+	       IF (NMAX.eq.3) THEN;		"Cross piece ?"
+		  XYZ(MAJAX,3)=X1;
+		  XYZ(MESH3,3)=ARRAY(1,MAJOR,MINOR-MINSTP);
+	       ENDIF;
+	       CALL T2XFRM(3,NMAX-NMIN+1,XYZ(1,2),NONLIN,XFRM14,2,XY(1,2));
+	       IF (NMIN.ne.NMAX)
+		  CALL T2_MESH_DRAW(XY(1,NMIN),NMAX-NMIN+1,IMIND);
+	       NMIN=1;
+	       IMIND=IMIND3;
+	       IF (LERROR) THEN;
+		  DZ=ARRAY(2,MAJOR,MINOR);
+		  <I=1,2;
+		     <J=1,3; XYZE(J,I)=XYZ(J,2); >
+		     XYZE(MESH3,I)=XYZE(MESH3,I)+DZ;
+		     DZ=-DZ;
+		  >
+		  CALL T2XFRM(3,2,XYZE,NONLIN,XFRM14,2,XYE);
+		  CALL T2_MESH_DRAW(XYE,2,IMIND);
+	       ENDIF;
+	    >
+	    IMIND3=IMIND2;
+	    IF (LCROSS) NMAX=3;	"Put in cross-pieces?"
+	 >
+      ENDIF;
+      CALL T2_MESH_FLUSH;		"Flush the buffer"
+:RET:
+      IF (FLAGS(122)) CALL TXXMT;	"New segment ?"
+      CALL T2CWTS(ITXTOP(1),IDUM);
+      CALL TXSCIS(1);
+      ITXTOP(1)=0;
+      ITXTOP(2)=0;
+   ENDIF;
+   CALL T2TCKS(8);					"And ticks"
+END;
+%E  SUBROUTINE T2_MESH_SETUP - Set up params for mesh/histogram plots
+SUBROUTINE T2_MESH_SETUP(ARRAY,NDIM0,NDIM1,NDIM2,N1,N2,N3,N4);
+"
+      Subroutine to set up parms for treating mesh data
+      In all the following, when i say 'X', I mean
+      the MESH1 direction, and when i say 'Y', I mean MESH2
+      project 4 corners of X-Y plane into system 2
+      The variables  MAJ*,MIN* referr to the MAJOR,MINOR axes.
+      First you step along major in the outer do loop.
+      *MIN,*MAX,*STP are the min, max values and the step (+-1)
+      THis is done in order to do correct hidden line removal.
+"
+   IMPLICIT NONE;
+   INTEGER NDIM0,NDIM1,NDIM2,N1,N2,N3,N4;
+   REAL ARRAY(NDIM0,NDIM1,NDIM2);
+   $SPECIFICATION;
+   $MESHCOM;
+   $DATA;
+   REAL XYZ(3,4),XY(2,4),XYZ2(3,4);
+   REAL XBAR,YBAR,DX,DY,XE,YE,Z1,Z2,SQ;
+   INTEGER J1,J2,J3,J4;
+      IB=0;	"NO POINTS IN BUFFER"
+      IBOLD=-1;
+      FLAGS(28) = .TRUE.;	"POINTS HAVE BEEN TREATED"
+      CALL TXSCIS(2);
+      XYZ(MESH1,1)=ARRAY(1,2,1);
+      XYZ(MESH2,1)=ARRAY(1,1,2);
+      XYZ(MESH3,1)=ARRAY(1,2,2);
+      XYZ(MESH1,2)=ARRAY(1,NDIM1,1);
+      XYZ(MESH2,2)=ARRAY(1,1,2);
+      XYZ(MESH3,2)=ARRAY(1,NDIM1,2);
+      XYZ(MESH1,3)=ARRAY(1,2,1);
+      XYZ(MESH2,3)=ARRAY(1,1,NDIM2);
+      XYZ(MESH3,3)=ARRAY(1,2,NDIM2);
+      XYZ(MESH1,4)=ARRAY(1,NDIM1,1);
+      XYZ(MESH2,4)=ARRAY(1,1,NDIM2);
+      XYZ(MESH3,4)=ARRAY(1,NDIM1,NDIM2);
+      CALL T2XFRM(3,4,XYZ,NONLIN,XFRM12,3,XYZ2);
+	"WHICH EDGE IS CLOSEST TO (BROADSIDE TO) THE EYEPOINT"
+	 "(XBAR,YBAR) IS POINT AT THE CENTER OF SYSTEM"
+      XBAR = 0.5*(XYZ2(MESH1,4)+XYZ2(MESH1,1));
+      YBAR = 0.5*(XYZ2(MESH2,4)+XYZ2(MESH2,1));
+	 "(DX,DY) IS DIAGONAL FROM (2,2) TO (N1,N2)"
+	 "(-DX,DY) IS THE OTHER DIAGONAL"
+      DX = XYZ2(MESH1,4) - XYZ2(MESH1,1);
+      DY = XYZ2(MESH2,4) - XYZ2(MESH2,1);
+	 "(XE,YE) IS FROM THE CENTER TO THE EYE"
+      XE = EYEPNT(MESH1) - XBAR;
+      YE = EYEPNT(MESH2) - YBAR;
+      Z1 = XE*DY - YE*DX; "= EYE X (DX,DY) "
+      Z2 = XE*DY + YE*DX; "= EYE X (-DX,DY)"
+      MAJMIN=2; MAJMAX=2; MINMIN=2; MINMAX=2;
+      MAJMN=2;  MAJMX=2;  MINMN=2;  MINMX=2;
+      J1=2; J2=2; J3=NDIM1; J4=NDIM2;
+      IF(N1.gt.0) J1=MIN(NDIM1,N1+1);
+      IF(N2.gt.0) J2=MIN(NDIM2,N2+1);
+      IF(N3.gt.0) J3=MIN(NDIM1,N3+1);
+      IF(N4.gt.0) J4=MIN(NDIM2,N4+1);
+      IF (Z1*Z2.GE.0.) THEN; "BROADSIDE IS || THE Y-AXIS"
+	 MAJAX = MESH2; MINAX = MESH1;
+	 IF ((XE-XBAR)*(XYZ2(MESH1,1)-XBAR).GE.0.)
+	 THEN; MINMAX=NDIM1; MINMN=J1; MINMX=J3;
+	 ELSE; MINMIN=NDIM1; MINMN=J3; MINMX=J1;
+	 ENDIF;
+	 IF ((YE-YBAR)*(XYZ2(MESH2,1)-YBAR).GE.0.)
+	 THEN; MAJMAX=NDIM2; MAJMN=J2; MAJMX=J4;
+	 ELSE; MAJMIN=NDIM2; MAJMN=J4; MAJMX=J2;
+	 ENDIF;
+      ELSE;		"BROADSIDE IS || THE X-AXIS"
+	 MAJAX = MESH1; MINAX = MESH2;
+	 IF ((XE-XBAR)*(XYZ2(MESH1,1)-XBAR).GE.0.)
+	 THEN; MAJMAX=NDIM1; MAJMN=J1; MAJMX=J3;
+	 ELSE; MAJMIN=NDIM1; MAJMN=J3; MAJMX=J1;
+	 ENDIF;
+	 IF ((YE-YBAR)*(XYZ2(MESH2,1)-YBAR).GE.0.)
+	 THEN; MINMAX=NDIM2; MINMN=J2; MINMX=J4;
+	 ELSE; MINMIN=NDIM2; MINMN=J4; MINMX=J2;
+	 ENDIF;
+      ENDIF;
+	"(MINMAX,MAXMAX) (OR (MAXMAX,MINMAX) ) IS FARTHEST FROM THE EYE"
+	"AND THE NECESSARY STEPS"
+      MAJSTP = ISIGN(1,MAJMAX-MAJMIN);
+      MINSTP = ISIGN(1,MINMAX-MINMIN);
+	"FIND POSITION OF ENDS OF Z-AXIS ON SCREEN"
+      XBAR=(ARRAY(1,2,1)+ARRAY(1,NDIM1,1))/2;
+      YBAR=(ARRAY(1,1,2)+ARRAY(1,1,NDIM2))/2;
+      XYZ(MESH1,1)=XBAR; XYZ(MESH1,2)=XBAR;
+      XYZ(MESH2,1)=YBAR; XYZ(MESH2,2)=YBAR;
+      XYZ(MESH3,1)=XYZLIM(MESH3,1);
+      XYZ(MESH3,2)=XYZLIM(MESH3,2);
+      CALL T2XFRM(3,2,XYZ,NONLIN,XFRM14,2,XY);
+	"MAKE ROTATION TO MAP IT INTO Y-AXIS"
+      ROTSIN=XY(1,2)-XY(1,1);
+      ROTCOS=XY(2,2)-XY(2,1);
+      SQ=ROTCOS**2+ROTSIN**2;
+      IF (SQ.NE.0.) THEN;
+	 SQ=SQRT(SQ);
+	 ROTCOS=ROTCOS/SQ; ROTSIN=ROTSIN/SQ;
+      ELSE;
+	 ROTCOS=1; ROTSIN=0;
+      ENDIF;
+   CALL T2_MESH_INIT;
+END;
+%E  SUBROUTINE T2MSHJOIN --- General draw with hidden line removal
+SUBROUTINE T2MSHJIN(X,Y,Z,ISK,NP,IHIDE);
+   $SPECIFYNONE;
+   INTEGER ISK,NP,IHIDE;
+   REAL X(ISK,*),Y(ISK,NP),Z(ISK,NP);
+   INTEGER I,J;
+   REAL XYZ(3),XY(2,2);
+   $BOOLEAN ZEXIST;
+   ZEXIST=Z(1,1).ne.HNONE;
+   XYZ(3)=0;
+   <I=1,NP;
+      XYZ(1)=X(1,I); XYZ(2)=Y(1,I); IF (ZEXIST) XYZ(3)=Z(1,I);
+      CALL T2XFRM(3,2,XYZ,NONLIN,XFRM14,2,XY(1,2));
+      IF (I.gt.1) CALL T2_MESH_DRAW(XY,2,IHIDE);
+      <J=1,2; XY(J,1)=XY(J,2);>
+   >
+END;
+%E  SUBROUTINE T2_MESH_INIT --- Set up initial horizon
+SUBROUTINE T2_MESH_INIT;
+"
+	Set up initial horizon
+"
+   IMPLICIT NONE;
+   INTEGER I;
+   REAL BIG,TEMP;
+   $MESHCOM;
+   $SPECIFICATION;
+"
+	Setup linked list of free nodes
+"
+   <I=1,IHSIZE; IHFWD(I)=I+1;>		"Each node points to next"
+   IHFWD(IHSIZE)=0;			"Last node in list"
+"
+	Setup double linked list of 4 nodes for initial horizon
+"
+   IFREE=5;				"First free node"
+   LFREE=.true.;			"Nodes are free"
+   IPASS=0;
+"
+	2,3 are the top horizon
+	3,4 are the bottom horizon
+"
+   <I=1,3,2;	IHFWD(I+1)=0;		"End of top/bottom horizon"
+		IHBACK(I+1)=I;		"Link it back to first entry"
+		IHBACK(I)=0; >		" First entry has no back link"
+   IHBTOP(1)=2;				"Start of top horizon"
+   IHBTOP(2)=4;				"Start of bottom horiz"
+   BIG=-1.0E10; TEMP=BIG;		"BIG**2 must be calculable"
+   <I=1,4;	HORXY(1,I)=TEMP;	"X value"
+		TEMP=-TEMP;		"It alternates -,+"
+		HORXY(2,I)=BIG;  >	"Y horizon is big"
+   ROTCOS=1; ROTSIN=0;			"Setup no rotation"
+   LVANISH=.false.;
+   ITXTOP(1)=0;
+   ITXTOP(2)=0;
+   FLAGS(84)=.true.;			"Horizon created"
+END;
+%E  FUNCTION T2MSHX - Gets X values of bin edges
+REAL FUNCTION T2MSHX(ARRAY,NDIM0,NDIM1,NDIM2,I);
+   IMPLICIT NONE;
+   INTEGER NDIM0,NDIM1,NDIM2,I,J,I1,I2,ISTP,ISAVE,IOFF;
+   REAL ARRAY(NDIM0,NDIM1,NDIM2+1);
+   REAL DEPTH,T,T1,T2,T3;
+   $BOOLEAN LDEP;
+   DATA ISTP/1/;
+   IF (NDIM0 .eq.2) THEN;
+      T3=ARRAY(1,NDIM1,1)-ARRAY(1,2,1);
+      IF (I.le.1) THEN;
+	 T=ARRAY(1,2,1)-SIGN(ARRAY(2,2,1),T3);
+      ELSEIF (I.ge.NDIM1) THEN;
+	 T=ARRAY(1,NDIM1,1)+SIGN(ARRAY(2,NDIM1,1),T3);
+      ELSE;
+	 I2=I+1;
+	 T1=ARRAY(1,I ,1)+SIGN(ARRAY(2,I ,1),T3);
+	 T2=ARRAY(1,I2,1)-SIGN(ARRAY(2,I2,1),T3);
+	 T=(T1+T2)/2;
+      ENDIF;
+   ELSE;
+      IF (I.le.1) THEN;		"bottom Edge of lowest bin ?"
+	T=ARRAY(1,1,NDIM2+1);
+	T2=ARRAY(1,2,NDIM2+1);
+	T1=ARRAY(1,2,1);
+	DEPTH=2*(T1-T);
+	LDEP=DEPTH.eq.0 .or. T.eq.T2; "Not bin data ?"
+	IF (LDEP .and. NDIM1.gt.2) THEN;
+	   DEPTH=ARRAY(1,3,1)-T1;	"Bin edges are between valued"
+	   T=T1-DEPTH/2;
+	ENDIF;
+	ISAVE=1;
+     ELSEIF (I.ge.NDIM1) THEN;	"Top edge of top bin ?"
+	T=ARRAY(1,2,NDIM2+1);
+	T2=ARRAY(1,1,NDIM2+1);
+	T1=ARRAY(1,NDIM1,1);
+	DEPTH=2*(T-T1);
+	LDEP=DEPTH.eq.0 .or. T.eq.T2;
+	IF (LDEP .and. NDIM1.gt.2) THEN;
+	   DEPTH=T1-ARRAY(1,NDIM1-1,1);
+	   T=T1+DEPTH/2;
+	ENDIF;
+	ISAVE=NDIM1;
+     ELSEIF (ISAVE.ne.I) THEN;
+	IF (LDEP) THEN;			"Not bin data ?"
+	   T=(ARRAY(1,I,1)+ARRAY(1,I+1,1))/2;	"Average=edge"
+	ELSE;
+	   ISTP=SIGN(ISTP,I-ISAVE);
+	   IOFF=(ISTP+1)/2;
+	   <J=ISAVE+IOFF,I-ISTP+IOFF,ISTP;	"Step to requested bin"
+	      T=2*ARRAY(1,J,1)-T;
+	   >
+	ENDIF;
+	ISAVE=I;
+      ENDIF;
+   ENDIF;
+   T2MSHX=T;
+END;
+%E  FUNCTION T2MSHY - Gets Y values of bin edges
+REAL FUNCTION T2MSHY(ARRAY,NDIM0,NDIM1,NDIM2,I);
+   INTEGER NDIM0,NDIM1,NDIM2,I,J,ISTP,ISAVE,IOFF;
+   REAL ARRAY(NDIM0,NDIM1,NDIM2+1);
+   REAL DEPTH,T,T1,T2,T3;
+   $BOOLEAN LDEP;
+   DATA ISTP/1/;
+   IF (NDIM0 .eq.2) THEN;
+      T3=ARRAY(1,1,NDIM2)-ARRAY(1,1,2);
+      IF (I.le.1) THEN;
+	 T=ARRAY(1,1,2)-SIGN(ARRAY(2,1,2),T3);
+      ELSEIF (I.ge.NDIM2) THEN;
+	 T=ARRAY(1,1,NDIM2)+SIGN(ARRAY(2,1,NDIM2),T3);
+      ELSE;
+	 I2=I+1;
+	 T1=ARRAY(1,1,I )+SIGN(ARRAY(2,1,I ),T3);
+	 T2=ARRAY(1,1,I2)-SIGN(ARRAY(2,1,I2),T3);
+	 T=(T1+T2)/2;
+      ENDIF;
+   ELSE;
+      IF (I.le.1) THEN;
+	T=ARRAY(1,3,NDIM2+1);
+	T2=ARRAY(1,4,NDIM2+1);
+	T1=ARRAY(1,1,2);
+	DEPTH=2*(T1-T);
+	LDEP=DEPTH.eq.0 .or. T.eq.T2;
+	IF (LDEP .and. NDIM2.gt.2) THEN;
+	   DEPTH=ARRAY(1,1,3)-T1;
+	   T=T1-DEPTH/2;
+	ENDIF;
+	ISAVE=1;
+     ELSEIF (I.ge.NDIM2) THEN;
+	T=ARRAY(1,4,NDIM2+1);
+	T2=ARRAY(1,3,NDIM2+1);
+	T1=ARRAY(1,1,NDIM2);
+	DEPTH=2*(T-T1);
+	LDEP=DEPTH.eq.0 .or. T.eq.T2;
+	IF (LDEP .and. NDIM2.gt.2) THEN;
+	   DEPTH=T1-ARRAY(1,1,NDIM2-1);
+	   T=T1+DEPTH/2;
+	ENDIF;
+	ISAVE=NDIM2;
+     ELSEIF (ISAVE.ne.I) THEN;
+	IF (LDEP) THEN;
+	   T=(ARRAY(1,1,I)+ARRAY(1,1,I+1))/2;
+	ELSE;
+	   ISTP=SIGN(ISTP,I-ISAVE);
+	   IOFF=(ISTP+1)/2;
+	   <J=ISAVE+IOFF,I-ISTP+IOFF,ISTP;	"Step to requested bin"
+	      T=2*ARRAY(1,1,J)-T;
+	   >
+	ENDIF;
+	ISAVE=I;
+      ENDIF;
+   ENDIF;
+   T2MSHY=T;
+END;
+%E  SUBROUTINE T2_MESH_DRAW - Plot 3-d data (with hidden line removal)
+SUBROUTINE T2_MESH_DRAW(XYIN,N,INFLAG);
+   INTEGER IFLAG,INFLAG,N; REAL XYIN(2,*);
+"
+	XYIN(2,N)	=Data to plot
+	INFLAG	=4 -- Limit surface to part behind horizon points
+		 2 -- Plot Given surface is to be drawn
+		 1 -- Save Given surface is to be added to the horizon
+"
+   $FLAGS;
+   $MESH COM;
+	"Define internal point store"
+   REAL PNTV3(2,NPSTOR);
+   $BOOLEAN VPNT(2,NPSTOR),LSAVE,LPLOT;
+"
+	PNTV3(X/Y,I) contains the endpoints
+	of the visible part of the segment I to I+1.  If the
+	entire segment is invisible, then the first and last
+	points are equal.
+"
+   INTEGER I,J,K,IPP,NMAX, IVBACK, IVPLOT, IVSAVE;
+
+   IFLAG=IAND(INFLAG,7);
+   IF (IFLAG .eq. 2) THEN;
+      CALL TXLINX(XYIN,N,LINTEX);
+      RETURN;
+   ENDIF;
+   IF (IAND(IFLAG,3).eq.0) RETURN;		"Nothing to do ?"
+
+	"Decompose inflag"
+   IVBACK=IAND(INFLAG,4);			"in back"
+   IVPLOT=IAND(INFLAG,2);			"Plot"
+   IVSAVE=IAND(INFLAG,1);			"Save"
+
+   IF (.not. FLAGS(84)) THEN;			"No horizon"
+      CALL T2_MESH_INIT;			"Initialize it"
+   ENDIF;
+   NMAX=MIN(N,NPSTOR);
+   <IPP=1,NMAX;
+      PNTV3(1,IPP)=ROTCOS*XYIN(1,IPP)-ROTSIN*XYIN(2,IPP);
+      PNTV3(2,IPP)=ROTCOS*XYIN(2,IPP)+ROTSIN*XYIN(1,IPP);
+   >
+"   LSAVE=.true.;"
+   IF (IVBACK.ne.0) THEN;
+      LPLOT=.FALSE.;				"No plot all"
+      LSAVE=.TRUE.;				"Do either plot/store"
+      IF (IVSAVE.ne.0 .and. NMAX.eq.2) THEN;	"No save or 1 segment ?"
+	 IVPLOT=-IVPLOT;			"Plot+store or save"
+	 IVSAVE=0;				"No seond pass"
+      ENDIF;
+      IF (IVPLOT .eq. 0) IVSAVE=0;		"No seond pass if no plot"
+   ELSE;					"Not in behind ?"
+      LPLOT=IVPLOT.NE.0;			"Plot all ?"
+      LSAVE=IVSAVE.ne.0;			"Save ?"
+      IVPLOT=0;					"Only save, no plot"
+      IVSAVE=0;				"No second pass !"
+   ENDIF;
+   <IPP=1,NMAX;
+      PNT12(1,1)=PNT12(1,2);
+      PNT12(2,1)=PNT12(2,2);			"Previous point"
+      PNT12(1,2)=PNTV3(1,IPP);			"New point"
+      PNT12(2,2)=PNTV3(2,IPP);
+      IF (IPP.gt.1) THEN;
+	 IF (LPLOT) THEN;			"No back, or save ?"
+	    <I=1,2; <J=1,2; XX(J,I)=PNT12(J,I);> >	"Get point into buffer"
+	    IBT=2; CALL T2_MESH_DRAW_SEG(.false.);	"Plot"
+	 ENDIF;
+	 IF (LSAVE) THEN;
+	    <IBT=1,2;				"BOTTOM, TOP"
+		"TRICK--Each time, change the sign of the y-values.
+		For IBT=1, this flips everything, but outside
+		the loop, it's back to normal"
+	       PNT12(2,1)=-PNT12(2,1); PNT12(2,2)=-PNT12(2,2);
+	       CALL T2_MESH_TEST_SEG(IVPLOT);	"Find visible part"
+	       VPNT(IBT,IPP)=VFLG;		"Was it visible ?"
+	    >
+	 ENDIF;
+      ENDIF;
+   >
+   IF (IVSAVE.ne.0) THEN;			"Add it to the horizon"
+      <IPP=1,NMAX;
+	 PNT12(1,1)=PNT12(1,2); PNT12(2,1)=PNT12(2,2);
+	 PNT12(1,2)=PNTV3(1,IPP);
+	 PNT12(2,2)=PNTV3(2,IPP);
+	 IF (IPP.gt.1) THEN;
+	    <IBT=1,2;				"Bottom, top"
+						"Restore visible part"
+	       PNT12(2,1)=-PNT12(2,1); PNT12(2,2)=-PNT12(2,2);
+	       IF (VPNT(IBT,IPP))		"Was it visible ?"
+		  CALL T2_MESH_TEST_SEG(0);
+	    >
+	 ENDIF;
+      >
+   ENDIF;
+END;
+%E  SUBROUTINE T2_MESH_DRAW_SEG - Draw segment
+SUBROUTINE T2_MESH_DRAW_SEG(LREV);	"DRAW A SEGMENT"
+	 "Draw a segment from point 1 to 2"
+   $SPECIFICATION;
+   $MESH COM;
+   $BOOLEAN LREV;
+   REAL X,Y;
+   IF (IB+4.GE.NPSTOR) THEN;
+      CALL TXLINX(BUFR,IB/2,LINTEX); IB=0;
+$MESHDEBUG1;
+      if ($DEBUG) CALL TXVOID;
+$END;
+   ENDIF;
+   IF (LREV) THEN; IMIN=2; IMAX=1;
+	     ELSE; IMIN=1; IMAX=2; ENDIF;
+   X=XX(1,IMIN); Y=XX(2,IMIN); IF (IBT.EQ.1) Y=-Y;
+   IF (IB.gt.0) THEN;
+      IF (IBT.ne.IBOLD .or. ABS(OLDX-X).gt.TOLR .OR. ABS(OLDY-Y).gt.TOLR) THEN;
+	 IF (IB.GT.2) THEN;
+	    CALL TXLINX(BUFR,IB/2,LINTEX);
+$MESHDEBUG1;
+	    if ($DEBUG) CALL TXVOID;
+$END;
+	 ENDIF;
+	 IB=0;
+      ENDIF;
+   ENDIF;
+   IF (IBOLD.ne.IBT) THEN;		"New texture ?"
+      IF (ITXTOP(1).ne.ITXTOP(2)) THEN;
+	 CALL T2CWTS(ITXTOP(IBT),IDUM);
+	 CALL TXSDEF;
+      ENDIF;
+      IBOLD=IBT;
+   ENDIF;
+   IF (IB.EQ.0) THEN;
+      BUFR(1)=ROTCOS*X + ROTSIN*Y;
+      BUFR(2)=ROTCOS*Y - ROTSIN*X;
+      IB=2;
+   ENDIF;
+   X=XX(1,IMAX); Y=XX(2,IMAX); IF (IBT.EQ.1) Y=-Y;
+   IF (IB.le.2 .or. ABS(OLDX-X).gt.TOLR .OR. ABS(OLDY-Y).gt.TOLR) THEN;
+      IB=IB+1; BUFR(IB)=ROTCOS*X +ROTSIN*Y;
+      IB=IB+1; BUFR(IB)=ROTCOS*Y -ROTSIN*X;
+      OLDX=X; OLDY=Y;
+   ENDIF;
+$MESHDEBUG1;
+   IF (IB.ge.4) THEN;
+      CALL TXLINX(BUFR,IB/2,LINTEX); IB=0;
+      if ($DEBUG) CALL TXVOID;
+   ENDIF;
+$END;
+END;
+%E  SUBROUTINE T2_MESH_TEST_SEG - Check segment against horizon and draw/save
+SUBROUTINE T2_MESH_TEST_SEG(IVPLOT);
+	"Check the linesegment in (PNT1,PNT2)
+      against the horizon.  If part of the line is visible
+      set VFLG to true and put the visible part in XX.
+      Then either plot or store the segment.
+    IVPLOT > 0 - Plot only
+    IVPLOT = 0 - Store only
+    IVPLOT < 0 - Plot and store
+      This routine was completely rewritten by J. Clement
+					       Bonner Lab
+					       Rice University
+					       Houston, Tx.
+	"
+   $FLAGS;
+   $MESH COM;
+   REAL        BIG , NBIG;
+   PARAMETER ( BIG= 5.0E9);
+   PARAMETER (NBIG=-5.0E9);
+   $BOOLEAN LREV , LVERT;
+   REAL XYLIM(4); DATA XYLIM/NBIG,BIG,NBIG,BIG/;
+   EQUIVALENCE (XX(1,1),X1),(XX(1,2),X2),(XX(2,1),Y1),(XX(2,2),Y2);
+   EQUIVALENCE (XX(1,3),XMIN),(XX(1,4),XMAX),(XX(2,3),YMIN),(XX(2,4),YMAX);
+	"Pick min, max"
+   VFLG=.false.;
+   LREV=PNT12(1,2) .lt. PNT12(1,1);	"Reverse points ?"
+   IF (LREV)
+      THEN; IMIN=2; IMAX=1;
+      ELSE; IMIN=1; IMAX=2; ENDIF;
+   XMIN=PNT12(1,IMIN); YMIN=PNT12(2,IMIN);
+   XMAX=PNT12(1,IMAX); YMAX=PNT12(2,IMAX);
+   IF (XMIN.lt.-BIG .or. XMAX.gt.BIG .or.
+       MAX( ABS(YMIN),ABS(YMAX) ) .gt. BIG) THEN;
+       CALL TD2SCS(XYLIM,2,XX(1,3),XX(1,4),IHIT);
+       IF (IHIT.eq.4) RETURN;		"Both points out of range ?"
+   ENDIF;
+   DX=XMAX-XMIN;
+   TEMP=DX*.01;  TEMP=MIN(TEMP,TOLR/10);
+   XMIN=XMIN+TEMP; XMAX=XMAX-TEMP; DX=XMAX-XMIN;
+   DY=YMAX-YMIN;
+   TEMP=DY*.01;  IF (ABS(TEMP).gt.TOLR/10) TEMP=SIGN(TOLR/10,TEMP);
+   YMIN=YMIN+TEMP; YMAX=YMAX+TEMP; DY=YMAX-YMIN;
+   LVERT=DX.lt.TOLR;		"Vertical line ?"
+   IF (LVERT) THEN;
+      IF (IVPLOT.eq.0) RETURN;		"Store only ?"
+      XMIN=(XMIN+XMAX)/2;
+      XMAX=XMIN; DX=0; XS=0;
+      IF (YMIN.gt.YMAX) THEN;
+	 TEMP=YMAX; YMAX=YMIN; YMIN=TEMP;
+      ENDIF;
+   ELSE;
+      XS=DY/DX;
+   ENDIF;
+   X1=XMIN; Y1=YMIN;
+   X2=XMAX; Y2=YMAX;
+   IRIGHT=IHBTOP(IBT);
+   LEFT=IHBACK(IRIGHT);
+$MESHDEBUG;
+   ICOUNTR=IHSIZE*4;
+$END;
+	"Now make sure X1 > left"
+   <LOOP> <			"Find X < XMIN"
+$MESHDEBUG;
+      IPASS=IPASS+1;
+$END;
+      XL=HORXY(1,LEFT);
+      IF (X1.gt.XL) <EXIT>;
+      IRIGHT=LEFT;
+      LEFT=IHBACK(IRIGHT);
+$MESHDEBUG;
+      ICOUNTR=ICOUNTR-1;
+      IF (ICOUNTR.lt.0) CALL T2_MESH_LIST('Overrun')
+$END;
+		"We want Left < X1 <= Right"
+   >
+   <LOOP> <
+      <LOOP> <			"Find X >= XMIN"
+	 IF (X1.le.HORXY(1,IRIGHT)) <EXIT>;
+	 LEFT=IRIGHT;
+	 IRIGHT=IHFWD(LEFT);
+$MESHDEBUG;
+	 ICOUNTR=ICOUNTR-1;
+	 IF (ICOUNTR.lt.0) CALL T2_MESH_LIST('Overrun')
+$END;
+      >
+      XL1=HORXY(1,LEFT);   YL1=HORXY(2,LEFT);
+      XR1=HORXY(1,IRIGHT); YR1=HORXY(2,IRIGHT);
+      IF (XR1.ne.XL1) THEN;
+	 Y = (X1-XL1)*(YR1-YL1)/(XR1-XL1)+YL1;
+	 IF (Y1.gt.Y) GOTO :OKL:;	"Above horizon ?"
+      ENDIF;
+      <LOOP> <		"Get left visible point"
+	 IF (XR1.ne.XL1) THEN;
+	    IF (XMAX.le.XR1) THEN;
+	       YT = (XMAX-XL1)*(YR1-YL1)/(XR1-XL1)+YL1;
+	       IF (YMAX.gt.YT) <EXIT>;
+	       GOTO :RET:;
+	    ENDIF;
+	 ELSE;
+	    IF (LVERT) THEN;
+	       Y1=MAX(YL1,YR1);
+	       IF (Y2.gt.Y1) GOTO :OK:;
+	       GOTO :RET:;
+	    ENDIF;
+	 ENDIF;
+	 Y = (XR1-XMAX)*XS+YMAX;
+	 IF (Y.gt.YR1) <EXIT>;
+	 IF (XR1.ge.XMAX) GOTO :RET:;
+	 X1=XR1; Y1=Y; XL1=XR1; YL1=YR1;
+	 LEFT=IRIGHT;
+	 IRIGHT = IHFWD(LEFT);
+	 XR1=HORXY(1,IRIGHT); YR1=HORXY(2,IRIGHT);
+$MESHDEBUG;
+	 ICOUNTR=ICOUNTR-1;
+	 IF (ICOUNTR.lt.0) CALL T2_MESH_LIST('Overrun')
+$END;
+      >
+      IF (LVERT) THEN;
+	 Y1=Y; GOTO :OK:;
+      ELSE;
+		"I HAVE 4 POINTS 3, 4, L, & R, AND I WANT TO FIND
+	     THE INTERSECTION I OF THE SEGMENTS 34 AND LR.
+	     IF (THE EXTENSION OF) 34 INTERSECT LR, THEN THE
+	     SEGMENTS 3L AND 3R ARE ON OPPOSITE SIDES OF 34,
+	     AND (34 X 3L).(34 X 3R) <= 0.  THE SECOND PART OF
+	     THE CALCULATION IS
+		FAC = |3I|/|34| = |LR X 3I|/|LR X 34|
+		FAC = |LR X 3L| / |LR X 34|
+	     FOR THE CORRECT SOLUTION, 0 <= FAC <= 1.
+		"
+	 XL=XL1-XMIN;   YL=YL1-YMIN;
+"
+	 XR=XR1-XMIN;   YR=YR1-YMIN;
+	 C34XL = DX*YL - DY*XL;
+	 C34XR = DX*YR - DY*XR;
+	 IF (C34XL*C34XR .GT.0.) RETURN;
+"
+	 XLR = XR1-XL1;
+	 YLR = YR1-YL1;
+	 CLRDX = XLR*DY - DX*YLR; IF (CLRDX.EQ.0.) GOTO :RET:;
+	 CLRXL = XLR*YL - XL*YLR;
+	 FAC = CLRXL / CLRDX;
+	 X1=XMIN+DX*FAC;
+	 Y1=YMIN+DY*FAC;
+$MESHDEBUG;
+	 IF (X1.lt.XL1-TOLR/2) THEN;
+	    CALL T2_MESH_LIST('X1 < XL1 in T2_MESH_TEST_SEG');
+	    X2=X1;
+	 ENDIF;
+$END;
+	 X1=MAX(X1,XL1);		"Make sure it is OK"
+      ENDIF;
+:OKL:
+      LEFT2=LEFT;
+      XL2=XL1; YL2=YL1; XR2=XR1; YR2=YR1;
+      <LOOP> <			"Get right visible point"
+	 IF (XR2.ne.XL2 .and. XMAX.le.XR2) THEN;
+	    Y = (XMAX-XL2)*(YR2-YL2)/(XR2-XL2)+YL2;
+	    IF (YMAX.gt.Y) GOTO :OK:;
+	    <EXIT>;
+	 ENDIF;
+	 Y = (XR2-XMAX)*XS+YMAX;	"Current Y value of segment"
+	 IF (Y.lt.YR2) <EXIT>;		"Dips below ?"
+	 LEFT2=IRIGHT;
+	 IRIGHT=IHFWD(IRIGHT);
+$MESHDEBUG;
+	 ICOUNTR=ICOUNTR-1;
+	 IF (ICOUNTR.lt.0) CALL T2_MESH_LIST('Overrun')
+$END;
+	 XL2=XR2; YL2=YR2;				"Right -> left"
+	 XR2=HORXY(1,IRIGHT); YR2=HORXY(2,IRIGHT);	"New right val"
+      >
+      XL=XL2-XMIN; YL=YL2-YMIN;
+      XLR = XR2-XL2;
+      YLR = YR2-YL2;
+      CLRDX = XLR*DY - DX*YLR; IF (CLRDX.EQ.0.) GOTO :RET:;
+      CLRXL = XLR*YL - XL*YLR;
+      FAC = CLRXL/ CLRDX;
+	"IF (FAC.GE.0. .AND. FAC.LE.1.) GOTO :RET:;"
+      X2=XMIN+DX*FAC;
+      Y2=YMIN+DY*FAC;
+:OK:
+IF (LVERT) THEN;
+   XL2=XL1; YL2=YL1; XR2=XR1; YR2=YR1;
+ENDIF;
+$MESHDEBUG;
+      IF (X2.lt.X1-TOLR/2) THEN;
+	 CALL T2_MESH_LIST('X2 < X1 im T2_MESH_TEST_SEG');
+      ENDIF;
+      IF (X2.lt.XL2-TOLR/2) THEN;
+	 WRITE($TERMINAL OUT,*) 'XL2=',XL2,YL2,' X2=', X2,Y2;
+	 CALL T2_MESH_LIST('X2 < XL1 im T2_MESH_TEST_SEG');
+      ENDIF;
+$END;
+      X2=MAX(MAX(X1,X2),XL2);		"Make sure it is OK"
+      VFLG=.true.;
+      IF (IVPLOT.ne.0) CALL T2_MESH_DRAW_SEG(LREV);
+      IF (.not.LVERT.and.IVPLOT.le.0 .and. ABS(X1-X2).ge.TOLR) THEN;
+		"Remove redundant nodes from horizon"
+	 I=IHBACK(IRIGHT);		"Last one"
+	 IF (I.NE.LEFT) THEN;
+	    IHFWD(I)=IFREE;		"Add them to the free chain"
+	    IFREE=IHFWD(LEFT);
+	    IHFWD(LEFT)=IRIGHT;	"Remove them from the horizon"
+	    IHBACK(IRIGHT)=LEFT;
+	 ENDIF;
+		"Add new nodes to horizon"
+	 IF (ABS(X1-XL1) .lt. TOLR) THEN;	"Left X same as Left Pt ?"
+	    IF (ABS(Y1-YL1).gt. TOLR) THEN;
+	       I=IHBACK(LEFT);		"Check for redundant node"
+	       IF (I.ne.0) THEN; TEMP=ABS(XL1-HORXY(1,I));
+			   ELSE; TEMP=100; ENDIF;
+	       IF (TEMP .lt. TOLR) THEN;
+		  HORXY(1,LEFT)=XL1; HORXY(2,LEFT)=Y1+TOLR/5;
+	       ELSE;
+		  CALL T2_MESH_INSERT_NODES(LEFT,XL1,Y1+TOLR/5);
+	       ENDIF;
+	    ENDIF;
+	 ELSE;
+	    Y=YL1+(X1-XL1)*(YR1-YL1)/(XR1-XL1);
+	    CALL T2_MESH_INSERT_NODES(LEFT,X1-TOLR/10,Y+TOLR/5);
+	    IF (ABS(Y-Y1).gt. TOLR)
+	       CALL T2_MESH_INSERT_NODES(LEFT,X1-TOLR/10,Y1+TOLR/5);
+	 ENDIF;
+	 IF (ABS(XR2-X2) .lt. TOLR) THEN;
+	    IF (ABS(Y2-YR2).gt. TOLR) THEN;
+	       I=IHFWD(IRIGHT);		"Check for redundant node"
+	       IF (I.ne.0) THEN; TEMP=ABS(XR2-HORXY(1,I));
+			   ELSE; TEMP=100; ENDIF;
+	       IF (TEMP .lt. TOLR) THEN;
+		  HORXY(1,IRIGHT)=XR2; HORXY(2,IRIGHT)=Y2+TOLR/5;
+	       ELSE;
+		  CALL T2_MESH_INSERT_NODES(LEFT,XR2,Y2+TOLR/5);
+	       ENDIF;
+	    ENDIF;
+	 ELSE;
+	    Y=YL2+(X2-XL2)*(YR2-YL2)/(XR2-XL2);
+	    IF (ABS(Y-Y2).gt. TOLR)
+	       CALL T2_MESH_INSERT_NODES(LEFT,X2+TOLR/10,Y2+TOLR/5);
+	    CALL T2_MESH_INSERT_NODES(LEFT,X2+TOLR/10,Y+TOLR/5);
+	 ENDIF;
+      ENDIF;
+$MESHDEBUG;
+		"Check integrity of node list"
+      <I=1,2; K=2*I-1; X=-1.0E10; L=0;
+	 <J=1,IHSIZE;
+	    IF (K.gt.IHSIZE.or.K.le.0) <EXIT>;
+	    TEMP=HORXY(1,K);
+	    IF (TEMP.lt.X) CALL T2_MESH_LIST('BAD X in T2_MESH_TEST_SEG');
+	    IF (L.ne. IHBACK(K))
+	       CALL T2_MESH_LIST('Bad BACK in T2_MESH_TEST_SEG');
+	    X=TEMP; L=K; K=IHFWD(K);
+	 >
+	 IF (K.ne.0) CALL T2_MESH_LIST('Bad Index in T2_MESH_TEST_SEG');
+	 IF (L.ne.2*I)
+	    CALL T2_MESH_LIST('Bad final Index in T2_MESH_TEST_SEG');
+      >
+$END;
+      IRIGHT=IHFWD(LEFT);
+      IF (XMAX-X2 .lt. TOLR) GOTO :RET:;	"Done ?"
+      X1=X2+TOLR/10; Y1=XS*(X1-XMAX)+YMAX; X2=XMAX; Y2=YMAX;
+   >
+:RET:
+   IHBTOP(IBT)=IRIGHT;
+	"Check the variables"
+END;
+%E  SUBROUTINE T2_MESH_LIST_HORIZ -  List horizon
+SUBROUTINE T2_MESH_LIST_HORIZ;
+"
+	List the horizon
+"
+   IMPLICIT NONE;
+   $FLAGS;
+   $MESH COM;
+   INTEGER I,J,K,L;
+   REAL X,Y,TEMP;
+   WRITE($TERMINAL OUT,*) 'IHBTOP=     ',IHBTOP;
+   WRITE($TERMINAL OUT,*) 'Left, Right=',LEFT,IRIGHT;
+   <I=1,2; K=2*I-1; X=-1.0E10; L=0;
+      WRITE($TERMINAL OUT,*) '  Index,  Back, Forward,    X,     Y, DX,DY',I;
+      <J=1,IHSIZE;
+	 IF ($TRAP) RETURN;
+	 IF (K.gt.IHSIZE.or.K.le.0) <EXIT>;
+	 IF (K.eq.LEFT) WRITE($TERMINAL OUT,*) ' Left ---';
+	 TEMP=HORXY(1,K);
+	 WRITE($TERMINAL OUT,*)K,IHBACK(K),IHFWD(K),
+	    HORXY(1,K),HORXY(2,K),TEMP-X;
+	 IF (K.eq.IRIGHT) WRITE($TERMINAL OUT,*) ' Right ---';
+	 IF (TEMP.lt.X) WRITE($TERMINAL OUT,*)'BAD X ***';
+	 IF (L.ne. IHBACK(K)) WRITE($TERMINAL OUT,*)'Bad BACK ***';
+	 X=TEMP; L=K; K=IHFWD(K);
+      >
+      IF (K.ne.0)   WRITE($TERMINAL OUT,*) 'Error Index=',K;
+      IF (L.ne.2*I) WRITE($TERMINAL OUT,*) 'Bad final Index ***';
+   >
+END;
+SUBROUTINE T2_MESH_LIST(STR);
+"
+	List the current horizon
+"
+   IMPLICIT NONE;
+   INTEGER I;
+   CHARACTER*(*) STR;
+   $MESH COM;
+   WRITE ($TERMINAL OUT,*) STR,' Pass=',IPASS;
+   WRITE ($TERMINAL OUT,*) 'X1,   Y1=  ',XX(1,1),XX(2,1);
+   WRITE ($TERMINAL OUT,*) 'X2,   Y2=  ',XX(1,2),XX(2,2);
+   WRITE ($TERMINAL OUT,*) 'XMIN, YMIN=',XX(1,3),XX(2,3);
+   WRITE ($TERMINAL OUT,*) 'XMAX, YMAX=',XX(1,4),XX(2,4);
+   CALL T2_MESH_LIST_HORIZ;
+   I=0;
+   WRITE($TERMINAL OUT,*) 1/I;
+END;
+%E  SUBROUTINE T2_MESH_FLUSH - Flush 3d buffer
+SUBROUTINE T2_MESH_FLUSH;
+"
+	Flush the 3d buffer
+"
+   IMPLICIT NONE;
+   $SPECIFICATION;
+   $MESH COM;
+   IF (IB.GT.2) CALL TXLINX(BUFR,IB/2,LINTEX);
+$MESHDEBUG1;
+   if ($DEBUG) CALL TXVOID;
+$END;
+   IB=0; IBOLD=IBT;
+END;
+SUBROUTINE T2_MESH_HORIZ(ARRAY,NDIM0,NDIM1,NDIM2,WIDTH);
+"
+	Puts the front 2 edges into the horizon
+"
+   REAL ARRAY(NDIM0,NDIM1,NDIM2);
+   $SPECIFICATION;
+   $MESH COM;
+   REAL XYZ(3,3),XY(2,3);
+	"PICK THE X-Y PLANE AT Z=ZMIN"
+      <I=1,3; XYZ(MESH3,I)=XYZLIM(MESH3,1);>
+	"POINTS 1,2,3 ARE AT LEFT,CENTER, RIGHT"
+      IF (MINAX.EQ.MESH1) THEN;
+	 XYZ(MINAX,1) = ARRAY(1,MINMIN,1);
+	 XYZ(MINAX,2) = ARRAY(1,MINMIN,1);
+	 XYZ(MINAX,3) = ARRAY(1,MINMAX,1);
+	 XYZ(MAJAX,1) = ARRAY(1,1,MAJMAX);
+	 XYZ(MAJAX,2) = ARRAY(1,1,MAJMIN)-WIDTH;
+	 XYZ(MAJAX,3) = ARRAY(1,1,MAJMIN)-WIDTH;
+      ELSE;
+	 XYZ(MINAX,1) = ARRAY(1,1,MINMIN);
+	 XYZ(MINAX,2) = ARRAY(1,1,MINMIN);
+	 XYZ(MINAX,3) = ARRAY(1,1,MINMAX);
+	 XYZ(MAJAX,1) = ARRAY(1,MAJMAX,1);
+	 XYZ(MAJAX,2) = ARRAY(1,MAJMIN,1)-WIDTH;
+	 XYZ(MAJAX,3) = ARRAY(1,MAJMIN,1)-WIDTH;
+      ENDIF;
+	"GOT 'EM IN 3-D, NOT PROJECT TO THE SCREEN"
+      CALL T2XFRM(3,3,XYZ,NONLIN,XFRM14,2,XY);
+	"DOUBLE THE LENGTH OF THE LINES, JUST TO MAKE SURE"
+      <I=1,2;	"FOR X,Y"
+	 XY(I,1) = 2.*XY(I,1) - XY(I,2);
+	 XY(I,3) = 2.*XY(I,3) - XY(I,2);
+      >
+	"ADD TO THE HORIZON, BUT DON'T DRAW"
+      CALL T2_MESH_DRAW(XY,3,5);
+END;
+%E  SUBROUTINE T2_MESH_FILL - Draw lines or dots on faces
+   SUBROUTINE T2_MESH_FILL(X0,Y0,Z0,DX,DY,DZ,IXYZ,DXYZ);
+   $SPECIFICATION;
+   $MESH COM;
+	"Draw lines or dots on faces"
+   REAL XYZ(3,4),XY(2,4),DXYZ(1);
+   REAL RAN;
+   XYZ(MAJAX,1)=X0;  XYZ(MAJAX,3)=X0;  XYZ(MAJAX,4)=DX;
+   XYZ(MINAX,1)=Y0;  XYZ(MINAX,3)=Y0;  XYZ(MINAX,4)=DY;
+   XYZ(MESH3,1)=Z0;  XYZ(MESH3,3)=Z0;  XYZ(MESH3,4)=DZ;
+   IFACE=1;
+   <I=1,3;  IF(XYZ(I,4).eq.0) IFACE=I;>
+   IFACE1=mod(IFACE,3)+1; IFACE2=MOD(IFACE+1,3)+1;
+   IF(IAND(IXYZ,1024).ne.0) THEN;	"Plot dots ?"
+      DENOM= ABS((XYZLIM(IFACE1,1)-XYZLIM(IFACE1,2))*
+		 (XYZLIM(IFACE2,1)-XYZLIM(IFACE2,2)));
+      IMAX=0;
+      IF(DENOM.ne.0)
+	 IMAX=1+ABS(DXYZ(1)*(XYZ(IFACE1,4)*XYZ(IFACE2,4))/DENOM);
+      <I=1,IMAX;
+	 <J=1,3; XYZ(J,1)=XYZ(J,3)+XYZ(J,4)*RAN(ISEED);
+		 XYZ(J,2)=XYZ(J,1);>	"Into both"
+	 CALL T2XFRM(3,2,XYZ,NONLIN,XFRM14,2,XY);
+	 CALL T2_MESH_DRAW(XY,2,6);	"Front major horizon"
+      >
+   ELSEIF(IAND(IXYZ,512).ne.0) THEN;	"Cross"
+      <I=1,3; XYZ(I,2)=XYZ(I,3)+XYZ(I,4);>
+      CALL T2XFRM(3,2,XYZ,NONLIN,XFRM14,2,XY);
+      CALL T2_MESH_DRAW(XY,2,6);	"Front major horizon"
+      <I=1,3; XYZ(I,2)=XYZ(I,3);>
+      XYZ(IFACE1,1)=XYZ(IFACE1,1)+XYZ(IFACE1,4);
+      XYZ(IFACE2,2)=XYZ(IFACE2,1)+XYZ(IFACE2,4);
+      CALL T2XFRM(3,2,XYZ,NONLIN,XFRM14,2,XY);
+      CALL T2_MESH_DRAW(XY,2,6);	"Front major horizon"
+   ELSE;
+      <IFACE=1,2;
+	 XS=ABS(DXYZ(IFACE1));
+	 IF(XS.ne.0) THEN;
+	    XMIN=XYZ(IFACE1,3)-0.00001*XYZ(IFACE1,4);
+	    XMAX=XYZ(IFACE1,3)+1.00001*XYZ(IFACE1,4);
+	    <I=1,3; XYZ(I,2)=XYZ(I,3);XYZ(I,1)=XYZ(I,3);>
+	    XMIN=XMIN-MOD(XMIN,XS);
+	    IMAX=ABS((XMAX-XMIN)/XS);
+	    XYZ(IFACE2,2)=XYZ(IFACE2,3)+XYZ(IFACE2,4);
+	    IF(XYZ(IFACE1,4).lt.0) XS=-XS;
+	    <I=1,IMAX;
+		XYZ(IFACE1,1)=XYZ(IFACE1,1)+XS;
+		XYZ(IFACE1,2)=XYZ(IFACE1,2)+XS;
+		CALL T2XFRM(3,2,XYZ,NONLIN,XFRM14,2,XY);
+		CALL T2_MESH_DRAW(XY,2,6);	"Front major horizon"
+	    >
+	 ENDIF;
+	 I=IFACE1; IFACE1=IFACE2; IFACE2=I;	"Swap faces"
+      >
+   ENDIF;
+   END;
+%E  SUBROUTINE T2_MESH_GRID - Draw lines or dots on faces
+   SUBROUTINE T2_MESH_GRID(X0,Y0,Z0,DX,DY,DZ,DXYZ,NB);
+   IMPLICIT NONE;
+   INTEGER NB;
+   REAL X0, Y0, Z0, DX, DY, DZ, DXYZ(NB);
+   $SPECIFICATION;
+   $MESH COM;
+   $BOOLEAN LFIRST, LCYCLE;
+   INTEGER I,J,ITEXSAV,IDUM;
+   REAL ZMIN, ZMAX;
+	"Draw lines or dots on faces"
+   REAL XYZ(3,2),XY(2,2);
+   XYZ(MAJAX,1)=X0;  XYZ(MAJAX,2)=X0+DX;
+   XYZ(MINAX,1)=Y0;  XYZ(MINAX,2)=Y0+DY;
+   ZMIN=MIN(Z0,Z0+DZ);
+   ZMAX=MAX(Z0,Z0+DZ);
+   LFIRST=.true.;
+   LCYCLE=IAND(GRDTYP,256).ne.0 .and. MESH3 .eq.3;
+   IDUM=0;
+   ITEXSAV=0;
+   <I=1,NB;
+	IF (DXYZ(I) .gt. ZMAX) <EXIT>;
+	IF (DXYZ(I) .lt. ZMIN) <NEXT>;
+	IF (LFIRST .or. LCYCLE) THEN;
+	    CALL T2_MESH_flush;
+	    IF (LFIRST) CALL T2CWTS(GRDTEX,ITEXSAV);
+	    IF (LCYCLE) THEN;
+		J=MOD(I-1,N_CYCLE)+1;		"Cycle number"
+		CALL T2CWTS(ITX_CYCLE(J),IDUM);	"Setup cycle attributes"
+	    ENDIF;
+	    CALL TXSDEF;
+	    LFIRST=.false.;
+	ENDIF;
+	<J=1,2; XYZ(MESH3,J)=DXYZ(I); >
+	CALL T2XFRM(3,2,XYZ,NONLIN,XFRM14,2,XY);
+	CALL T2_MESH_DRAW(XY,2,6);	"Front major horizon"
+   >
+	IF (.not. LFIRST) THEN;
+	    CALL T2_MESH_FLUSH;
+	    CALL T2CWTS(ITEXSAV,IDUM);
+	    CALL TXSDEF;
+	ENDIF;
+   END;
+%E  SUBROUTINE T2_MESH_INSERT_NODES - Insert nodes in horizon after current one
+SUBROUTINE T2_MESH_INSERT_NODES(I,X,Y);
+   IMPLICIT NONE;
+"
+	Insert a node with values X,Y after node I
+	On return I=new inserted node
+"
+   INTEGER I,J,IHF;
+   REAL X,Y;
+   $MESHCOM;
+   J=IFREE;				"New block"
+   IF (J.ne.0) THEN;			"free blocks ?"
+      IFREE=IHFWD(J);		"Remove it"
+      HORXY(1,J)=X; HORXY(2,J)=Y;	"Load data"
+      IHBACK(J)=I;			"its backward link"
+      IHF=IHFWD(I); IHFWD(I)=J;	"Link it in foreward"
+      IHBACK(IHF)=J;			"And back"
+      IHFWD(J)=IHF;			"Its foreward link"
+      I=J;				"Points to new buffer"
+   ELSEIF (LFREE) THEN;
+      LFREE=.false.;
+      ERROR STRING; ('*** ERROR *** Horizon nodes exceed storage');
+   ENDIF;
+END;
+%E  SUBROUTINE T2_MESH_REMOVE_NODES - remove nodes from horizon
+SUBROUTINE T2_MESH_REMOVE_NODES(I);
+   IMPLICIT NONE;
+"
+	Remove node I from horizon
+	On return I=node before node I
+"
+   INTEGER I,J;
+   $MESHCOM;
+   J=IHBACK(I);				"Back link"
+   IF(J.ne.0) IHFWD(J)=IHFWD(I);		"unlink from previous"
+   J=IHFWD(I);
+   IF(J.ne.0) IHBACK(J)=IHBACK(I);	"Unlink from next"
+   IHFWD(I)=IFREE;  IFREE=I;		"Add to free list"
+   I=J;					"Current = next"
+END;

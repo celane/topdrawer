@@ -1,0 +1,56 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.18.16.4</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.18.16.4  Options</H4></B>  - 
+     1.  "HARDST"  or "SOFTST" select hardware structure, or software line
+         structure.  HARDST is faster,  but  SOFTST  will  give  identical
+         results on all devices.
+     2.  "HIRES"  or  "LORES" select the resolution (4096 or 1024).  HIRES
+         is slower, and will only work on some devices.  For example HIRES
+         messes up the plots on a Visual-102.
+     3.  "HARDCH"  or  "SOFTCH" selects the range of character generation.
+         HARDCH generates 4 character sizes by hardware.  SOFTCH generates
+         only 1.
+     4.  "NOINTEN"  or  "INTEN"  selects  intensity  variation.  This only
+         works on "real" 4010 terminals, and VT-240.   There  are  only  2
+         levels of variation 1,2,3 or 4,5.
+     5.  "HEIGHT=n" selects the screen height in cm.  This componsates for
+         emulators without "good" aspect ratios.
+     6.  "YPIXELS=n"  selects  the number of Y pixels for emulators with a
+         different number from the standard 3120.   This  may  be  in  the
+         range of 1024 to 4096.  Xpixels are assumed to be 4096.
+     7.  "WIDTH=n" selects the screen width in cm.
+     8.  "SLOW" selects full rather than compressed output for each point.
+         All redundant characters are transmitted.
+     9.  "RECSIZE=nnn" selects the record size (72-512)
+    10.  "RSEGM"  or  "NSEGM" - Selecte [no]return to terminal mode at end
+         of each segment.  This  is  useful  for  terminals  that  support
+         simultaneous ANSI, and Tek graphics on screen at the same time.
+    11.  "COLOR=WRGBYMCB"  -  specifies the 8 color mapping characters for
+         White, Red, Green, Blue,  Yellow,  Magenta,  Cyan,  Black.   Each
+         escape  sequence  has  a unique single character to select color,
+         which may be specified by the color option.  Spaces indicate keep
+         the color the same.  For example KERMIT uses "COLOR=71243560"
+    12.  "PRECOL=sequence"  specifies  the "escape" sequence to use before
+         the color character.  For example KERMIT uses "PRECOL=[3"
+    13.  "POSTCOL=sequence"  specifies the sequence to use after the color
+         character.  For example KERMIT uses "POSTCOL=m"
+    14.  "ENTER=sequence"   specifies   the  "escape"  sequence  to  enter
+         TEK-4010 mode from terminal mode.  For example VT-240 and  KERMIT
+         use "ENTER='[?38h'"
+    15.  "EXIT=sequence"  specifies the "escape" sequence to Exit TEK-4010
+         mode to terminal mode.  This sequence is  executed  whenever  the
+         screen  is  erased  or  at  the  end  of each segment if RSEGM is
+         selected.  For example VT-240 and KERMIT use "EXIT='[?38l'"
+
+NOTE:   It  is  assumed  that the escape character "27" begins each escape
+<A NAME="137">sequence, and  it  need  not  be  entered.   Escape  sequences  containing </A>
+lowercase  letters need to be inside quotes.  In addition escape sequences
+are limited to 7 characters and they may not contain blanks.
+
+
+</PRE>
+</BODY>

@@ -1,0 +1,102 @@
+                    Topdrawer-mode on Emacs
+
+
+                                                       T. Ohnishi
+                                            Department of Physics
+                                              University of Tokyo
+                              oonishi@tkynx0.phys.s.u-tokyo.ac.jp
+
+                                   (English document: H. Okamura)
+
+
+"td.el" is an Emacs-Lisp to be used to invoke the topdrawer  from
+within Emacs without saving buffers.
+
+It  works with Topdrawer ver. 5.12 enhanced release 1.2 or later.
+Please make sure of it by typing
+
+    % td -h
+
+and finding the option "-w : wait for signal" is supported.
+
+
+1. INSTALL
+
+
+Move "td.el" to the directory specified by Emacs  load-path,  and
+insert the following line in your ~/.emacs:
+
+    (load "td" nil nil nil)
+
+The default load-path is
+
+    /usr/lib/emacs/19.xx/lisp:/usr/lib/emacs/site-lisp
+
+if you are using Emacs, or
+
+    /usr/local/lib/mule/19.28/lisp:/usr/local/lib/mule/site-lisp
+
+if you are using Mule, Multi-Lingual Extension of emacs.
+
+In order to append your local directory, e.g. /home/userid/elisp,
+to load-path, insert the following line in your ~/.emacs:
+
+    (setq load-path
+          (append (list "/home/userid/elisp") load-path))
+
+If the executable "td" is not located in the command PATH, insert
+a line like the following in your ~/.emacs to inform the complete
+path of the executable file:
+
+    (setq topdrawer-command "/home/common/topdrwer/td")
+
+The default CASE control is compatible with the old SLAC version.
+If  you prefer the Bonner Lab. CASE control, insert the following
+line in your ~/.emacs:
+
+    (setq topdrawer-ugsoption t)
+
+
+2. USAGE
+
+
+In case that the extension of the name of buffer is either ".top"
+or ".tdr", the "topdrawer-mode" is automatically activated.  Oth-
+erwise, type "M-x topdrawer-mode" to activate it.
+
+A string "Topdrawer" will appear in the menu-bar and you can  in-
+voke  the  following commands by clicking this with the mouse, as
+well as by typing keys bound to the command.
+
+
+o Output to X Window System
+
+The command "topdrawer-xwindow" is bound  to  "\C-t\C-d"  by  de-
+fault.   The topdrawer is invoked by this command as a subprocess
+and pauses at the page break prompting "PAUSE:"  in  mini-buffer.
+The  page  break is caused by the "NEW_FRAME" (topdrawer) command
+or by the end of buffer.
+
+The execution is controlled by the following commands:
+
+    continue-topdrawer-process  (bound to "\C-t\C-f" by default)
+    exit-topdrawer-process      (bound to "\C-t\C-q" by default)
+
+
+o Output to PostScript file
+
+The command "topdrawer-ps" is bound  to  "\C-t\C-p"  by  default.
+The name of output file is inquired in mini-buffer, prompting the
+default name if the current buffer is named.  If the extension of
+buffer name is either ".top" or ".tdr", it is changed to ".ps" to
+give the default output name.  Otherwise the buffer name followed
+by ".ps" is used for the default name.
+
+Likewise,  the  command "topdrawer-eps" is bound to "\C-t\C-e" by
+default.  The default extension is ".eps" in this case.
+
+
+In all above cases, the Emacs window is divided to show the  mes-
+sage  if  any message is sent from the topdrawer subprocess.  The
+message window is closed at the next page break if no message  is
+sent since the previous page break.

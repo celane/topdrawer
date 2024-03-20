@@ -1,0 +1,22 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.64.61.12</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.64.61.12  ESCAPE</H4></B>   - This  defines  a  character  to use as an "escape"
+character.  After the escape character you  enter  a  "text","case"  pair.
+This  allows  you  to  imbed  text case pairs in the text, without using a
+separate case line.  When used with the substitution you can define macros
+for  expressions.   To output the ESCAPE character you must enter it twice
+followed by a space.
+                                 example
+     TD:SET TITLE ESCAPE="@"
+     TD:TITLE TOP "This is a Greek alpha @AG"
+Writes a title with an imbedded alpha.
+     TD:TITLE TOP "This an at symbol @@ ."
+Writes the title:"This an at symbol @."
+
+
+</PRE>
+</BODY>

@@ -1,0 +1,43 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.1</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.1  FORMAT_OF_COMMANDS</H4></B> 
+
+Normally 1 command is placed on a single line.  If you wish  to  put  more
+than 1 command per line, they must be separated by a semicolon ";"
+
+You may continue a command on the next line by putting a minus sign "-" at
+the end of the current line.
+     TD:<U>SHOW</U> <U>DATA</U> <U>-</U>
+     _TD:<U>STAT=OFF</U> <U>(continuation</U> <U>example)</U>
+
+Optional  syntax  in  a command is shown enclosed in square brackets "[]".
+Required syntax may be enclosed in braces {}.   If  options  are  mutually
+exclusive they are separated by vertical bars "|" Options within a command
+may appear in any order.  Parameters must follow the option  they  modify.
+Options  in  a  command  may  be  separated  by tabs spaces * , or =.  For
+example SIZE=5 is the same as SIZE 5 or SIZE=5 or ,SIZE 5.
+
+Commands and options may be abbreviated to the shortest number  of  unique
+characters or a minimum of 2 characters.  For example the command BARGRAPH
+may be abbreviated to BARGR, BAR or  even  BA.   SET  FILE  INPUT  may  be
+abbreviated to SE FI IN.  All commands may be abbreviated to 3 characters.
+The minimum abbreviation for each option is underlined.
+
+Commands  are  read  from left to right.  If conflicting options are given
+for the same command, the right most option is used.  For example SET AXES
+ON OFF turns the axes off.
+
+Many  commands  have synonyms.  For example AXES or AXIS, STOP or END, NEW
+FRAME or NEW PLOT or just NEW.
+
+Comments  may be added to a command by enclosing them in parentheses "()".
+If the line begins with a double slash, "//" the rest of  the  line  is  a
+comment.
+
+
+</PRE>
+</BODY>

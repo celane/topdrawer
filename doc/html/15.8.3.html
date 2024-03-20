@@ -1,0 +1,21 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.8.3</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.8.3  CHECK</H4></B> 
+
+CHECK=OFF  turns off data set checking.  When CHECK=ON both data sets must
+have identical X (and Y if mesh) values, but data set n2 may contain  more
+points  than  n1.   If  (DX/DY) is non zero then the both DX and X must be
+identical within 1% of DX.  If you  have  data  sets  with  non  identical
+values  of  X  you  may  create  a set with identical values using the BIN
+command.  you may also add together data sets with the  BIN  command.   If
+the  X  values  of  2  data  sets  are not quite identical.  You may force
+TOPDRAWER to add them by setting DX for the data 100  times  greater  than
+the difference in X or by setting CHECK=OFF.
+
+
+</PRE>
+</BODY>

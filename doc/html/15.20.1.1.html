@@ -1,0 +1,18 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.20.1.1</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.20.1.1  Initialization</H4></B>   - You  may also define commands before running
+TOPDRAWER.  You make DCL symbols of the form:
+     TD_C_new_command :==the_command
+When you type in new_command the_command is executed.  For example the DCL
+definition:
+     $ <U>TD_C_DIR*ECTORY</U> <U>:=SPAWN</U> <U>DIRECTORY</U>
+is the same as the TOPDRAWER command:
+     TD:<U>DEFINE</U> <U>COMMAND</U> <U>"DIR*ECTORY"</U> <U>"SPAWN</U> <U>DIR"</U>
+
+
+</PRE>
+</BODY>

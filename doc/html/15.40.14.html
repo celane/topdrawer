@@ -1,0 +1,23 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.40.14</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.40.14  DX</H4></B> 
+
+DX|DY|DZ  are  the  separation  between  parallel  lines used to shade the
+faces.  If zero parallel lines are not drawn.
+
+                                  Example
+You  wish  to shade face YZ,ZX with lines parallel to the Y axis separated
+by 0.1 units.  Essentially this draws  lines  at  even  multiples  of  0.1
+units.  This may be used in a similar fashion to grid lines on 1-d plots.
+     TD:<U>HISTOGRAM</U> <U>YZ</U> <U>ZX</U> <U>DX=0.1</U>
+Note:   you  specify  DX the distance along the X axis.  Since DY is 0, no
+lines parallel to the X axis are drawn.  When selecting RANDOM shading  DX
+specifies the number of dots/face.
+
+
+</PRE>
+</BODY>

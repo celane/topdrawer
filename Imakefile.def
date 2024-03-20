@@ -1,0 +1,64 @@
+/*
+ *  Local Configuration File
+ */
+
+/* #define LinuxAoutArchitecture */
+/* #define LinuxElfArchitecture */
+/* #define SunArchitecture */
+/* #define DigitalArchitecture */
+#define FreeBSDArchitecture 
+
+UGS = ../ugs/ugs.a
+
+
+/*-------------- Do not change the followings ---------------*/
+
+#if ( defined(LinuxAoutArchitecture) ||  defined(LinuxElfArchitecture) )
+ARCH    = __LINUX
+FFLAGS  = -O2
+CFLAGS  = -O2
+AR      = ar
+ARFLAGS = rvs
+RANCMD  =
+#endif
+
+#if defined(SunArchitecture)
+ARCH    = __SUNOS
+FFLAGS  = -O3 -Nl100 -w -libmil
+CFLAGS  = -O2
+AR      = ar
+ARFLAGS = rv
+#if defined(RANLIB)
+RANCMD  = $(RANLIB) $(LIB)
+#else
+RANCMD  =
+#endif
+#endif
+
+#if defined(DigitalArchitecture)
+ARCH    = __OSF1
+FFLAGS  = -O1
+CFLAGS  = -O2
+AR      = ar
+ARFLAGS = rv
+RANCMD  =
+#endif
+
+#if defined(FreeBSDArchitecture)
+ARCH    = __LINUX
+FC	= g77
+FFLAGS  = -O2 -fno-automatic -finit-local-zero -fno-backslash
+CFLAGS  = -O2 -DIUCLC=0001000
+AR      = ar
+ARFLAGS = rv
+RANCMD  = $(RANLIB) $(LIB)
+#endif
+
+/*--------------------- General Rules ------------------------*/
+
+.f.o:;\
+        $(FC) $(FFLAGS)  -c      $*.f  
+
+.c.o:;\
+        $(CC) $(CFLAGS)  -c      $*.c  
+

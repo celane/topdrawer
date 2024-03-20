@@ -1,0 +1,22 @@
+LIB = ../misc.a
+
+ifneq ($(strip $(RAN)),)
+RANLIB = $(RAN) $(LIB)
+endif
+
+.f.o: ;\
+	$(F77) -c      $*.f  ;\
+	$(AR)  $(LIB)  $*.o  ;\
+	$(RANLIB)
+
+.c.o: ;\
+	$(CC)  -c      $*.c  ;\
+	$(AR)  $(LIB)  $*.o  ;\
+	$(RANLIB)
+
+$(LIB): freq.o gamma.o intrac.o minuit.o noarg.o length.o clock.o
+	ls -lF  $(LIB)
+
+clean:
+	rm -f *.o *~
+

@@ -1,0 +1,30 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 15.37.13</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>15.37.13  USER</H4></B>        
+
+     USER=n
+Does  a  fit to a user supplied function type.  N must be between 1 and 99
+with a default of 1.  If  none  then  a  polynomial  is  used.   For  each
+coefficient of the linear fit the user supplied function is called:
+     Y=TDUFUN(n,NORD,X)
+Where  n  is  the  function  type.   NORD is the number of the coefficient
+(1-19) and X is the x value.  The user function must return the y value of
+the term.
+
+For  example  if  you  want  USER=1  to select a polynomial, and USER=2 to
+select an inverse polynomial.  You would write the following subroutine:
+     FUNCTION TDUFUN(n,NORD,X)
+     IF (n.eq.1) THEN
+       TDUFUN=X**NORD
+     IF (n.eq.2) THEN
+       TDUFUN=X**(-NORD)
+     ELSE
+     END
+
+
+</PRE>
+</BODY>

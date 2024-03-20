@@ -1,0 +1,134 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 20.7</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>20.7  91</H4></B> 
+
+     1.  Jan-1991  -  Added  documentation to command SET DEVICE on how to
+         create separate plot and command windows for TEK-4010  and  REGIS
+         graphics.
+         Added procedures:  FREEZE.TOP and FREEZE22.TOP to TOPDRAWER_DIR:
+     2.  18-Jan-1991  -  Fixed bug in module TXLINE that produced spurious
+         lines by incorrect scissoring.
+     3.  Added SET CYCLE, SHOW CYCLE commands and CYCLE option to CONTOUR.
+     4.  21-Jan-1991  - Fixed bug in PLOT,JOIN,HISTOGRAM commands.  SLICES
+         did not work properly when THREE was OFF.  Revision level 3.6.
+
+         Added  options OFFSET,DATA,ABSOLUTE,VALUE,CURSOR to PLOT TABLE to
+         move the table to more convenient locations.
+
+         Add  option VECTOR to PLOT command, to plot a vector field, where
+         DX,DY,DZ is the length of the vector.
+     5.  29-Jan-1991 - Fixed security hole to conceal passwords when using
+         files    over    DECnet.     Fixed    some    minor    bugs    in
+         ADD/SUBTRACT/MULTIPLY commands.
+
+         Add   option  VECTOR  to  ADD/SUBTRACT/MULTIPLY  commands  to  do
+         operations on VECTOR fields.
+     6.  8-Feb-1991  -  Added  SET  MODE CHECK,CONFIRM,TREE.  These select
+         whether checking,  confirmation,  or  HBOOK  tree  searching  are
+         defaulted   to   ON.    Added   options   POINTS,ROWS,LIMITED  to
+         ADD/SUB/MULT/DIV commands This  allows  compete  selection  of  a
+         subset  of data to operate on.  Added option CHECK to FFT command
+         to allow turning off data checking.
+     7.  11-Feb-1991  -  Fixed  problem with short ticks being produced in
+         SET SCALE when option LABEL=n preceded TICKS=m.  Version 3.7
+     8.  28-Feb-1991  - Added options FILL,HIDE to most commands that draw
+         something.  This means  you  may  fill  and  hide  BOXES,CIRCLES,
+         DIAMONDS,  HISTOGRAMS,  ARROWS.   In  addition  the SET/SHOW FILL
+         commands allow you to manipulate the fill  patterns.   Added  the
+         command  SET/SHOW  SHIELD  to  shield  a  section  of a plot from
+         further plotting.  Added  A  GKS  (DEC)  for  those  devices  not
+         availble  through  UGS.   Fixed  a  minor  bug that switched line
+         texture unexpectedly in UIS driver.
+     9.  4-Mar-1991 - Added SET/SHOW UNITS to allow you to reset both TEXT
+         and character units.
+
+         Fixed some problems with 3d histograms.  Conditionalized the code
+<A NAME="244">         means that the defaults are all in CM instead of INCHES.  You may </A>
+         use these conditionals to build a completely metric  verstion  of
+         TD.
+    10.  15-Mar-1991   -   Version   4.0   Added   options  SELECT="name",
+         NAME="name" to add names to data sets.  SELECT selects data  sets
+         by  name,  while  NAME  sets  the data set name.  HBOOK histogram
+         names are automatically propagated to the data set.  Option TITLE
+         added  to JOIN, PLOT, HIST, CONTOUR to add title when data set is
+         plotted.
+    11.  25-Mar-1991  -  Added  NONLINEAR  option  to FIT to use MINUIT to
+         perform fits on nonlinear functions.  Fixed problem in  arbitrary
+         linear fit functions.
+         Version 4.0.
+    12.  2-May-1991  -  Updated  HBSEARCHID  and T2SETH4 to be HBOOK V4.10
+         compatible.  Added more units to SET UNITS.
+    13.  14-Jun-1991  - Add options WIDTH, HEIGHT to SET DEVICE.  Made the
+         default the new version of TOPDRAWER.  Fixed some bugs  with  SET
+         UNITS.
+    14.  28-Jun-1991 - Modified the X,Y,Z commands so that DX,DY or DZ are
+         automatically recomputed when an expression is used.
+    15.  22-Jul-1991  -  Fixed  a  bug  in  STORE HIST command.  The wrong
+         default RECL was used.  Removed calls to obsolete HFNEXT routine.
+    16.  23-Aug-1991  -  Added  option  MESH to FIT command for MESH fits.
+         Added option APPEND to LIST command  to  append  listing  on  old
+         file.   Fixed error handling for MINUIT fits.  Now the errors are
+         the same for linear and NONLINEAR fits.  Added  functiond  DGAUSS
+         and DPOLY to list of functions, as fits of Z vs X,Y.  Fixed a bug
+         in T2MESH that messed up histograms of  mesh  data  with  errors.
+         GMINUT has been added to NTOPDRAWER.
+    17.  Sept-1991  -  Added  option  SAVE  to CONTOUR to save the contour
+         lines in data sets.  Fixed an 2 outrageous bugs in  T2SMOOTH  and
+         SMCTRL.   One  bug incorrectly treated the end points of a curve.
+         The other would delete isolated data points that were adjacent to
+         a flat region in the data.
+
+         Added INTERPOLATE command to produce interpolated data sets using
+         local fitting procedures.  This uses the same procedures  as  the
+         JOIN  command.  Added MONITOR option to BIN, FIT, FFT, CONVOLUTE,
+         SMOOTH commands to plot before/after pictures.   Added  SET  MODE
+         MONITOR/APPEND to enable automatic MONITOR, APPEND.
+
+         Fixed  equations  inside  FIT command.  Arbitrary equations would
+         sometimes give incorrect results.  It has been fixed.
+         Version 4.31
+    18.  Nov-1991  -  Fixed  fatal error in FIT that prevented producing a
+         curve from set coefficients.  Fixed some  bugs  in  all  commands
+         that use the option CHECK.
+    19.  Version 4.4 Added ORIENTATION=n to SET SIZE/DEVICE commands.
+    20.  Apr-1992  Added  option  PORTRAIT/LANDSCAPE  to set device.  Also
+         added device EPS.
+    21.  July-1992
+         A.  Fixed the BIN command to work properly with data when DY=0.
+         B.  Added  options  BREAK/SUPPRESS  to  SET BAR to suppress error
+             bars around the symbol for a PLOT command.
+         C.  Added  some  fixes  to  SET  DEVICE for DECGKS-3D to send the
+             Xwindow output to the correct device.  Added some FNAL fixes,
+             and added output options to initial command line.
+                  $ TOPDRAWER [filename [device1 [device2 ...]]]
+<A NAME="245">         D.  Added new coordinates NDX,NDY,NDZ to PLOT/BAR/HIST assymetric </A>
+             error  bars.   These  are  NOT  used  in  some   computations
+             involving errors.
+         E.  Fixed  an  error  in  TOKEN that prevented access to the data
+             point lexicals when the data  set  number  (3'rd  index)  was
+             specified.
+         F.  Fixed an error that produced spaces when more than 195 points
+             are joined.
+         G.  Reversed  the  default  for  ERROR  option on the SWAP,SMOOTH
+             command.  Now the ERROR option should be default  be  on  for
+             all commands.  By setting the REVISION to lower than 5.0 this
+             should revert to the old behavior.
+         H.  Added  the  minus (-) sign as a continuation character at the
+             end of a line.
+         I.  Added options SET AXES FRONT,BOTH,THREE
+             To  allow  default  plotting  of  3-d  axes  in  a "sensible"
+             fashion.
+         J.  Added options SET GRID OUTLINE,Z
+             To improve the 3-d grid capability.
+         Version 5.0
+    22.  Aug-1992 V5.1 - Fixed some bugs in the PLOT command.
+         NOSYMBOL did not work
+         POINTS FROM n TO m would not select the correct range of points.
+
+
+</PRE>
+</BODY>

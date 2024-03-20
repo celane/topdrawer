@@ -1,0 +1,20 @@
+<HEAD>
+<TITLE>Topdrawer Reference Manual 18.21.1</TITLE>
+</HEAD>
+
+<BODY>
+<PRE>
+<B><H4>18.21.1  Example</H4></B> 
+
+     REAL X(5),Y(5),DX(5),DY(5)
+     READ (1,'(4F10.0)') (X(I),Y(I),DX(I),DY(I),I=1,5)
+     CALL TDJOIN(5,X,Y,DX,DY,1,64+4*512)
+Reads  5 lines containing X,Y,DX,DY on each and joins the result with BLUE
+dotted lines.  A single line segment joins each point.
+     CALL TDJOIN(5,X,Y)
+Joins  the  5  points  with the default line type (SOLID,WHITE).  The data
+will be joined by multiple line segments to form a smooth curve.
+
+
+</PRE>
+</BODY>
