@@ -1,6 +1,6 @@
 #include <stddef.h>
 #include <time.h>
-#include <f2c.h>
+#include "f2c.h"
 
 integer time_()
 {

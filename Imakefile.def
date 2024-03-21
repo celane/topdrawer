@@ -2,20 +2,21 @@
  *  Local Configuration File
  */
 
-/* #define LinuxAoutArchitecture */
+#define LinuxAoutArchitecture
 /* #define LinuxElfArchitecture */
 /* #define SunArchitecture */
 /* #define DigitalArchitecture */
-#define FreeBSDArchitecture 
+/* #define FreeBSDArchitecture  */
 
-UGS = ../ugs/ugs.a
+UGS = ugs/ugs.a
 
 
-/*-------------- Do not change the followings ---------------*/
+/*-------------- Do not change the following ---------------*/
 
 #if ( defined(LinuxAoutArchitecture) ||  defined(LinuxElfArchitecture) )
 ARCH    = __LINUX
-FFLAGS  = -O2
+FC = gfortran
+FFLAGS  = -O2 -std=legacy -fallow-invalid-boz
 CFLAGS  = -O2
 AR      = ar
 ARFLAGS = rvs

@@ -21,7 +21,7 @@ RANLIB = $(RAN) $(LIB)
 endif
 
 .f.o: ;\
-	$(F77) -c      $*.f  ;\
+	$(FC) -c      $*.f  ;\
 	$(AR)  $(LIB)  $*.o  ;\
 	$(RANLIB)
 
@@ -139,16 +139,16 @@ ran.o \
 	ls -lF $(LIB)
 
 uge002.o: ;\
-	$(F77) -c -D__$(ARCH) $*.F  ;\
+	$(FC) -c -D__$(ARCH) $*.F  ;\
 	$(AR)  $(LIB)         $*.o  ;\
 	$(RANLIB)
 
-ifneq ($(strip $(G77)),)  # Routines incompatible with f2c
+ifneq ($(strip $(FC)),)  # Routines incompatible with f2c
 ugopen.o \
 ugclos.o \
 ugslct.o \
 ugz005.o: ;\
-	$(G77) -c      $*.f  ;\
+	$(FC) -c      $*.f  ;\
 	$(AR)  $(LIB)  $*.o  ;\
 	$(RANLIB)
 

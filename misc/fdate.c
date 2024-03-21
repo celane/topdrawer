@@ -1,5 +1,5 @@
 #include <time.h>
-#include <f2c.h>
+#include "f2c.h"
 
 VOID fdate_(ret_val, ret_val_len)
 char *ret_val;

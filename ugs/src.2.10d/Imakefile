@@ -121,13 +121,13 @@ $(LIB): $(OBJ)
 #if defined(LinuxAoutArchitecture) || defined(LinuxElfArchitecture)
 #if defined(LinuxElfArchitecture)
 ugnucl.o ugdupl.o ugsimp.o ugclos.o ugslct.o ugz005.o:
-	g77   $(GFLAGS)  -c      $*.f 
+	$(FC)   $(FFLAGS)  -c      $*.f 
 #else
 ugclos.o ugslct.o ugz005.o:
-	g77   $(GFLAGS)  -c      $*.f  
+	$(FC)   $(FFLAGS)  -c      $*.f  
 #endif
 
 ugopen.o:
-	g77   $(GFLAGS)  -c -D$(ARCH) $*.F  
+	$(FC)   $(FFLAGS)  -c -D$(ARCH) $*.F  
 #endif
 

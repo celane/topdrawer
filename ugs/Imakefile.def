@@ -2,11 +2,11 @@
  *  Local Configuration File
  */
 
-/* #define LinuxAoutArchitecture */
+#define LinuxAoutArchitecture
 /* #define LinuxElfArchitecture */
 /* #define SunArchitecture */
 /* #define DigitalArchitecture */
-#define FreeBSDArchitecture 
+/* #define FreeBSDArchitecture */
 
 MAKE	= sleep 1; make            /* timestamps need time! */
 
@@ -20,8 +20,9 @@ ARCH    = __LINUX_AOUT
 #else
 ARCH    = __LINUX_ELF
 #endif
-FC      = fort77
-FFLAGS  = -O2 -Nq300 -\!bs
+FC      = gfortran
+FFLAGS  = -O2 -std=legacy -fallow-invalid-boz  -fno-automatic -finit-local-zero
+/* FFLAGS += -Nq300 -\!bs  g77 */
 GFLAGS  = -O2 -fno-backslash
 CFLAGS  = -O2
 AR      = ar
